@@ -1,9 +1,10 @@
 import axios from "axios";
+import { REGIST_PROXY_URL } from "./proxyConfig";
 
 export const REGISTRATION_API_TIMEOUT = 30000;
 
 const registrationApi = axios.create({
-	baseURL: `/regist`,
+	baseURL: REGIST_PROXY_URL,
 	headers: {
 		apikey: "pscRBF0zT2Mqo6vMw69YMOH43IrB2RtXBS0EHit2kzv",
 		clientid: "neucq",

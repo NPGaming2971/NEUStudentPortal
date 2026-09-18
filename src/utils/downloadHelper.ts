@@ -1,5 +1,6 @@
 import axios, { type AxiosResponse } from 'axios';
 import { getToken } from '@/services/authService';
+import { PORTAL_PROXY_URL } from '@/lib/proxyConfig';
 
 const getFileNameFromResponse = (response: AxiosResponse): string | null => {
     const contentDisposition = response.headers['content-disposition'];
@@ -23,7 +24,7 @@ export const downloadTranscript = async (studentId: string, studyProgramId: stri
 
         const response = await axios({
             method: 'POST',
-            url: '/api/student/DownLoadReport',
+            url: `${PORTAL_PROXY_URL}/student/DownLoadReport`,
             responseType: 'blob',
             headers: {
                 'Content-Type': 'application/json',
@@ -66,7 +67,7 @@ export const downloadGraduationApplication = async (studyProgramId: string | num
 
         const response = await axios({
             method: 'POST',
-            url: '/api/student/PrintDonXetTotNghiep',
+            url: `${PORTAL_PROXY_URL}/student/PrintDonXetTotNghiep`,
             params: {
                 StudyProgramID: studyProgramId,
             },

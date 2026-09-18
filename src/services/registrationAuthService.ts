@@ -1,8 +1,9 @@
 import { getToken } from "./authService";
+import { PORTAL_PROXY_URL, REGIST_PROXY_URL } from "../lib/proxyConfig";
 
 const CONFIG = {
-	portal_api: `/api/`,
-	regist_api: `/regist/`,
+	portal_api: `${PORTAL_PROXY_URL}/`,
+	regist_api: `${REGIST_PROXY_URL}/`,
 	apiKey: "pscRBF0zT2Mqo6vMw69YMOH43IrB2RtXBS0EHit2kzv",
 	clientId: "neucq",
 };

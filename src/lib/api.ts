@@ -1,9 +1,10 @@
 import axios from 'axios';
+import { PORTAL_PROXY_URL } from './proxyConfig';
 
 export const API_TIMEOUT = 30000;
 
 const api = axios.create({
-    baseURL: import.meta.env.VITE_API_URL || '/api',
+    baseURL: import.meta.env.VITE_API_URL || PORTAL_PROXY_URL,
     headers: {
         apikey: import.meta.env.VITE_API_KEY || 'neucqpscrbf0zt2mqo6vmw69ymoh43irb2rtxbs0ehit2kzvl2auxafjbvw==',
         clientid: 'neucq',

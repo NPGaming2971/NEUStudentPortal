@@ -12,10 +12,10 @@ function NotFoundPage() {
 
                 <div className="space-y-2">
                     <h2 className="text-2xl md:text-3xl font-bold text-foreground">
-                        Úi, bạn đi lạc rồi phải không?
+                        Không tìm thấy đường dẫn
                     </h2>
                     <p className="text-muted-foreground text-lg">
-                        Đường dẫn này không tồn tại hoặc đã được chuyển đi đâu đó. Đừng lo, chúng mình có thể quay lại.
+                        Đường dẫn này không tồn tại hoặc đã được chuyển đi đâu đó.
                     </p>
                 </div>
 

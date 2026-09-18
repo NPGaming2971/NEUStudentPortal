@@ -81,6 +81,9 @@ export default {
 		);
 		headers.set("Accept", "application/json, text/plain, */*");
 
+		// Forge the Referer the upstream API requires (it returns 400 otherwise)
+		headers.set("Referer", "https://nguoihoc.neu.edu.vn/");
+
 		try {
 			// Read body for POST/PUT requests
 			let body = null;
