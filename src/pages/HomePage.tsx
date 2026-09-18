@@ -307,7 +307,7 @@ function HomePage() {
                                 <div className="flex items-center gap-3 mb-6">
                                     {footerInfo.loginLogoUrl && (
                                         <img
-                                            src={`https://daotao-api.neu.edu.vn${footerInfo.loginLogoUrl}`}
+                                            src={`https://nguoihoc.neu.edu.vn/static/media/logo_footer.f3b0caed.png`}
                                             alt={footerInfo.schoolName}
                                             className="h-16 w-auto object-contain"
                                         />

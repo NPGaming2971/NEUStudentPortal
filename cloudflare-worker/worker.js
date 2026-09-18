@@ -6,8 +6,8 @@ const CORS_HEADERS = {
 };
 
 const API_TARGETS = {
-	portal: "https://portal_api.neu.edu.vn/api",
-	regist: "https://regist_api.neu.edu.vn/api",
+	portal: "https://daotao-api.neu.edu.vn/api",
+	regist: "https://tinchi-api.neu.edu.vn/api",
 };
 
 // Headers to skip when forwarding

@@ -3,7 +3,7 @@ import axios from "axios";
 export const REGISTRATION_API_TIMEOUT = 30000;
 
 const registrationApi = axios.create({
-	baseURL: `https://tinchi-api.neu.edu.vn/api`,
+	baseURL: `/regist`,
 	headers: {
 		apikey: "pscRBF0zT2Mqo6vMw69YMOH43IrB2RtXBS0EHit2kzv",
 		clientid: "neucq",

@@ -1,8 +1,8 @@
 import { getToken } from "./authService";
 
 const CONFIG = {
-	portal_api: `https://tinchi-api.neu.edu.vn/api/`,
-	regist_api: `https://tinchi-api.neu.edu.vn/api/`,
+	portal_api: `/api/`,
+	regist_api: `/regist/`,
 	apiKey: "pscRBF0zT2Mqo6vMw69YMOH43IrB2RtXBS0EHit2kzv",
 	clientId: "neucq",
 };

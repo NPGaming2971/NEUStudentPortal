@@ -11,4 +11,18 @@ export default defineConfig({
 			"@": path.resolve(__dirname, "./src"),
 		},
 	},
+	server: {
+		proxy: {
+			"/api": {
+				target: "https://daotao-api.neu.edu.vn",
+				changeOrigin: true,
+				rewrite: (path) => path,
+			},
+			"/regist": {
+				target: "https://tinchi-api.neu.edu.vn",
+				changeOrigin: true,
+				rewrite: (path) => path.replace(/^\/regist/, "/api"),
+			},
+		},
+	},
 });

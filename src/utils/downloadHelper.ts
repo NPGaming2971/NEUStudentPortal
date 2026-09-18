@@ -23,7 +23,7 @@ export const downloadTranscript = async (studentId: string, studyProgramId: stri
 
         const response = await axios({
             method: 'POST',
-            url: 'https://portal_api.neu.edu.vn/api/student/DownLoadReport',
+            url: '/api/student/DownLoadReport',
             responseType: 'blob',
             headers: {
                 'Content-Type': 'application/json',
@@ -66,7 +66,7 @@ export const downloadGraduationApplication = async (studyProgramId: string | num
 
         const response = await axios({
             method: 'POST',
-            url: 'https://portal_api.neu.edu.vn/api/student/PrintDonXetTotNghiep',
+            url: '/api/student/PrintDonXetTotNghiep',
             params: {
                 StudyProgramID: studyProgramId,
             },
