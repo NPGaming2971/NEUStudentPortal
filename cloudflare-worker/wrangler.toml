@@ -1,6 +1,5 @@
-name = "vhu-portal-proxy"
+name = "neuportal"
 main = "worker.js"
-compatibility_date = "2024-01-01"
 
 # Deploy command: npx wrangler deploy
 # Dev command: npx wrangler dev
