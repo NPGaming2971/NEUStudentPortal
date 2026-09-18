@@ -1,6 +1,6 @@
 <div align="center">
-  <h1>VHU PORTAL v2</h1>
-  <p><b>Hệ thống Cổng thông tin Sinh viên Đại học Văn Hiến (Phiên bản mới)</b></p>
+  <h1>NEU PORTAL v2</h1>
+  <p><b>Hệ thống Cổng thông tin Sinh viên Đại học Kinh tế Quốc dân (Phiên bản mới)</b></p>
   <p>
     <a href="#giới-thiệu">Giới thiệu</a> •
     <a href="#công-nghệ-sử-dụng">Công nghệ</a> •
@@ -15,7 +15,7 @@
 
 ## Giới thiệu
 
-**VHU Portal v2** là môt hệ thống quản lý thông tin sinh viên toàn diện, được xây dựng lại với giao diện hiện đại, trực quan và tối ưu hóa trải nghiệm người dùng. Dự án hướng đến việc cung cấp một môi trường tương tác hiệu quả, giúp sinh viên Đại học Văn Hiến dễ dàng theo dõi thông tin học tập, tài chính và các hoạt động ngoại khóa ngay trên một nền tảng duy nhất.
+**NEU Portal v2** là môt hệ thống quản lý thông tin sinh viên toàn diện, được xây dựng lại với giao diện hiện đại, trực quan và tối ưu hóa trải nghiệm người dùng. Dự án hướng đến việc cung cấp một môi trường tương tác hiệu quả, giúp sinh viên Đại học Kinh tế Quốc dân dễ dàng theo dõi thông tin học tập, tài chính và các hoạt động ngoại khóa ngay trên một nền tảng duy nhất.
 
 ---
 
@@ -69,7 +69,7 @@ Dự án được phát triển dựa trên các công nghệ và thư viện hi
 Dự án được cấu trúc theo mô hình phân tách components rành mạch, dễ dàng mở rộng và bảo trì.
 
 ```text
-vhu-portal/
+neu-portal/
 ├── src/
 │   ├── assets/       # Chứa tài nguyên tĩnh (hình ảnh, fonts)
 │   ├── components/   # Các UI components dùng chung (Buttons, Cards, Modals...)
@@ -96,7 +96,7 @@ vhu-portal/
 **Bước 1: Tải source code**
 ```bash
 git clone <repository_url>
-cd vhu-portal
+cd neu-portal
 ```
 
 **Bước 2: Cài đặt các gói thư viện (Dependencies)**
@@ -108,7 +108,7 @@ npm install
 **Bước 3: Thiết lập biến môi trường**
 Tạo tệp `.env` tại thư mục gốc dự án và khai báo đường dẫn tới Backend API. (Thay đổi giá trị cho phù hợp).
 ```env
-VITE_API_BASE_URL=https://api.vhu.edu.vn/
+VITE_API_BASE_URL=https://api.neu.edu.vn/
 ```
 
 **Bước 4: Chạy dự án (Môi trường Development)**

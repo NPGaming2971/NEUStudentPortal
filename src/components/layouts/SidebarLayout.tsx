@@ -41,7 +41,7 @@ function SidebarLayout({ children }: SidebarLayoutProps) {
 
     const handleLogout = () => {
         logout();
-        navigate('/home');
+        navigate('/pagenews');
     };
 
     const handleCloseSidebar = () => {

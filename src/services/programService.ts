@@ -4,20 +4,47 @@ import api from '@/lib/api';
 export interface StudyProgram {
     StudyProgramID: string;
     StudyProgramName: string;
+    Type?: number;
 }
 
 export interface StudyProgramCourse {
-    CurriculumID: string;
-    TenHP: string;
-    STC: number;
+    MaCTDT: string;
+    TenCTDT: string;
+    TrinhDoDaoTao: string;
+    ChuyenNganhDaoTao: string;
+    HinhThucDaoTao: string;
+    HocKy: string;
+    KKT: string;
     BatBuoc: string;
-    HPHocTruoc: string;
+    MaHP: string;
+    TenHP: string;
+    BoMon: string;
     Khoa: string;
-    SemesterName: string;
+    STC: number;
+    TCHocPhan: string;
+    LT: string;
+    TH: string;
+    TS: string;
+    HPHocTruoc: string;
+    HPTienQuyet: string;
+    GhiChu: string;
+    YearStudy: number;
+    TermID: string;
+    IsPass: string;
+}
+
+export interface StudyProgramGroup {
+    BatBuoc: string;
+    ChuongTrinhs: StudyProgramCourse[];
+}
+
+export interface KKTBlock {
+    KKT: string;
+    ChuongTrinhDaoTaos: StudyProgramGroup[];
 }
 
 export interface StudyProgramDetail {
-    tbStudyPrograms: StudyProgramCourse[];
+    tbStudyPrograms: KKTBlock[];
 }
 
 export const getStudyPrograms = async (): Promise<StudyProgram[]> => {
@@ -32,22 +59,12 @@ export const getStudyPrograms = async (): Promise<StudyProgram[]> => {
 
 export const getStudyProgramDetail = async (studyProgramId: string): Promise<StudyProgramDetail> => {
     try {
-        const response = await api.get(`/student/studyProgram?StudyProgramID=${studyProgramId}`);
-        return response.data;
-    } catch (error) {
-        console.error('Error fetching study program detail:', error);
-        throw error;
-    }
-};
-
-export const getStudyProgramResults = async (studyProgramId: number) => {
-    try {
-        const response = await api.get('/student/marks', {
-            params: { ctdt: studyProgramId, loai: 'SV' },
+        const response = await api.get('/student/studyProgram', {
+            params: { StudyProgramID: studyProgramId, tiendo: 1 },
         });
         return response.data;
     } catch (error) {
-        console.error('Error fetching study program results:', error);
+        console.error('Error fetching study program detail:', error);
         throw error;
     }
 };

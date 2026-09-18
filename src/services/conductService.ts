@@ -70,35 +70,3 @@ export const getBehaviorScore = async (yearStudy: string, termId: string): Promi
         throw error;
     }
 };
-
-// Community Service types
-export interface CommunityServiceItem {
-    ActivityID: string;
-    Details: string;
-    FromTime: string;
-    ToTime: string;
-    ExcutionTime?: string;
-    Location?: string;
-    NumRegisted: number;
-    MarkConverted: number;
-}
-
-export interface CommunityServiceData {
-    result: CommunityServiceItem[];
-}
-
-// Get Community Services / Social Activities
-export const getCommunityServices = async (yearStudy: string, termId: string): Promise<CommunityServiceData> => {
-    try {
-        const response = await api.get('/student/GetAllCongTacXaHoi', {
-            params: {
-                CurrentYear: yearStudy,
-                CurrenTerm: termId,
-            },
-        });
-        return response.data;
-    } catch (error) {
-        console.error('Error fetching community services:', error);
-        throw error;
-    }
-};

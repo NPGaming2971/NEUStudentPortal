@@ -11,7 +11,7 @@ import GlobalNotification from './components/common/GlobalNotification';
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <AuthProvider>
-      <ThemeProvider defaultTheme="light" storageKey="vhu-portal-theme">
+      <ThemeProvider defaultTheme="light" storageKey="neuPortalTheme">
         <GlobalNotificationProvider>
           <Router>
             <Routes>

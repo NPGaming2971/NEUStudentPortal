@@ -1,4 +1,5 @@
 import axios, { type AxiosResponse } from 'axios';
+import { getToken } from '@/services/authService';
 
 const getFileNameFromResponse = (response: AxiosResponse): string | null => {
     const contentDisposition = response.headers['content-disposition'];
@@ -11,9 +12,9 @@ const getFileNameFromResponse = (response: AxiosResponse): string | null => {
     return null;
 };
 
-export const downloadTranscript = async (studentId: string, studyProgramId: number): Promise<boolean> => {
+export const downloadTranscript = async (studentId: string, studyProgramId: string | number): Promise<boolean> => {
     try {
-        const token = localStorage.getItem('authToken');
+        const token = getToken();
         if (!token) throw new Error('No authentication token found');
 
         const studentIdStr = String(studentId);
@@ -22,13 +23,13 @@ export const downloadTranscript = async (studentId: string, studyProgramId: numb
 
         const response = await axios({
             method: 'POST',
-            url: 'https://portal_api.vhu.edu.vn/api/student/DownLoadReport',
+            url: 'https://portal_api.neu.edu.vn/api/student/DownLoadReport',
             responseType: 'blob',
             headers: {
                 'Content-Type': 'application/json',
                 apikey: 'pscRBF0zT2Mqo6vMw69YMOH43IrB2RtXBS0EHit2kzvL2auxaFJBvw==',
                 Authorization: `Bearer ${token}`,
-                clientid: 'vhu',
+                clientid: 'neu',
             },
             data: {
                 typeFile: 'pdf',
@@ -58,14 +59,14 @@ export const downloadTranscript = async (studentId: string, studyProgramId: numb
     }
 };
 
-export const downloadGraduationApplication = async (studyProgramId: number): Promise<boolean> => {
+export const downloadGraduationApplication = async (studyProgramId: string | number): Promise<boolean> => {
     try {
-        const token = localStorage.getItem('authToken');
+        const token = getToken();
         if (!token) throw new Error('No authentication token found');
 
         const response = await axios({
             method: 'POST',
-            url: 'https://portal_api.vhu.edu.vn/api/student/PrintDonXetTotNghiep',
+            url: 'https://portal_api.neu.edu.vn/api/student/PrintDonXetTotNghiep',
             params: {
                 StudyProgramID: studyProgramId,
             },
@@ -74,7 +75,7 @@ export const downloadGraduationApplication = async (studyProgramId: number): Pro
                 'Content-Type': 'application/json',
                 apikey: 'pscRBF0zT2Mqo6vMw69YMOH43IrB2RtXBS0EHit2kzvL2auxaFJBvw==',
                 Authorization: `Bearer ${token}`,
-                clientid: 'vhu',
+                clientid: 'neu',
             },
         });
 

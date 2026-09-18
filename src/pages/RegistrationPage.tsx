@@ -57,37 +57,65 @@ function RegistrationPage() {
     const [isInitializing, setIsInitializing] = useState(true);
     const [isLoadingQuota, setIsLoadingQuota] = useState(false);
     const [isLoadingClasses, setIsLoadingClasses] = useState(false);
-    const [academicResults, setAcademicResults] = useState<any>(null);
+    const [academicResults, setAcademicResults] = useState<
+        { diem?: unknown[]; tbStudyPrograms?: unknown[] } | null
+    >(null);
 
     const academicLookup = useMemo(() => {
         const map = new Map<string, AcademicCourseResult>();
-        if (!academicResults || !academicResults.tbStudyPrograms) return map;
+        if (!academicResults) return map;
 
-        academicResults.tbStudyPrograms.forEach((year: any) => {
-            year.DanhSachCTDT?.forEach((semester: any) => {
-                semester.DanhSachDiemHocPhan?.forEach((group: any) => {
-                    group.DanhSachDiemChiTiet?.forEach((course: any) => {
-                        if (course.IsPass === "1" && course.CurriculumID) {
-                            const mainCode = String(course.CurriculumID).trim().toUpperCase();
-                            // Only set if not already set, or if we want to prioritize direct matches
-                            if (!map.has(mainCode)) {
-                                map.set(mainCode, course);
-                            }
-                            
-                            if (course.HPTuongDuong) {
-                                const equivalents = String(course.HPTuongDuong)
-                                    .split(',')
-                                    .map(s => s.trim().toUpperCase())
-                                    .filter(Boolean);
-                                    
-                                equivalents.forEach(eq => {
-                                    if (!map.has(eq)) {
-                                        map.set(eq, { ...course, isEquivalentOf: mainCode });
-                                    }
-                                });
-                            }
+        // Extract courses from both the old shape (tbStudyPrograms → DanhSachCTDT)
+        // and the new shape (diem → DanhSachDiem → DanhSachDiemHK)
+        interface RawCourse {
+            CurriculumID?: string;
+            Ispass?: string;
+            IsPass?: string;
+            HPTuongDuong?: string;
+        }
+        interface RawSemester {
+            DanhSachDiemHK?: RawCourse[];
+            DanhSachDiemHocPhan?: { DanhSachDiemChiTiet?: RawCourse[] }[];
+        }
+        interface RawYear {
+            DanhSachDiem?: RawSemester[];
+            DanhSachCTDT?: RawSemester[];
+        }
+
+        const years: RawYear[] =
+            (academicResults.diem as RawYear[] | undefined) ??
+            (academicResults.tbStudyPrograms as RawYear[] | undefined) ??
+            [];
+
+        years.forEach((year: RawYear) => {
+            (year.DanhSachDiem ?? year.DanhSachCTDT)?.forEach((semester: RawSemester) => {
+                const flat = semester.DanhSachDiemHK ?? [];
+                const grouped = (semester.DanhSachDiemHocPhan ?? []).flatMap(
+                    (group) => group.DanhSachDiemChiTiet ?? [],
+                );
+                (flat.length ? flat : grouped).forEach((course: RawCourse) => {
+                    const passed =
+                        course.Ispass === "True" || course.IsPass === "1";
+                    if (passed && course.CurriculumID) {
+                        const mainCode = String(course.CurriculumID).trim().toUpperCase();
+                        // Only set if not already set, or if we want to prioritize direct matches
+                        if (!map.has(mainCode)) {
+                            map.set(mainCode, course as AcademicCourseResult);
                         }
-                    });
+                        
+                        if (course.HPTuongDuong) {
+                            const equivalents = String(course.HPTuongDuong)
+                                .split(',')
+                                .map(s => s.trim().toUpperCase())
+                                .filter(Boolean);
+                                
+                            equivalents.forEach(eq => {
+                                if (!map.has(eq)) {
+                                    map.set(eq, { ...course, isEquivalentOf: mainCode } as AcademicCourseResult);
+                                }
+                            });
+                        }
+                    }
                 });
             });
         });

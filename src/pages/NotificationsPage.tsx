@@ -10,20 +10,17 @@ import {
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { getStudentNotifications, getNotificationDetails } from "@/services/notificationService";
+import { getStudentNotifications, updateMessageStatus } from "@/services/notificationService";
 import { cn, formatNotificationBody, formatDate, formatTitle } from "@/lib/utils";
 
 interface Notification {
     MessageID: number;
     MessageSubject: string;
+    MessageBody: string;
     SenderID: string;
     SenderName: string;
     CreationDate: string;
     IsRead: boolean;
-}
-
-interface NotificationDetail {
-    MessageBody: string;
 }
 
 interface Sender {
@@ -40,8 +37,7 @@ export default function NotificationsPage() {
     const [searchTerm, setSearchTerm] = useState("");
     const [selectedSender, setSelectedSender] = useState("all");
     const [expandedId, setExpandedId] = useState<number | null>(null);
-    const [notificationDetails, setNotificationDetails] = useState<Record<number, NotificationDetail>>({});
-    const [loadingDetails, setLoadingDetails] = useState<Record<number, boolean>>({});
+    const [readUpdating, setReadUpdating] = useState<Record<number, boolean>>({});
 
     const getSenders = (notifications: Notification[]): Sender[] => {
         const senders = new Set(
@@ -108,21 +104,20 @@ export default function NotificationsPage() {
         }
 
         setExpandedId(messageId);
-        if (!notificationDetails[messageId]) {
+        const notification = notifications.find((n) => n.MessageID === messageId);
+        if (notification && !notification.IsRead) {
             try {
-                setLoadingDetails((prev) => ({ ...prev, [messageId]: true }));
-                const [details] = await Promise.all([
-                    getNotificationDetails(messageId),
-                    new Promise((resolve) => setTimeout(resolve, 300)),
-                ]);
-                setNotificationDetails((prev) => ({
-                    ...prev,
-                    [messageId]: details,
-                }));
+                setReadUpdating((prev) => ({ ...prev, [messageId]: true }));
+                await updateMessageStatus(messageId);
+                setNotifications((prev) =>
+                    prev.map((n) =>
+                        n.MessageID === messageId ? { ...n, IsRead: true } : n
+                    )
+                );
             } catch (error) {
-                console.error("Failed to fetch notification details:", error);
+                console.error("Failed to mark notification as read:", error);
             } finally {
-                setLoadingDetails((prev) => ({ ...prev, [messageId]: false }));
+                setReadUpdating((prev) => ({ ...prev, [messageId]: false }));
             }
         }
     };
@@ -294,11 +289,12 @@ export default function NotificationsPage() {
                                                 {/* Expanded Content */}
                                                 {expandedId === notification.MessageID && (
                                                     <div className="mt-4 pt-4 border-t border-border/50 animate-in slide-in-from-top-2 duration-200">
-                                                        {loadingDetails[notification.MessageID] ? (
+                                                        {readUpdating[notification.MessageID] && (
                                                             <div className="flex items-center justify-center py-8">
                                                                 <Loader2 className="size-6 animate-spin text-primary" />
                                                             </div>
-                                                        ) : notificationDetails[notification.MessageID] ? (
+                                                        )}
+                                                        {notification.MessageBody ? (
                                                             <div
                                                                 className="prose prose-sm dark:prose-invert max-w-none 
                                                                         prose-headings:text-foreground prose-p:text-muted-foreground 
@@ -310,9 +306,7 @@ export default function NotificationsPage() {
                                                                         [&_a]:underline-offset-2 [&_a]:hover:underline
                                                                         [&_img]:rounded-lg [&_img]:max-w-full"
                                                                 dangerouslySetInnerHTML={{
-                                                                    __html: formatNotificationBody(
-                                                                        notificationDetails[notification.MessageID].MessageBody
-                                                                    ),
+                                                                    __html: formatNotificationBody(notification.MessageBody),
                                                                 }}
                                                             />
                                                         ) : (

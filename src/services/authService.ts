@@ -2,14 +2,21 @@ import api from '@/lib/api';
 
 export interface LoginResponse {
     success: boolean;
-    data?: {
-        Token: string;
-        Id: string;
-        FullName: string;
-        Role: string;
-        GraduateLevel: string;
-    };
+    data?: AuthData;
     message?: string;
+}
+
+export interface AuthData {
+    Id: string;
+    FirstName?: string | null;
+    LastName?: string | null;
+    FullName: string;
+    Token: string;
+    Role: string;
+    GraduateLevel: string;
+    StudyTypeID?: string;
+    DVDaoTao?: string;
+    Expire?: string;
 }
 
 export interface User {
@@ -17,6 +24,7 @@ export interface User {
     fullName: string;
     role: string;
     graduateLevel: string;
+    dvDaoTao?: string;
 }
 
 export const login = async (username: string, password: string): Promise<LoginResponse> => {
@@ -24,7 +32,6 @@ export const login = async (username: string, password: string): Promise<LoginRe
         const response = await api.post('/authenticate/authpsc', {
             username,
             password,
-            type: 0,
         });
 
         if (response.data && response.data.Token) {
@@ -44,16 +51,22 @@ export const login = async (username: string, password: string): Promise<LoginRe
 };
 
 export const logout = (): void => {
-    localStorage.removeItem('authToken');
+    localStorage.removeItem('authorizationData');
     document.cookie = 'YIF+pxrGp0isUkYUsAWxn3rQH6pBrNY_=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
 };
 
 export const getToken = (): string | null => {
-    return localStorage.getItem('authToken');
+    const raw = localStorage.getItem('authorizationData');
+    if (!raw) return null;
+    try {
+        return JSON.parse(raw).Token ?? null;
+    } catch {
+        return null;
+    }
 };
 
-export const setToken = (token: string): void => {
-    localStorage.setItem('authToken', token);
+export const setToken = (token: string, authData?: AuthData): void => {
+    localStorage.setItem('authorizationData', JSON.stringify({ ...authData, Token: token }));
 };
 
 export const isTokenValid = (): boolean => {
@@ -80,6 +93,7 @@ export const getUserFromToken = (): User | null => {
                 fullName: tokenData.Name,
                 role: tokenData.Role,
                 graduateLevel: tokenData.GraduateLevel,
+                dvDaoTao: tokenData.DVDaoTao,
             };
         }
         return null;

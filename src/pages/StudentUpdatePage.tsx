@@ -133,7 +133,7 @@ function StudentUpdatePage() {
     };
 
     const handleBack = () => {
-        navigate('/student');
+        navigate('/student/info');
     };
 
     const handleSubmit = async (e: React.FormEvent) => {

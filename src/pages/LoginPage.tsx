@@ -21,7 +21,7 @@ function LoginPage() {
 
     useEffect(() => {
         if (isAuthenticated) {
-            navigate('/student', { replace: true });
+            navigate('/student/info', { replace: true });
         }
     }, [isAuthenticated, navigate]);
 
@@ -33,8 +33,8 @@ function LoginPage() {
             const response = await loginService(username, password);
 
             if (response.success && response.data?.Token) {
-                login(response.data.Token);
-                navigate('/student');
+                login(response.data.Token, response.data);
+                navigate('/student/info');
             } else {
                 showError(response.message || 'Đăng nhập thất bại');
             }
@@ -63,7 +63,7 @@ function LoginPage() {
                         <div className="p-3 bg-white/10 rounded-full ring-1 ring-white/20 shadow-lg backdrop-blur-md">
                             <img
                                 src={assets.imageLogo}
-                                alt="VHU Logo"
+                                alt="NEU Logo"
                                 className="w-16 h-16 object-contain drop-shadow-md"
                             />
                         </div>
@@ -72,7 +72,7 @@ function LoginPage() {
                         Đăng Nhập
                     </CardTitle>
                     <CardDescription className="text-white/70 text-base">
-                        Cổng thông tin sinh viên VHU Portal
+                        Cổng thông tin sinh viên NEU
                     </CardDescription>
                 </CardHeader>
 

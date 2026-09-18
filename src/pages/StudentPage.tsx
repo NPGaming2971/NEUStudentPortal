@@ -14,11 +14,12 @@ import {
 } from 'lucide-react';
 
 function StudentPage() {
-    const { studentInfo: studentData, isLoading, error, fetchStudentInfo } = useInfoStore();
+    const { studentInfo: studentData, avatar, isLoading, error, fetchStudentInfo, fetchStudentAvatar } = useInfoStore();
 
     useEffect(() => {
         fetchStudentInfo();
-    }, [fetchStudentInfo]);
+        fetchStudentAvatar();
+    }, [fetchStudentInfo, fetchStudentAvatar]);
 
     if (isLoading) {
         return (
@@ -66,8 +67,12 @@ function StudentPage() {
                 {/* Div 1: Student Avatar & Quick Info - spans 2 rows */}
                 <div className="bg-gradient-to-br from-primary to-primary/80 p-4 text-primary-foreground rounded-xl border border-border shadow-sm lg:row-span-2 flex flex-col justify-center">
                     <div className="flex flex-col items-center gap-3">
-                        <div className="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center text-3xl font-bold border-4 border-white/30 shadow-lg">
-                            {studentData?.HoTen?.split(' ').pop()?.charAt(0) || 'S'}
+                        <div className="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center text-3xl font-bold border-4 border-white/30 shadow-lg overflow-hidden">
+                            {avatar ? (
+                                <img src={avatar} alt={studentData?.HoTen || 'Avatar'} className="w-full h-full object-cover" />
+                            ) : (
+                                studentData?.HoTen?.split(' ').pop()?.charAt(0) || 'S'
+                            )}
                         </div>
                         <div className="text-center">
                             <h2 className="text-xl font-bold">{studentData?.HoTen}</h2>

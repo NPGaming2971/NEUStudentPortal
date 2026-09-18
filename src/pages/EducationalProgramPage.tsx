@@ -6,6 +6,7 @@ import {
 	getStudyPrograms,
 	getStudyProgramDetail,
 	type StudyProgram,
+	type KKTBlock,
 	type StudyProgramCourse,
 } from "@/services/programService";
 import {
@@ -14,14 +15,25 @@ import {
 	GraduationCap,
 	BookOpen,
 	Library,
+	Check,
 } from "lucide-react";
 
+const isMandatory = (course: StudyProgramCourse): boolean =>
+	course.BatBuoc === "Bắt Buộc";
+
+const semesterOf = (course: StudyProgramCourse): number =>
+	parseInt(course.HocKy?.match(/\d+/)?.[0] || "0", 10);
+
+const sortCourses = (courses: StudyProgramCourse[]): StudyProgramCourse[] =>
+	[...courses].sort(
+		(a, b) => semesterOf(a) - semesterOf(b) || a.MaHP.localeCompare(b.MaHP),
+	);
+
 function EducationalProgramPage() {
-	const [_programs, setPrograms] = useState<StudyProgram[]>([]);
 	const [selectedProgram, setSelectedProgram] = useState<StudyProgram | null>(
 		null,
 	);
-	const [courses, setCourses] = useState<StudyProgramCourse[]>([]);
+	const [blocks, setBlocks] = useState<KKTBlock[]>([]);
 	const [isLoading, setIsLoading] = useState(true);
 	const [isLoadingDetail, setIsLoadingDetail] = useState(false);
 	const [error, setError] = useState<string | null>(null);
@@ -30,7 +42,6 @@ function EducationalProgramPage() {
 		const fetchPrograms = async () => {
 			try {
 				const data = await getStudyPrograms();
-				setPrograms(data);
 				if (data.length > 0) {
 					setSelectedProgram(data[0]);
 					fetchProgramDetail(data[0].StudyProgramID);
@@ -52,7 +63,7 @@ function EducationalProgramPage() {
 		setIsLoadingDetail(true);
 		try {
 			const data = await getStudyProgramDetail(programId);
-			setCourses(data.tbStudyPrograms || []);
+			setBlocks(data?.tbStudyPrograms || []);
 		} catch (err) {
 			console.error("Error fetching program detail:", err);
 		} finally {
@@ -60,33 +71,16 @@ function EducationalProgramPage() {
 		}
 	};
 
-	const groupBySemester = (courses: StudyProgramCourse[]) => {
-		return courses.reduce(
-			(acc, course) => {
-				const term = course.SemesterName || "Khác";
-				if (!acc[term]) {
-					acc[term] = [];
-				}
-				acc[term].push(course);
-				return acc;
-			},
-			{} as Record<string, StudyProgramCourse[]>,
-		);
-	};
+	const allCourses = blocks.flatMap((block) =>
+		block.ChuongTrinhDaoTaos.flatMap((group) => group.ChuongTrinhs),
+	);
 
-	const semesterGroups = groupBySemester(courses);
-	const sortedSemesters = Object.keys(semesterGroups).sort((a, b) => {
-		const numA = parseInt(a.match(/\d+/)?.[0] || "0");
-		const numB = parseInt(b.match(/\d+/)?.[0] || "0");
-		return numA - numB;
-	});
-
-	const totalCredits = courses.reduce(
+	const totalCredits = allCourses.reduce(
 		(sum, course) => sum + (course.STC || 0),
 		0,
 	);
-	const requiredCredits = courses
-		.filter((course) => course.BatBuoc === "Bắt Buộc")
+	const requiredCredits = allCourses
+		.filter((course) => isMandatory(course))
 		.reduce((sum, course) => sum + (course.STC || 0), 0);
 	const electiveCredits = totalCredits - requiredCredits;
 
@@ -179,7 +173,7 @@ function EducationalProgramPage() {
 				</Card>
 			)}
 
-			{/* Courses by Semester */}
+			{/* Courses by Knowledge Block (KKT) */}
 			{isLoadingDetail ?
 				<div className='flex items-center justify-center py-12'>
 					<Loader2 className='w-8 h-8 animate-spin text-primary' />
@@ -187,212 +181,264 @@ function EducationalProgramPage() {
 				: <div>
 					<h2 className='flex items-center gap-2 text-lg font-semibold mb-4'>
 						<BookOpen className='h-5 w-5 text-primary' />
-						Danh sách học phần theo học kỳ
+						Danh sách học phần theo khối kiến thức
 					</h2>
-					{sortedSemesters.length > 0 ?
-						<Tabs
-							defaultValue={sortedSemesters[0]}
-							className='w-full'
-						>
+					{blocks.length > 0 ?
+						<Tabs defaultValue='0' className='w-full'>
 							<div className='overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0'>
 								<TabsList className='inline-flex md:flex md:flex-wrap h-auto gap-1 bg-muted/50 p-1 min-w-max md:min-w-0 md:w-full'>
-									{sortedSemesters.map((semester) => (
+									{blocks.map((block, index) => (
 										<TabsTrigger
-											key={semester}
-											value={semester}
+											key={index}
+											value={String(index)}
 											className='text-xs px-3 py-1.5 whitespace-nowrap'
 										>
-											{semester}
+											{block.KKT}
 										</TabsTrigger>
 									))}
 								</TabsList>
 							</div>
 
-							{sortedSemesters.map((semester) => (
+							{blocks.map((block, index) => (
 								<TabsContent
-									key={semester}
-									value={semester}
+									key={index}
+									value={String(index)}
 									className='mt-4'
 								>
-									{/* Desktop Table View */}
-									<div className='hidden md:block overflow-x-auto'>
-										<table className='w-full text-sm'>
-											<thead>
-												<tr className='border-b bg-muted/50'>
-													<th className='text-left p-3 font-medium'>
-														Mã HP
-													</th>
-													<th className='text-left p-3 font-medium'>
-														Tên học phần
-													</th>
-													<th className='text-center p-3 font-medium'>
-														STC
-													</th>
-													<th className='text-center p-3 font-medium'>
-														Loại
-													</th>
-													<th className='text-left p-3 font-medium'>
-														Học trước
-													</th>
-													<th className='text-left p-3 font-medium hidden lg:table-cell'>
-														Khoa/Bộ môn
-													</th>
-												</tr>
-											</thead>
-											<tbody>
-												{semesterGroups[
-													semester
-												].map((course, index) => (
-													<tr
-														key={
-															course.CurriculumID +
-															index
-														}
-														className='border-b hover:bg-muted/30 transition-colors'
+									{block.ChuongTrinhDaoTaos.length > 0 ?
+										block.ChuongTrinhDaoTaos.map(
+											(group, groupIndex) => {
+												const groupedCourses = sortCourses(
+													group.ChuongTrinhs,
+												);
+												const groupCredits =
+													groupedCourses.reduce(
+														(sum, c) =>
+															sum + (c.STC || 0),
+														0,
+													);
+												return (
+													<div
+														key={groupIndex}
+														className='mb-6'
 													>
-														<td className='p-3 font-mono text-xs'>
-															{
-																course.CurriculumID
-															}
-														</td>
-														<td className='p-3'>
-															{course.TenHP}
-														</td>
-														<td className='p-3 text-center font-semibold'>
-															{course.STC}
-														</td>
-														<td className='p-3 text-center'>
-															<Badge
-																variant={
-																	(
-																		course.BatBuoc ===
-																		"Bắt Buộc"
-																	) ?
-																		"default"
-																		: "secondary"
-																}
-																className='text-xs'
-															>
-																{(
-																	course.BatBuoc ===
-																	"Bắt Buộc"
-																) ?
-																	"BB"
-																	: "TC"}
-															</Badge>
-														</td>
-														<td className='p-3 text-muted-foreground'>
-															{course.HPHocTruoc ||
-																"—"}
-														</td>
-														<td className='p-3 text-muted-foreground hidden lg:table-cell text-xs'>
-															{course.Khoa ||
-																"—"}
-														</td>
-													</tr>
-												))}
-											</tbody>
-										</table>
-									</div>
-
-									{/* Mobile Card View */}
-									<div className='md:hidden space-y-3'>
-										{semesterGroups[semester].map(
-											(course, index) => (
-												<div
-													key={
-														course.CurriculumID +
-														index
-													}
-													className='border rounded-lg p-3 bg-card hover:bg-muted/30 transition-colors'
-												>
-													<div className='flex items-start justify-between gap-2 mb-2'>
-														<div className='flex-1 min-w-0'>
-															<h4 className='font-medium text-sm leading-tight'>
+														<div className='flex items-center justify-between flex-wrap gap-2 mb-3'>
+															<h3 className='font-semibold text-base'>
+																{group.BatBuoc}
+															</h3>
+															<span className='text-xs text-muted-foreground'>
 																{
-																	course.TenHP
-																}
-															</h4>
-															<p className='text-xs text-muted-foreground font-mono mt-0.5'>
-																{
-																	course.CurriculumID
-																}
-															</p>
-														</div>
-														<div className='flex items-center gap-2 flex-shrink-0'>
-															<Badge
-																variant={
-																	(
-																		course.BatBuoc ===
-																		"Bắt Buộc"
-																	) ?
-																		"default"
-																		: "secondary"
-																}
-																className='text-xs'
-															>
-																{(
-																	course.BatBuoc ===
-																	"Bắt Buộc"
-																) ?
-																	"BB"
-																	: "TC"}
-															</Badge>
-															<span className='text-sm font-bold text-primary'>
-																{course.STC}{" "}
+																	groupedCourses.length
+																}{" "}
+																học phần •{" "}
+																{groupCredits}{" "}
 																TC
 															</span>
 														</div>
-													</div>
-													{course.HPHocTruoc && (
-														<div className='text-xs text-muted-foreground border-t pt-2 mt-2'>
-															<span className='font-medium'>
-																Học trước:
-															</span>{" "}
-															{
-																course.HPHocTruoc
-															}
-														</div>
-													)}
-												</div>
-											),
-										)}
-									</div>
 
-									{/* Semester Summary */}
-									<div className='mt-4 flex gap-4 text-sm text-muted-foreground'>
-										<span>
-											Số học phần:{" "}
-											<strong className='text-foreground'>
-												{
-													semesterGroups[semester]
-														.length
-												}
-											</strong>
-										</span>
-										<span>
-											Tổng tín chỉ:{" "}
-											<strong className='text-foreground'>
-												{semesterGroups[
-													semester
-												].reduce(
-													(sum, c) =>
-														sum + (c.STC || 0),
-													0,
-												)}
-											</strong>
-										</span>
-									</div>
+														{/* Desktop Table View */}
+														<div className='hidden md:block overflow-x-auto'>
+															<table className='w-full text-sm'>
+																<thead>
+																	<tr className='border-b bg-muted/50'>
+																		<th className='text-center p-3 font-medium w-20'>
+																			HK
+																		</th>
+																		<th className='text-left p-3 font-medium'>
+																			Mã HP
+																		</th>
+																		<th className='text-left p-3 font-medium'>
+																			Tên học phần
+																		</th>
+																		<th className='text-center p-3 font-medium'>
+																			STC
+																		</th>
+																		<th className='text-center p-3 font-medium'>
+																			Loại
+																		</th>
+																		<th className='text-center p-3 font-medium'>
+																			Đạt
+																		</th>
+																		<th className='text-left p-3 font-medium'>
+																			Học trước
+																		</th>
+																		<th className='text-left p-3 font-medium hidden lg:table-cell'>
+																			Khoa/Bộ môn
+																		</th>
+																	</tr>
+																</thead>
+																<tbody>
+																	{groupedCourses.map(
+																		(
+																			course,
+																			index,
+																		) => (
+																			<tr
+																				key={`${course.MaHP}-${index}`}
+																				className='border-b hover:bg-muted/30 transition-colors'
+																			>
+																				<td className='p-3 text-center text-muted-foreground'>
+																					{
+																						course.HocKy
+																					}
+																				</td>
+																				<td className='p-3 font-mono text-xs'>
+																					{
+																						course.MaHP
+																					}
+																				</td>
+																				<td className='p-3'>
+																					{
+																						course.TenHP
+																					}
+																				</td>
+																				<td className='p-3 text-center font-semibold'>
+																					{
+																						course.STC
+																					}
+																				</td>
+																				<td className='p-3 text-center'>
+																					<Badge
+variant={
+	isMandatory(
+		course,
+	) ?
+		"default"
+		: "outline"
+}
+																						className='text-xs'
+																					>
+																						{isMandatory(
+																							course,
+																						) ?
+																							"BB"
+																							: "TC"}
+																					</Badge>
+																				</td>
+																				<td className='p-3 text-center'>
+																					{course.IsPass ===
+																					"1" ?
+																						<Check className='w-4 h-4 text-green-600 dark:text-green-400 mx-auto' />
+																						: <span className='text-muted-foreground'>
+																							—
+																						</span>}
+																				</td>
+																				<td className='p-3 text-muted-foreground'>
+																					{course.HPHocTruoc ||
+																						"—"}
+																				</td>
+																				<td className='p-3 text-muted-foreground hidden lg:table-cell text-xs'>
+																					{course.Khoa ||
+																						course.BoMon ||
+																						"—"}
+																				</td>
+																			</tr>
+																		),
+																	)}
+																</tbody>
+															</table>
+														</div>
+
+														{/* Mobile Card View */}
+														<div className='md:hidden space-y-3'>
+															{groupedCourses.map(
+																(
+																	course,
+																	index,
+																) => (
+																	<div
+																		key={`${course.MaHP}-${index}`}
+																		className='border rounded-lg p-3 bg-card hover:bg-muted/30 transition-colors'
+																	>
+																		<div className='flex items-start justify-between gap-2 mb-2'>
+																			<div className='flex-1 min-w-0'>
+																				<h4 className='font-medium text-sm leading-tight'>
+																					{
+																						course.TenHP
+																					}
+																				</h4>
+																				<p className='text-xs text-muted-foreground font-mono mt-0.5'>
+																					MaHP:{" "}
+																					{
+																						course.MaHP
+																					}
+																					{" "}
+																					• HK{" "}
+																					{
+																						course.HocKy
+																					}
+																				</p>
+																			</div>
+																			<div className='flex items-center gap-2 flex-shrink-0'>
+																				<Badge
+																					variant={
+																						isMandatory(
+																							course,
+																						) ?
+																							"default"
+																							: "secondary"
+																					}
+																					className='text-xs'
+																				>
+																					{isMandatory(
+																						course,
+																					) ?
+																						"BB"
+																						: "TC"}
+																				</Badge>
+																				<span className='text-sm font-bold text-primary'>
+																					{course.STC}{" "}
+																					TC
+																				</span>
+																			</div>
+																		</div>
+																		{course.IsPass ===
+																			"1" && (
+																			<div className='text-xs text-green-600 dark:text-green-400 border-t pt-2 mt-2'>
+																				Đã đạt
+																			</div>
+																		)}
+																		<div className='text-xs text-muted-foreground border-t pt-2 mt-2 space-y-1'>
+																			{course.HPHocTruoc && (
+																				<div>
+																					<span className='font-medium'>
+																						Học trước:
+																					</span>{" "}
+																					{
+																						course.HPHocTruoc
+																					}
+																				</div>
+																			)}
+																			{(course.Khoa ||
+																				course.BoMon) && (
+																				<div>
+																					<span className='font-medium'>
+																						Khoa:
+																					</span>{" "}
+																					{course.Khoa ||
+																						course.BoMon}
+																				</div>
+																			)}
+																		</div>
+																	</div>
+																),
+															)}
+														</div>
+													</div>
+												);
+											},
+										)
+										: <div className='text-center py-8 text-muted-foreground'>
+											<p>Không có dữ liệu học phần</p>
+										</div>}
 								</TabsContent>
 							))}
 						</Tabs>
 						: <div className='text-center py-8 text-muted-foreground'>
 							<Library className='w-12 h-12 mx-auto mb-4 opacity-50' />
 							<p>Không có dữ liệu học phần</p>
-						</div>
-					}
-				</div>
-			}
+						</div>}
+				</div>}
 		</div>
 	);
 }

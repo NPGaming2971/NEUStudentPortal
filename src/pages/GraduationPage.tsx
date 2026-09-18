@@ -13,6 +13,7 @@ import {
 } from '@/services/academicService';
 import { downloadTranscript, downloadGraduationApplication } from '@/utils/downloadHelper';
 import { useGlobalNotification } from '@/hooks/useGlobalNotification';
+import { getToken } from '@/services/authService';
 import {
     Loader2,
     GraduationCap,
@@ -43,7 +44,7 @@ function GraduationPage() {
 
     const getStudentIdFromToken = (): string | null => {
         try {
-            const token = localStorage.getItem('authToken');
+            const token = getToken();
             if (!token) return null;
             const payload = JSON.parse(atob(token.split('.')[1]));
             return payload.Id || payload.StudentID || null;
@@ -71,7 +72,7 @@ function GraduationPage() {
                 setStudyPrograms(programsData);
 
                 if (programsData.length > 0) {
-                    const token = localStorage.getItem('authToken');
+                    const token = getToken();
                     if (token) {
                         const payload = JSON.parse(atob(token.split('.')[1]));
                         const studentId = payload.Id || payload.StudentID;

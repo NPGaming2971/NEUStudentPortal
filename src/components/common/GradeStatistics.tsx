@@ -16,32 +16,10 @@ import {
     AreaChart,
 } from 'recharts';
 import { TrendingUp, Award, BookOpen, Target, GraduationCap, Lightbulb, PieChart as PieChartIcon, BarChart3, LineChart as LineChartIcon } from 'lucide-react';
-
-interface CourseResult {
-    CurriculumID: string;
-    CurriculumName: string;
-    Credits: string;
-    DiemTK_10: string;
-    DiemTK_4: string;
-    DiemTK_Chu: string;
-    IsPass: string;
-    TB_HK?: string;
-    TB_HK4?: string;
-    TongTC_DK_HK?: string;
-}
-
-interface SemesterData {
-    HocKy: string;
-    DanhSachDiemHK: CourseResult[];
-}
-
-interface YearData {
-    NamHoc: string;
-    DanhSachDiem: SemesterData[];
-}
+import type { CourseGrade, GradeYear, GradeSemester } from '@/services/academicService';
 
 interface GradeStatisticsProps {
-    yearlyResults: YearData[];
+    yearlyResults: GradeYear[];
     gpa: {
         semesterGPA10?: number;
         semesterGPA4?: number;
@@ -68,24 +46,33 @@ const PIE_COLORS = ['#22c55e', '#3b82f6', '#06b6d4', '#f97316', '#ef4444', '#8b5
 export default function GradeStatistics({ yearlyResults, gpa }: GradeStatisticsProps) {
     // Calculate statistics
     const stats = useMemo(() => {
-        const allCourses: CourseResult[] = [];
+        const allCourses: CourseGrade[] = [];
         const semesterGPAs: { name: string; gpa10: number; gpa4: number; credits: number }[] = [];
         const gradeDistribution: Record<string, number> = {};
 
         yearlyResults.forEach((year) => {
-            year.DanhSachDiem?.forEach((semester) => {
-                const courses = semester.DanhSachDiemHK || [];
+            year.DanhSachDiem?.forEach((semester: GradeSemester) => {
+                const rawCourses = semester.DanhSachDiemHK || [];
+
+                // Dedupe by module code so theory/tutorial sections are not double-counted
+                const seen = new Set<string>();
+                const courses = rawCourses.filter((course) => {
+                    const key = course.CurriculumID || course.StudyUnitID || '';
+                    if (seen.has(key)) return false;
+                    seen.add(key);
+                    return true;
+                });
                 allCourses.push(...courses);
 
-                // Get semester GPA from first course
-                if (courses.length > 0) {
-                    const firstCourse = courses[0];
+                // Semester GPA from AverageScore (per-semester summary)
+                const avg = semester.AverageScore;
+                if (avg && (avg.AverageScore != null || avg.AverageScore4 != null)) {
                     const semesterName = `${year.NamHoc.split('-')[0].slice(-2)}/${semester.HocKy.replace('HK0', 'HK')}`;
                     semesterGPAs.push({
                         name: semesterName,
-                        gpa10: parseFloat(firstCourse.TB_HK as string) || 0,
-                        gpa4: parseFloat(firstCourse.TB_HK4 as string) || 0,
-                        credits: parseInt(firstCourse.TongTC_DK_HK as string) || 0,
+                        gpa10: avg.AverageScore ?? 0,
+                        gpa4: avg.AverageScore4 ?? 0,
+                        credits: avg.TongSTC ?? 0,
                     });
                 }
 
@@ -98,14 +85,14 @@ export default function GradeStatistics({ yearlyResults, gpa }: GradeStatisticsP
         });
 
         // Calculate pass/fail
-        const passCount = allCourses.filter(c => c.IsPass === '1').length;
-        const failCount = allCourses.filter(c => c.IsPass === '0').length;
+        const passCount = allCourses.filter(c => c.Ispass === 'True').length;
+        const failCount = allCourses.filter(c => c.Ispass === 'False').length;
 
         // Calculate total credits
-        const totalCredits = allCourses.reduce((sum, c) => sum + (parseInt(c.Credits) || 0), 0);
+        const totalCredits = allCourses.reduce((sum, c) => sum + (c.Credits || 0), 0);
         const passedCredits = allCourses
-            .filter(c => c.IsPass === '1')
-            .reduce((sum, c) => sum + (parseInt(c.Credits) || 0), 0);
+            .filter(c => c.Ispass === 'True')
+            .reduce((sum, c) => sum + (c.Credits || 0), 0);
 
         // Grade distribution for pie chart
         const gradeData = Object.entries(gradeDistribution)
@@ -127,7 +114,7 @@ export default function GradeStatistics({ yearlyResults, gpa }: GradeStatisticsP
         ];
 
         allCourses.forEach((course) => {
-            const score = parseFloat(course.DiemTK_10);
+            const score = parseFloat(String(course.DiemTK_10 ?? ''));
             if (!isNaN(score)) {
                 const range = scoreRanges.find(r => score >= r.min && score < r.max) || scoreRanges[scoreRanges.length - 1];
                 if (range) range.count++;

@@ -5,14 +5,15 @@ import {
     setToken as saveToken,
     logout as logoutService,
     getUserFromToken,
-    type User
+    type User,
+    type LoginResponse,
 } from '@/services/authService';
 
 interface AuthContextType {
     isAuthenticated: boolean;
     user: User | null;
     token: string | null;
-    login: (token: string) => void;
+    login: (token: string, authData?: LoginResponse['data']) => void;
     logout: () => void;
     checkAuth: () => boolean;
 }
@@ -40,8 +41,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
         }
     }, []);
 
-    const login = (newToken: string) => {
-        saveToken(newToken);
+    const login = (newToken: string, authData?: LoginResponse['data']) => {
+        saveToken(newToken, authData);
         setToken(newToken);
         setIsAuthenticated(true);
         setUser(getUserFromToken());

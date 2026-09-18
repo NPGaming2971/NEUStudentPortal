@@ -44,6 +44,29 @@ export interface StudentInfoResponse {
     sinhVien: StudentInfo;
 }
 
+export interface StudentAvatarResponse {
+    data: string;
+}
+
+const normalizeAvatarDataUrl = (dataUrl: string): string => {
+    if (dataUrl.startsWith('data:jpg')) {
+        return 'data:image/jpeg' + dataUrl.slice('data:jpg'.length);
+    }
+    return dataUrl;
+};
+
+export const getStudentAvatar = async (): Promise<StudentAvatarResponse> => {
+    try {
+        const response = await api.get('/student/GetAvatar');
+        return {
+            data: normalizeAvatarDataUrl(response.data?.data ?? ''),
+        };
+    } catch (error) {
+        console.error('Error fetching student avatar:', error);
+        throw error;
+    }
+};
+
 export const getStudentInfo = async (): Promise<StudentInfoResponse> => {
     try {
         const response = await api.get('/student/info');

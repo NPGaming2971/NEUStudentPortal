@@ -13,8 +13,16 @@ import {
 	getStudyProgramResults,
 	getStudyProgramResultsByCurriculum,
 	getGradeNotes,
+	getDashboardKetQuaHocTap,
 	type StudyProgram,
+	type StudyProgramResults,
 	type GradeNote,
+	type CourseGrade,
+	type GradeYear,
+	type GradeSemester,
+	type DashboardCreditSummary,
+	type DashboardStudentInfo,
+	type DashboardKetQuaHocTap,
 } from "@/services/academicService";
 import {
 	Loader2,
@@ -27,52 +35,14 @@ import {
 	ChevronUp,
 	Check,
 	X,
+	Minus,
 	List,
 	Table,
 	BarChart3,
+	Users,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import GradeStatistics from "@/components/common/GradeStatistics";
-
-interface CourseResult {
-	CurriculumID: string;
-	CurriculumName: string;
-	Credits: string;
-	DiemTK_10: string;
-	DiemTK_4: string;
-	DiemTK_Chu: string;
-	IsPass: string;
-	Note?: string;
-	NotComputeAverageScore?: boolean;
-	TB_HK?: string;
-	TB_HK4?: string;
-	TB_TL_HK?: string;
-	TB_TL_HK4?: string;
-	Dat_TL_HK?: string;
-	TongTC_DK_HK?: string;
-	StudentID?: string;
-	StudentName?: string;
-	YearStudy?: string;
-	TermID?: string;
-	StudyUnitID?: string;
-	CurriculumGroupID?: string;
-	OlogyName?: string;
-	CurriculumNamePrint?: string;
-	EnglishCurriculumName?: string;
-	ListOfProfessorName?: string;
-	DiemRenLuyenHK?: string;
-	ScheduleStudyUnitID?: string;
-}
-
-interface SemesterData {
-	HocKy: string;
-	DanhSachDiemHK: CourseResult[];
-}
-
-interface YearData {
-	NamHoc: string;
-	DanhSachDiem: SemesterData[];
-}
 
 interface GPA {
 	semesterGPA10?: number;
@@ -83,12 +53,88 @@ interface GPA {
 	totalCreditsRegistered?: number;
 }
 
+interface DashboardCourseAvg {
+	MaxMark10: number | null;
+	AVGClass: number | null;
+}
+
+interface DashboardTermData {
+	courses: Record<string, DashboardCourseAvg>;
+}
+
+const isPassed = (course: CourseGrade): boolean => course.Ispass === "True";
+const isFailed = (course: CourseGrade): boolean =>
+	course.Ispass === "False" || course.Ispass === "0";
+
+const isGDTCSubject = (id: string, name: string): boolean =>
+	(id ?? "").toUpperCase().startsWith("GDTC") ||
+	(name ?? "").toLowerCase().includes("giáo dục thể chất");
+
+const convertToGPA4 = (score10: number): number => {
+	if (score10 >= 8.5) return 4;
+	if (score10 >= 8) return 3.5;
+	if (score10 >= 7) return 3;
+	if (score10 >= 6.5) return 2.5;
+	if (score10 >= 5.5) return 2;
+	if (score10 >= 5) return 1.5;
+	if (score10 >= 4) return 1;
+	return 0;
+};
+
+const dashboardCache = new Map<string, DashboardKetQuaHocTap>();
+const dashboardInflight = new Map<
+	string,
+	Promise<DashboardKetQuaHocTap>
+>();
+
+const fetchDashboardCached = async (
+	studyProgramId: string,
+	yearStudy: string,
+	termId: string,
+): Promise<DashboardKetQuaHocTap> => {
+	const cacheKey = `${studyProgramId}|${yearStudy}|${termId}`;
+	const cached = dashboardCache.get(cacheKey);
+	if (cached) return cached;
+
+	let promise = dashboardInflight.get(cacheKey);
+	if (!promise) {
+		promise = getDashboardKetQuaHocTap(studyProgramId, yearStudy, termId)
+			.then((result) => {
+				dashboardCache.set(cacheKey, result);
+				return result;
+			})
+			.finally(() => {
+				dashboardInflight.delete(cacheKey);
+			});
+		dashboardInflight.set(cacheKey, promise);
+	}
+	return promise;
+};
+
 function AcademicResultsPage() {
 	const [isLoading, setIsLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
 	const [studyPrograms, setStudyPrograms] = useState<StudyProgram[]>([]);
 	const [gradeNotes, setGradeNotes] = useState<GradeNote[]>([]);
-	const [yearlyResults, setYearlyResults] = useState<YearData[]>([]);
+	const [yearlyResults, setYearlyResults] = useState<GradeYear[]>([]);
+	const [reloadKey, setReloadKey] = useState(0);
+	const [dashboardByTerm, setDashboardByTerm] = useState<
+		Record<string, DashboardTermData>
+	>({});
+	const [studentInfo, setStudentInfo] = useState<DashboardStudentInfo | null>(
+		null,
+	);
+	const [, setDashboardCredits] =
+		useState<DashboardCreditSummary | null>(null);
+	const [classAvgInfo, setClassAvgInfo] = useState<{
+		value10: number;
+		value4: number;
+		selfValue10: number;
+		selfValue4: number;
+		credits: number;
+		subjects: number;
+	} | null>(null);
+	const [selectedCourseTermKey, setSelectedCourseTermKey] = useState("");
 	const [expandedSemesters, setExpandedSemesters] = useState<
 		Record<string, boolean>
 	>({});
@@ -96,7 +142,7 @@ function AcademicResultsPage() {
 	const [viewMode, setViewMode] = useState<"program" | "curriculum">(
 		"program",
 	);
-	const [selectedCourse, setSelectedCourse] = useState<CourseResult | null>(
+	const [selectedCourse, setSelectedCourse] = useState<CourseGrade | null>(
 		null,
 	);
 	const [activeTab, setActiveTab] = useState<"results" | "statistics">(
@@ -105,28 +151,33 @@ function AcademicResultsPage() {
 
 	useEffect(() => {
 		const fetchInitialData = async () => {
+			setError(null);
 			try {
-				const [programs, notes] = await Promise.all([
-					getStudyPrograms(),
-					getGradeNotes(),
-				]);
+				const programs = await getStudyPrograms();
 				setStudyPrograms(programs || []);
+			} catch (err) {
+				console.error("Error fetching study programs:", err);
+				setError("Không thể tải dữ liệu. Vui lòng thử lại sau.");
+			}
+			try {
+				const notes = await getGradeNotes();
 				setGradeNotes(notes || []);
 			} catch (err) {
-				console.error("Error:", err);
-				setError("Không thể tải dữ liệu. Vui lòng thử lại sau.");
+				console.error("Error fetching grade notes:", err);
 			}
 		};
 		fetchInitialData();
-	}, []);
+	}, [reloadKey]);
 
 	useEffect(() => {
 		const fetchResults = async () => {
 			if (studyPrograms.length === 0) return;
 
 			setIsLoading(true);
+			setError(null);
+			setClassAvgInfo(null);
 			try {
-				const data =
+				const data: StudyProgramResults =
 					viewMode === "program" ?
 						await getStudyProgramResults(
 							studyPrograms[0].StudyProgramID,
@@ -135,49 +186,168 @@ function AcademicResultsPage() {
 							studyPrograms[0].StudyProgramID,
 						);
 
-				if (Array.isArray(data) && data.length > 0) {
-					setYearlyResults(data as YearData[]);
+				const diem = data?.diem ?? [];
+				if (diem.length > 0) {
+					setYearlyResults(diem as GradeYear[]);
 
 					// Expand all semesters by default
 					const expanded: Record<string, boolean> = {};
-					data.forEach((year: YearData) => {
-						year.DanhSachDiem?.forEach((semester: SemesterData) => {
+					diem.forEach((year: GradeYear) => {
+						year.DanhSachDiem?.forEach((semester: GradeSemester) => {
 							const key = `${year.NamHoc}-${semester.HocKy}`;
 							expanded[key] = true;
 						});
 					});
 					setExpandedSemesters(expanded);
 
-					// Get GPA from the latest semester
-					const latestYear = data[data.length - 1] as YearData;
-					const latestSemester =
-						latestYear?.DanhSachDiem?.[
-						latestYear.DanhSachDiem.length - 1
-						];
-					const latestCourse = latestSemester?.DanhSachDiemHK?.[0];
+					// GPA: cumulative from diemToanKhoa, semester from latest semester's AverageScore
+					const latestYear = diem[diem.length - 1] as GradeYear;
+					const semesters = latestYear?.DanhSachDiem;
+					const latestSemester = semesters?.[semesters.length - 1] as
+						| GradeSemester
+						| undefined;
+					const latestAvg = latestSemester?.AverageScore;
+					const whole = data?.diemToanKhoa;
 
-					if (latestCourse) {
-						setGPA({
-							semesterGPA10: parseFloat(
-								latestCourse.TB_HK || "0",
-							),
-							semesterGPA4: parseFloat(
-								latestCourse.TB_HK4 || "0",
-							),
-							cumulativeGPA10: parseFloat(
-								latestCourse.TB_TL_HK || "0",
-							),
-							cumulativeGPA4: parseFloat(
-								latestCourse.TB_TL_HK4 || "0",
-							),
-							creditsEarned: parseInt(
-								latestCourse.Dat_TL_HK || "0",
-							),
-							totalCreditsRegistered: parseInt(
-								latestCourse.TongTC_DK_HK || "0",
-							),
-						});
+					setGPA({
+						semesterGPA10: latestAvg?.AverageScore ?? undefined,
+						semesterGPA4: latestAvg?.AverageScore4 ?? undefined,
+						cumulativeGPA10:
+							whole?.DiemTBTL ?? latestAvg?.DiemTBTL ?? undefined,
+						cumulativeGPA4:
+							whole?.DiemTBTL4 ?? latestAvg?.DiemTBTL4 ?? undefined,
+						creditsEarned:
+							whole?.STCTL ?? latestAvg?.STCTL ?? undefined,
+						totalCreditsRegistered:
+							whole?.TongSTC ?? latestAvg?.TongSTC ?? undefined,
+					});
+
+					const dashMap: Record<string, DashboardTermData> = {};
+					const globalSums: Record<
+						string,
+						{ sum: number; count: number; sumSelf: number; credits: number }
+					> = {};
+					let dashInfo: DashboardStudentInfo | null = null;
+					let dashCredits: DashboardCreditSummary | null = null;
+					for (const year of diem) {
+						for (const semester of year.DanhSachDiem ?? []) {
+							if (!year.NamHoc || !semester.HocKy) continue;
+							const key = `${year.NamHoc}-${semester.HocKy}`;
+							try {
+								const dashboard =
+									await fetchDashboardCached(
+										studyPrograms[0].StudyProgramID,
+										year.NamHoc,
+										semester.HocKy,
+									);
+								const termSums: Record<
+									string,
+									{
+										sum: number;
+										count: number;
+										max10: number | null;
+									}
+								> = {};
+								(dashboard.tb1 ?? []).forEach((c) => {
+									if (
+										c.AVGClass == null ||
+										c.MaxMark10 == null ||
+										c.AVGClass === 0
+									)
+										return;
+									const id = c.CurriculumID;
+									const entry = termSums[id] ?? {
+										sum: 0,
+										count: 0,
+										max10: c.MaxMark10,
+									};
+									entry.sum += c.AVGClass;
+									entry.count += 1;
+									termSums[id] = entry;
+
+									if (
+										!isGDTCSubject(
+											c.CurriculumID,
+											c.CurriculumName,
+										)
+									) {
+										const g = globalSums[id] ?? {
+											sum: 0,
+											count: 0,
+											sumSelf: 0,
+											credits: c.Credits,
+										};
+										g.sum += c.AVGClass;
+										g.sumSelf += c.MaxMark10;
+										g.count += 1;
+										globalSums[id] = g;
+									}
+								});
+								const courses: Record<
+									string,
+									DashboardCourseAvg
+								> = {};
+								Object.entries(termSums).forEach(
+									([id, e]) => {
+										courses[id] = {
+											MaxMark10: e.max10,
+											AVGClass:
+												e.count > 0 ?
+													e.sum / e.count
+													: null,
+										};
+									},
+								);
+								dashMap[key] = { courses };
+								dashInfo =
+									dashInfo ??
+									(dashboard.info?.[0] ?? null);
+								dashCredits =
+									dashCredits ??
+									(dashboard.tb2?.[0] ?? null);
+							} catch (err) {
+								console.error(
+									`Error fetching class average for ${key}:`,
+									err,
+								);
+							}
+						}
 					}
+					setDashboardByTerm(dashMap);
+					if (dashInfo) setStudentInfo(dashInfo);
+					if (dashCredits) setDashboardCredits(dashCredits);
+
+					const subjectAvgs = Object.entries(globalSums).filter(
+						([, e]) => e.credits > 0,
+					);
+					if (subjectAvgs.length > 0) {
+						let totalCredits = 0;
+						let classSum10 = 0;
+						let classSum4 = 0;
+						let selfSum10 = 0;
+						let selfSum4 = 0;
+						subjectAvgs.forEach(([, e]) => {
+							const class10 = e.sum / e.count;
+							const self10 = e.sumSelf / e.count;
+							totalCredits += e.credits;
+							classSum10 += class10 * e.credits;
+							classSum4 += convertToGPA4(class10) * e.credits;
+							selfSum10 += self10 * e.credits;
+							selfSum4 += convertToGPA4(self10) * e.credits;
+						});
+						setClassAvgInfo({
+							value10: classSum10 / totalCredits,
+							value4: classSum4 / totalCredits,
+							selfValue10: selfSum10 / totalCredits,
+							selfValue4: selfSum4 / totalCredits,
+							credits: totalCredits,
+							subjects: subjectAvgs.length,
+						});
+					} else {
+						setClassAvgInfo(null);
+					}
+				} else {
+					setYearlyResults([]);
 				}
 			} catch (err) {
 				console.error("Error:", err);
@@ -188,7 +358,7 @@ function AcademicResultsPage() {
 		};
 
 		fetchResults();
-	}, [studyPrograms, viewMode]);
+	}, [studyPrograms, viewMode, reloadKey]);
 
 	const toggleSemester = (key: string) => {
 		setExpandedSemesters((prev) => ({
@@ -213,8 +383,10 @@ function AcademicResultsPage() {
 		return "text-muted-foreground bg-muted";
 	};
 
-	const getSemesterLabel = (hocKy: string) => {
-		switch (hocKy) {
+	const getSemesterLabel = (semester: GradeSemester) => {
+		const name = semester.DanhSachDiemHK?.[0]?.SemesterName;
+		if (name) return name;
+		switch (semester.HocKy) {
 			case "HK01":
 				return "Học kỳ 1";
 			case "HK02":
@@ -222,7 +394,7 @@ function AcademicResultsPage() {
 			case "HK03":
 				return "Học kỳ Hè";
 			default:
-				return hocKy;
+				return semester.HocKy;
 		}
 	};
 
@@ -231,10 +403,20 @@ function AcademicResultsPage() {
 		return name.replace(/<[^>]*>/g, "").trim();
 	};
 
+	const formatNumber = (
+		value: number | null | undefined,
+		digits = 1,
+	): string => {
+		if (value === null || value === undefined || Number.isNaN(value))
+			return "—";
+		return value.toFixed(digits);
+	};
+
+	const getDashCourse = (key: string, curriculumId: string) =>
+		dashboardByTerm[key]?.courses[curriculumId];
+
 	const handleRetry = () => {
-		setError(null);
-		// Trigger refetch by toggling a value
-		setViewMode(viewMode);
+		setReloadKey((key) => key + 1);
 	};
 
 	if (isLoading && studyPrograms.length === 0) {
@@ -319,6 +501,29 @@ function AcademicResultsPage() {
 						</span>
 					</Button>
 				</div>
+				{/* Student Info */}
+				{studentInfo && (
+					<div className='flex flex-wrap items-center gap-x-5 gap-y-1'>
+						<span className='text-sm text-muted-foreground'>
+							Lớp:{" "}
+							<strong className='text-foreground'>
+								{studentInfo.ClassStudentName}
+							</strong>
+						</span>
+						<span className='text-sm text-muted-foreground'>
+							Khóa:{" "}
+							<strong className='text-foreground'>
+								{studentInfo.CourseName}
+							</strong>
+						</span>
+						<span className='text-sm text-muted-foreground'>
+							Hệ:{" "}
+							<strong className='text-foreground'>
+								{studentInfo.StudyTypeName}
+							</strong>
+						</span>
+					</div>
+				)}
 			</div>
 
 			{/* Summary Cards */}
@@ -419,6 +624,67 @@ function AcademicResultsPage() {
 				</Card>
 			</div>
 
+			{/* Class Average GPA */}
+			{classAvgInfo && (
+				<Card className='border shadow-lg'>
+					<CardContent className='p-3 sm:p-5'>
+						<div className='flex flex-col sm:flex-row sm:items-center justify-between gap-3'>
+							<div className='flex items-center gap-3'>
+								<div className='p-2 sm:p-3 bg-muted rounded-full'>
+									<Users className='w-5 h-5 sm:w-6 sm:h-6 text-muted-foreground' />
+								</div>
+								<div className='grid grid-cols-2 gap-x-8 gap-y-1'>
+									<div>
+										<p className='text-muted-foreground text-[10px] sm:text-xs'>
+											GPA của bạn
+										</p>
+										<div className='flex items-baseline gap-1 sm:gap-2 mt-1'>
+											<p className='text-2xl sm:text-3xl font-bold text-primary'>
+												{classAvgInfo.selfValue4.toFixed(
+													2,
+												)}
+											</p>
+											<span className='text-xs sm:text-sm text-muted-foreground'>
+												/4.0
+											</span>
+										</div>
+										<p className='text-muted-foreground text-[10px] sm:text-xs mt-1'>
+											(
+											{classAvgInfo.selfValue10.toFixed(
+												2,
+											)}
+											/10)
+										</p>
+									</div>
+									<div>
+										<p className='text-muted-foreground text-[10px] sm:text-xs'>
+											Điểm TB lớp
+										</p>
+										<div className='flex items-baseline gap-1 sm:gap-2 mt-1'>
+											<p className='text-2xl sm:text-3xl font-bold text-foreground'>
+												{classAvgInfo.value4.toFixed(2)}
+											</p>
+											<span className='text-xs sm:text-sm text-muted-foreground'>
+												/4.0
+											</span>
+										</div>
+										<p className='text-muted-foreground text-[10px] sm:text-xs mt-1'>
+											({classAvgInfo.value10.toFixed(2)}
+											/10)
+										</p>
+									</div>
+								</div>
+							</div>
+							<p className='text-xs text-muted-foreground sm:text-right sm:max-w-md'>
+								Tính theo điểm trung bình của các lớp bạn đã học. Tính từ{" "}
+								{classAvgInfo.subjects} môn,{" "}
+								{classAvgInfo.credits} TC.
+							</p>
+						</div>
+					</CardContent>
+				</Card>
+			)}
+
 			{/* Grade Notes - Compact horizontal display */}
 			{gradeNotes.length > 0 && (
 				<div className='flex items-center gap-2 overflow-x-auto pb-2 scrollbar-thin'>
@@ -481,16 +747,16 @@ function AcademicResultsPage() {
 									<CardContent className='p-0'>
 										<div className='divide-y divide-border'>
 											{year.DanhSachDiem?.map((semester) => {
-												const key = `${year.NamHoc}-${semester.HocKy}`;
-												const isExpanded =
-													expandedSemesters[key];
-												const passedCourses =
-													semester.DanhSachDiemHK?.filter(
-														(c) => c.IsPass === "1",
-													).length || 0;
-												const totalCourses =
-													semester.DanhSachDiemHK?.length ||
-													0;
+											const key = `${year.NamHoc}-${semester.HocKy}`;
+											const isExpanded =
+												expandedSemesters[key];
+											const passedCourses =
+												semester.DanhSachDiemHK?.filter(
+													(c) => isPassed(c),
+												).length || 0;
+											const totalCourses =
+												semester.DanhSachDiemHK?.length ||
+												0;
 
 												return (
 													<div key={key}>
@@ -507,7 +773,7 @@ function AcademicResultsPage() {
 																<div className='text-left'>
 																	<p className='font-semibold text-foreground'>
 																		{getSemesterLabel(
-																			semester.HocKy,
+																			semester,
 																		)}
 																	</p>
 																	<p className='text-xs text-muted-foreground'>
@@ -554,9 +820,12 @@ function AcademicResultsPage() {
 																					Điểm
 																					chữ
 																				</th>
+<th className='text-center py-2.5 px-3 text-xs font-semibold text-muted-foreground'>
+													Đạt
+												</th>
 																				<th className='text-center py-2.5 px-3 text-xs font-semibold text-muted-foreground'>
-																					Đạt
-																				</th>
+													TB lớp
+												</th>
 																			</tr>
 																		</thead>
 																		<tbody className='divide-y divide-border'>
@@ -567,17 +836,21 @@ function AcademicResultsPage() {
 																				) => (
 																					<tr
 																						key={`${course.CurriculumID}-${idx}`}
-																						onClick={() =>
+onClick={() => {
 																							setSelectedCourse(
 																								course,
-																							)
-																						}
-																						className={cn(
-																							"hover:bg-muted/30 transition-colors cursor-pointer",
-																							course.IsPass ===
-																							"0" &&
-																							"bg-red-500/5",
-																						)}
+																							);
+																							setSelectedCourseTermKey(
+																								key,
+																							);
+																						}}
+className={cn(
+														"hover:bg-muted/30 transition-colors cursor-pointer",
+														isFailed(
+															course,
+														) &&
+														"bg-red-500/5",
+													)}
 																					>
 																						<td className='py-2.5 px-3 text-sm font-medium text-foreground'>
 																							{
@@ -631,15 +904,26 @@ function AcademicResultsPage() {
 																									"—"}
 																							</span>
 																						</td>
-																						<td className='py-2.5 px-3 text-center'>
-																							{(
-																								course.IsPass ===
-																								"1"
-																							) ?
-																								<Check className='w-4 h-4 text-green-600 dark:text-green-400 mx-auto' />
-																								: <X className='w-4 h-4 text-red-600 dark:text-red-400 mx-auto' />
-																							}
-																						</td>
+<td className='py-2.5 px-3 text-center'>
+														{isPassed(
+															course,
+														) ?
+															<Check className='w-4 h-4 text-green-600 dark:text-green-400 mx-auto' />
+: isFailed(course) ?
+																<X className='w-4 h-4 text-red-600 dark:text-red-400 mx-auto' />
+																: <Minus className='w-4 h-4 text-muted-foreground mx-auto' />
+														}
+													</td>
+													<td className='py-2.5 px-3 text-center'>
+														<span className='text-sm font-medium text-foreground'>
+															{formatNumber(
+																getDashCourse(
+																	key,
+																	course.CurriculumID,
+																)?.AVGClass,
+															)}
+														</span>
+													</td>
 																					</tr>
 																				),
 																			)}
@@ -656,17 +940,21 @@ function AcademicResultsPage() {
 																		) => (
 																			<div
 																				key={`${course.CurriculumID}-${idx}`}
-																				onClick={() =>
-																					setSelectedCourse(
-																						course,
-																					)
-																				}
-																				className={cn(
-																					"p-3 rounded-lg border bg-card cursor-pointer hover:bg-muted/50 transition-colors",
-																					course.IsPass ===
-																					"0" &&
-																					"border-red-500/50 bg-red-500/5",
-																				)}
+onClick={() => {
+																		setSelectedCourse(
+																			course,
+																		);
+																		setSelectedCourseTermKey(
+																			key,
+																		);
+																	}}
+className={cn(
+													"p-3 rounded-lg border bg-card cursor-pointer hover:bg-muted/50 transition-colors",
+													isFailed(
+														course,
+													) &&
+													"border-red-500/50 bg-red-500/5",
+												)}
 																			>
 																				<div className='flex items-start justify-between gap-3 mb-2'>
 																					<div className='flex-1 min-w-0'>
@@ -698,18 +986,23 @@ function AcademicResultsPage() {
 																							{course.DiemTK_Chu ||
 																								"—"}
 																						</span>
-																						{(
-																							course.IsPass ===
-																							"1"
-																						) ?
-																							<span className='text-xs text-green-600 dark:text-green-400'>
-																								Đạt
-																							</span>
-																							: <span className='text-xs text-red-600 dark:text-red-400'>
-																								Không
-																								đạt
-																							</span>
-																						}
+{(
+														course.Ispass === "True"
+													) ?
+														<span className='text-xs text-green-600 dark:text-green-400'>
+															Đạt
+														</span>
+														: isFailed(course) ?
+															<span className='text-xs text-red-600 dark:text-red-400'>
+																Không
+																đạt
+															</span>
+															: <span className='text-xs text-muted-foreground'>
+																Chưa
+																có
+																điểm
+															</span>
+													}
 																					</div>
 																				</div>
 																				<div className='flex items-center gap-4 text-xs text-muted-foreground pt-2 border-t border-border/50'>
@@ -724,18 +1017,31 @@ function AcademicResultsPage() {
 																							}
 																						</span>
 																					</div>
-																					<div className='flex items-center gap-1'>
-																						<span className='text-muted-foreground'>
-																							Điểm
-																							4:
-																						</span>
-																						<span className='font-semibold text-foreground'>
-																							{
-																								course.DiemTK_4
-																							}
-																						</span>
-																					</div>
-																				</div>
+<div className='flex items-center gap-1'>
+														<span className='text-muted-foreground'>
+															Điểm
+															4:
+														</span>
+														<span className='font-semibold text-foreground'>
+															{
+																course.DiemTK_4
+															}
+														</span>
+													</div>
+													<div className='flex items-center gap-1'>
+														<span className='text-muted-foreground'>
+															Lớp:
+														</span>
+														<span className='font-semibold text-foreground'>
+															{formatNumber(
+																getDashCourse(
+																	key,
+																	course.CurriculumID,
+																)?.AVGClass,
+															)}
+														</span>
+													</div>
+																</div>
 																			</div>
 																		),
 																	)}
@@ -743,7 +1049,7 @@ function AcademicResultsPage() {
 
 																{/* Semester Summary */}
 																{semester
-																	.DanhSachDiemHK?.[0] && (
+																	.AverageScore && (
 																		<div className='mt-3 p-3 rounded-lg bg-muted/50'>
 																			<div className='grid grid-cols-2 sm:flex sm:flex-wrap gap-3 sm:gap-4 text-sm'>
 																				<div>
@@ -752,20 +1058,20 @@ function AcademicResultsPage() {
 																						HK{" "}
 																					</span>
 																					<span className='font-semibold'>
-																						{
-																							semester
-																								.DanhSachDiemHK[0]
-																								.TB_HK4
-																						}
+																						{semester
+																							.AverageScore
+																							.AverageScore4
+																							?.toFixed(2) ||
+																							"—"}
 																						/4.0
 																					</span>
 																					<span className='text-muted-foreground text-xs ml-1 hidden sm:inline'>
 																						(
-																						{
-																							semester
-																								.DanhSachDiemHK[0]
-																								.TB_HK
-																						}
+																						{semester
+																							.AverageScore
+																							.AverageScore
+																							?.toFixed(2) ||
+																							"—"}
 																						/10)
 																					</span>
 																				</div>
@@ -775,34 +1081,34 @@ function AcademicResultsPage() {
 																						TL{" "}
 																					</span>
 																					<span className='font-semibold'>
-																						{
-																							semester
-																								.DanhSachDiemHK[0]
-																								.TB_TL_HK4
-																						}
+																						{semester
+																							.AverageScore
+																							.DiemTBTL4
+																							?.toFixed(2) ||
+																							"—"}
 																						/4.0
 																					</span>
 																					<span className='text-muted-foreground text-xs ml-1 hidden sm:inline'>
 																						(
-																						{
-																							semester
-																								.DanhSachDiemHK[0]
-																								.TB_TL_HK
-																						}
+																						{semester
+																							.AverageScore
+																							.DiemTBTL
+																							?.toFixed(2) ||
+																							"—"}
 																						/10)
 																					</span>
 																				</div>
 																				<div className='col-span-2 sm:col-span-1'>
 																					<span className='text-muted-foreground text-xs block sm:inline'>
 																						TC
-																						tích
-																						lũy{" "}
+																						đã
+																						đạt{" "}
 																					</span>
 																					<span className='font-semibold'>
 																						{
 																							semester
-																								.DanhSachDiemHK[0]
-																								.Dat_TL_HK
+																								.AverageScore
+																								.STCTL
 																						}
 																					</span>
 																				</div>
@@ -886,13 +1192,26 @@ function AcademicResultsPage() {
 								<p className='text-sm font-medium text-foreground'>
 									Điểm số
 								</p>
-								<div className='grid grid-cols-3 gap-2'>
+								<div className='grid grid-cols-2 sm:grid-cols-4 gap-2'>
 									<div className='p-3 rounded-lg bg-gradient-to-br from-blue-500/10 to-blue-600/10 border border-blue-500/20 text-center'>
 										<p className='text-xs text-muted-foreground'>
 											Điểm 10
 										</p>
 										<p className='text-xl font-bold text-blue-600 dark:text-blue-400'>
 											{selectedCourse.DiemTK_10 || "—"}
+										</p>
+									</div>
+									<div className='p-3 rounded-lg bg-gradient-to-br from-emerald-500/10 to-emerald-600/10 border border-emerald-500/20 text-center'>
+										<p className='text-xs text-muted-foreground'>
+											TB lớp
+										</p>
+										<p className='text-xl font-bold text-emerald-600 dark:text-emerald-400'>
+											{formatNumber(
+												getDashCourse(
+													selectedCourseTermKey,
+													selectedCourse.CurriculumID,
+												)?.AVGClass,
+											)}
 										</p>
 									</div>
 									<div className='p-3 rounded-lg bg-gradient-to-br from-purple-500/10 to-purple-600/10 border border-purple-500/20 text-center'>
@@ -903,28 +1222,36 @@ function AcademicResultsPage() {
 											{selectedCourse.DiemTK_4 || "—"}
 										</p>
 									</div>
-									<div
+<div
+									className={cn(
+										"p-3 rounded-lg text-center border",
+										isPassed(
+											selectedCourse,
+										) ?
+											"bg-gradient-to-br from-green-500/10 to-green-600/10 border-green-500/20"
+											: isFailed(selectedCourse) ?
+												"bg-gradient-to-br from-red-500/10 to-red-600/10 border-red-500/20"
+												: "bg-muted/50 border-border",
+									)}
+								>
+									<p className='text-xs text-muted-foreground'>
+										Điểm chữ
+									</p>
+									<p
 										className={cn(
-											"p-3 rounded-lg text-center border",
-											selectedCourse.IsPass === "1" ?
-												"bg-gradient-to-br from-green-500/10 to-green-600/10 border-green-500/20"
-												: "bg-gradient-to-br from-red-500/10 to-red-600/10 border-red-500/20",
+											"text-xl font-bold",
+											isPassed(
+												selectedCourse,
+											) ?
+												"text-green-600 dark:text-green-400"
+												: isFailed(selectedCourse) ?
+													"text-red-600 dark:text-red-400"
+													: "text-muted-foreground",
 										)}
 									>
-										<p className='text-xs text-muted-foreground'>
-											Điểm chữ
-										</p>
-										<p
-											className={cn(
-												"text-xl font-bold",
-												selectedCourse.IsPass === "1" ?
-													"text-green-600 dark:text-green-400"
-													: "text-red-600 dark:text-red-400",
-											)}
-										>
-											{selectedCourse.DiemTK_Chu || "—"}
-										</p>
-									</div>
+										{selectedCourse.DiemTK_Chu || "—"}
+									</p>
+								</div>
 								</div>
 							</div>
 
@@ -932,24 +1259,35 @@ function AcademicResultsPage() {
 							<div
 								className={cn(
 									"flex items-center justify-center gap-2 p-3 rounded-lg",
-									selectedCourse.IsPass === "1" ?
+									isPassed(
+										selectedCourse,
+									) ?
 										"bg-green-500/10 text-green-600 dark:text-green-400"
-										: "bg-red-500/10 text-red-600 dark:text-red-400",
+										: isFailed(selectedCourse) ?
+											"bg-red-500/10 text-red-600 dark:text-red-400"
+											: "bg-muted text-muted-foreground",
 								)}
 							>
-								{selectedCourse.IsPass === "1" ?
+								{isPassed(selectedCourse) ?
 									<>
 										<Check className='w-5 h-5' />
 										<span className='font-semibold'>
 											Đạt
 										</span>
 									</>
-									: <>
-										<X className='w-5 h-5' />
-										<span className='font-semibold'>
-											Chưa đạt
-										</span>
-									</>
+									: isFailed(selectedCourse) ?
+										<>
+											<X className='w-5 h-5' />
+											<span className='font-semibold'>
+												Chưa đạt
+											</span>
+										</>
+										: <>
+											<Minus className='w-5 h-5' />
+											<span className='font-semibold'>
+												Chưa có điểm
+											</span>
+										</>
 								}
 							</div>
 

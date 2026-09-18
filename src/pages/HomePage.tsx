@@ -1,30 +1,88 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import assets from '@/assets';
 import { Button } from '@/components/ui/button';
 import { getNewsGroups, getNewsItems } from '@/services/newsService';
 import type { NewsGroup, NewsItem } from '@/services/newsService';
+import { getFooterInfo } from '@/services/footerService';
+import type { FooterInfo } from '@/services/footerService';
 import {
     ChevronLeft, ChevronRight, Moon, Sun,
-    Calendar, GraduationCap, Globe,
-    MapPin, Phone, Mail, Facebook, Youtube,
-    User, School, FileEdit, Award, Laptop, Users, FileBadge
+    MapPin, Phone, Mail
 } from 'lucide-react';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuth } from '@/hooks/useAuth';
 
 
 const ITEMS_PER_PAGE = 6;
+const ALL_GROUP_ID = 0;
+
+interface NewsGroupNode extends NewsGroup {
+    children?: NewsGroupNode[];
+}
+
+function buildNewsTree(groups: NewsGroup[]): NewsGroupNode[] {
+    const byId = new Map<number, NewsGroupNode>();
+    groups.forEach((g) => byId.set(g.MaNhomTin, { ...g }));
+
+    const roots: NewsGroupNode[] = [];
+    byId.forEach((node) => {
+        const parentId = node.ParentId;
+        const isSelfParent = parentId != null && parentId === node.MaNhomTin;
+        const parent = parentId == null || isSelfParent ? undefined : byId.get(parentId);
+        if (parent) {
+            (parent.children = parent.children || []).push(node);
+        } else {
+            roots.push(node);
+        }
+    });
+
+    const sortChildren = (nodes: NewsGroupNode[]) => {
+        nodes.sort((a, b) => (a.ThuTu ?? 0) - (b.ThuTu ?? 0));
+        nodes.forEach((n) => {
+            if (n.children) sortChildren(n.children);
+        });
+    };
+    sortChildren(roots);
+    return roots;
+}
 
 function HomePage() {
     const navigate = useNavigate();
     const [newsGroups, setNewsGroups] = useState<NewsGroup[]>([]);
     const [newsItems, setNewsItems] = useState<NewsItem[]>([]);
-    const [selectedGroup, setSelectedGroup] = useState<number>(1018);
+    const [selectedGroup, setSelectedGroup] = useState<number>(ALL_GROUP_ID);
     const [currentPage, setCurrentPage] = useState(1);
     const [isLoading, setIsLoading] = useState(true);
+    const [footerInfo, setFooterInfo] = useState<FooterInfo>();
+
     const { theme, setTheme } = useTheme();
-    const { isAuthenticated } = useAuth();
+    const { isAuthenticated, user } = useAuth();
+
+    const newsTree = useMemo(() => {
+        const dvDaoTao = user?.dvDaoTao;
+        const filtered = dvDaoTao
+            ? newsGroups.filter((g) => g.He === dvDaoTao || !g.He)
+            : newsGroups;
+        return buildNewsTree(filtered);
+    }, [newsGroups, user?.dvDaoTao]);
+    const selectedGroupName = useMemo(() => {
+        if (selectedGroup === ALL_GROUP_ID) return 'Tất cả tin';
+        const flat = newsGroups.find((g) => g.MaNhomTin === selectedGroup);
+        return flat?.TenNhomTin || 'Tin tức';
+    }, [newsGroups, selectedGroup]);
+
+    useEffect(() => {
+        const fetchFooterInfo = async () => {
+            try {
+                const data = await getFooterInfo();
+                setFooterInfo(data);
+            } catch (error) {
+                console.error('Error fetching footer info:', error);
+            }
+        };
+        fetchFooterInfo();
+    }, []);
 
     useEffect(() => {
         const fetchNewsGroups = async () => {
@@ -87,39 +145,30 @@ function HomePage() {
 
             {/* Section 1 - Hero */}
             <section className="relative min-h-screen flex bg-gradient-to-br from-primary via-primary/95 to-primary/80 overflow-hidden dark:from-background dark:via-background/90 dark:to-primary/20">
-                <div className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 w-[800px] h-[800px] md:w-[1000px] md:h-[1000px] lg:w-[1200px] lg:h-[1200px]">
-                    <img
-                        src={assets.trongDong}
-                        alt="Trống Đồng"
-                        className="w-full h-full object-contain opacity-20 animate-[spin_60s_linear_infinite]"
-                        style={{
-                            mixBlendMode: 'multiply',
-                        }}
-                    />
-                </div>
+    
 
                 <div className="relative z-10 flex flex-col justify-center px-8 md:px-16 lg:px-24 py-12 max-w-2xl">
                     <div className="mb-8">
                         <img
                             src={assets.imageLogo}
-                            alt="VHU Logo"
+                            alt="NEU Logo"
                             className="w-20 h-20 md:w-24 md:h-24 object-contain"
                         />
                     </div>
 
                     <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold text-white mb-6 leading-tight dark:text-foreground">
-                        VHU Portal
+                        NEU Portal
                     </h1>
 
                     <p className="text-lg md:text-xl text-white/80 mb-10 max-w-md dark:text-muted-foreground">
-                        Cổng thông tin sinh viên Trường Đại học Văn Hiến
+                        Cổng thông tin sinh viên Đại học Kinh tế Quốc dân
                     </p>
 
                     <div className="flex justify-start">
                         <Button
                             size="lg"
                             className="bg-white text-primary hover:bg-white/90 px-10 py-6 text-lg font-semibold shadow-xl hover:shadow-2xl transition-all dark:bg-primary dark:text-primary-foreground dark:hover:bg-primary/90"
-                            onClick={() => navigate(isAuthenticated ? '/student' : '/login')}
+                            onClick={() => navigate(isAuthenticated ? '/student/info' : '/login')}
                         >
                             {isAuthenticated ? 'Quản lý thông tin' : 'Đăng nhập'}
                         </Button>
@@ -142,17 +191,40 @@ function HomePage() {
                                     Nhóm tin
                                 </h3>
                                 <ul className="space-y-1">
-                                    {newsGroups.map((group) => (
-                                        <li key={group.MaNhomTin}>
+                                    <li>
+                                        <button
+                                            onClick={() => setSelectedGroup(ALL_GROUP_ID)}
+                                            className={`w-full text-left px-4 py-3 rounded-xl text-sm transition-all ${selectedGroup === ALL_GROUP_ID
+                                                ? 'bg-primary text-primary-foreground font-medium'
+                                                : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                                                }`}
+                                        >
+                                            Tất cả tin
+                                        </button>
+                                    </li>
+                                    {newsTree.map((parent) => (
+                                        <li key={parent.MaNhomTin} className="space-y-1">
                                             <button
-                                                onClick={() => setSelectedGroup(group.MaNhomTin)}
-                                                className={`w-full text-left px-4 py-3 rounded-xl text-sm transition-all ${selectedGroup === group.MaNhomTin
+                                                onClick={() => setSelectedGroup(parent.MaNhomTin)}
+                                                className={`w-full text-left px-4 py-3 rounded-xl text-sm transition-all ${selectedGroup === parent.MaNhomTin
                                                     ? 'bg-primary text-primary-foreground font-medium'
                                                     : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
                                                     }`}
                                             >
-                                                {group.TenNhomTin}
+                                                {parent.TenNhomTin}
                                             </button>
+                                            {parent.children?.map((child) => (
+                                                <button
+                                                    key={child.MaNhomTin}
+                                                    onClick={() => setSelectedGroup(child.MaNhomTin)}
+                                                    className={`w-full text-left pl-8 pr-4 py-2 rounded-xl text-xs border-l-2 ml-4 transition-all ${selectedGroup === child.MaNhomTin
+                                                        ? 'bg-primary text-primary-foreground font-medium border-primary'
+                                                        : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground border-border'
+                                                        }`}
+                                                >
+                                                    {child.TenNhomTin}
+                                                </button>
+                                            ))}
                                         </li>
                                     ))}
                                 </ul>
@@ -165,7 +237,7 @@ function HomePage() {
                                 {/* Header */}
                                 <div className="flex items-center justify-between p-4 border-b border-border">
                                     <h3 className="font-semibold text-card-foreground">
-                                        {newsGroups.find((g) => g.MaNhomTin === selectedGroup)?.TenNhomTin || 'Tin tức'}
+                                        {selectedGroupName}
                                     </h3>
                                     {totalPages > 1 && (
                                         <div className="flex items-center gap-2">
@@ -207,6 +279,7 @@ function HomePage() {
                                             <div
                                                 key={item.MaTin}
                                                 className="p-4 hover:bg-accent/50 transition-colors cursor-pointer group"
+                                                onClick={() => navigate(`/news/${item.MaTin}`)}
                                             >
                                                 <h4 className="font-medium text-card-foreground group-hover:text-primary transition-colors line-clamp-2">
                                                     {item.TieuDe}
@@ -224,129 +297,76 @@ function HomePage() {
                 </div>
             </section>
 
-            {/* Section 3 - Features */}
-            <section className="min-h-screen flex flex-col justify-center py-16 px-4 md:px-8 lg:px-16">
-                <div className="max-w-7xl mx-auto w-full">
-                    <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-12 text-center">
-                        Chức năng
-                    </h2>
-
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
-                        {[
-                            { icon: GraduationCap, label: "Đại học chính quy", href: "https://vhu.edu.vn/", color: "text-blue-500", external: true },
-                            { icon: User, label: "Đại học 2 giai đoạn", href: "https://dh2giaidoan.vhu.edu.vn/", color: "text-emerald-500", external: true },
-                            { icon: School, label: "Sau đại học", href: "https://sdh.vhu.edu.vn/", color: "text-orange-500", external: true },
-                            { icon: Calendar, label: "Lịch thi", href: "https://ttktdbcl.vhu.edu.vn/vi/lich-thi-1804", color: "text-purple-500", external: true },
-                            { icon: FileEdit, label: "Đăng ký học phần", href: "https://regist.vhu.edu.vn/", color: "text-cyan-500", external: true },
-                            { icon: Globe, label: "Cổng thông tin điện tử", href: "https://online.vhu.edu.vn/app/procedure", color: "text-pink-500", external: true },
-                            { icon: Award, label: "Thông tin học bổng", href: "https://ts.vhu.edu.vn/chinh-sach-hoc-bong/", color: "text-indigo-500", external: true },
-                            { icon: Laptop, label: "E-learning", href: "https://elearning.vhu.edu.vn/", color: "text-red-500", external: true },
-                            { icon: Users, label: "Hoạt động Đoàn - Hội", href: "https://doanhoi.vhu.edu.vn/", color: "text-teal-500", external: true },
-                            { icon: FileBadge, label: "Tra cứu văn bằng", href: "/degree-lookup", color: "text-yellow-500", external: false },
-                        ].map((item, index) => (
-                            <div
-                                key={index}
-                                onClick={() => window.open(item.href, item.external ? "_blank" : "_self")}
-                                className="bg-card hover:bg-card/80 border border-border p-6 rounded-2xl shadow-sm hover:shadow-md transition-all cursor-pointer flex flex-col items-center text-center group"
-                            >
-                                <div className={`p-4 rounded-full bg-background mb-4 group-hover:scale-110 transition-transform duration-300 ${item.color}`}>
-                                    <item.icon size={32} />
-                                </div>
-                                <span className="font-semibold text-card-foreground group-hover:text-primary transition-colors">
-                                    {item.label}
-                                </span>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            </section>
-
             {/* Footer */}
             <footer className="bg-card border-t border-border mt-auto">
                 <div className="max-w-7xl mx-auto px-4 md:px-8 lg:px-16 py-12">
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-                        <div className="lg:col-span-2 space-y-6">
-                            <div className="flex items-center gap-3 mb-6">
-                                <img src={assets.imageLogo} alt="VHU Logo" className="h-16 w-auto object-contain" />
-                                <div className="flex flex-col">
-                                    <span className="font-bold text-xl text-foreground uppercase">Trường Đại học Văn Hiến</span>
-                                    <span className="text-md text-primary font-medium">Thành Nhân - Thành Danh</span>
+                    {footerInfo && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            {/* Logo + Address */}
+                            <div className="space-y-6">
+                                <div className="flex items-center gap-3 mb-6">
+                                    {footerInfo.loginLogoUrl && (
+                                        <img
+                                            src={`https://daotao-api.neu.edu.vn${footerInfo.loginLogoUrl}`}
+                                            alt={footerInfo.schoolName}
+                                            className="h-16 w-auto object-contain"
+                                        />
+                                    )}
+                                    <span className="font-bold text-xl text-foreground uppercase">
+                                        {footerInfo.schoolName}
+                                    </span>
+                                </div>
+
+                                <div>
+                                    <h3 className="font-bold text-lg text-foreground mb-4">Liên hệ</h3>
+                                    <div className="space-y-3 text-sm text-muted-foreground">
+                                        {footerInfo.address && (
+                                            <div className="flex items-start gap-2">
+                                                <MapPin size={16} className="mt-1 shrink-0 text-primary" />
+                                                <span>{footerInfo.address}</span>
+                                            </div>
+                                        )}
+                                        {footerInfo.phone && (
+                                            <div className="flex items-center gap-2">
+                                                <Phone size={16} className="text-primary" />
+                                                <span>{footerInfo.phone}</span>
+                                            </div>
+                                        )}
+                                        {footerInfo.email && (
+                                            <div className="flex items-center gap-2">
+                                                <Mail size={16} className="text-primary" />
+                                                <span>{footerInfo.email}</span>
+                                            </div>
+                                        )}
+                                        {footerInfo.fax && (
+                                            <div className="flex items-center gap-2">
+                                                <Phone size={16} className="text-primary" />
+                                                <span>Fax: {footerInfo.fax}</span>
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
 
-                            <div>
-                                <h3 className="font-bold text-lg text-foreground mb-4">Liên hệ</h3>
-                                <div className="space-y-4 text-sm text-muted-foreground">
-                                    <div>
-                                        <h4 className="font-semibold text-foreground mb-1">Trụ sở chính:</h4>
-                                        <div className="flex items-start gap-2">
-                                            <MapPin size={16} className="mt-1 shrink-0 text-primary" />
-                                            <span>HungHau House: 613 Âu Cơ, Phường Phú Trung, Quận Tân Phú, TP.HCM</span>
-                                        </div>
-                                    </div>
-
-                                    <div>
-                                        <h4 className="font-semibold text-foreground mb-1">Các cơ sở đào tạo:</h4>
-                                        <ul className="space-y-2 ml-6 list-disc">
-                                            <li>Harmony Campus: 624 Âu Cơ, Phường 10, Quận Tân Bình, TP. HCM</li>
-                                            <li>HungHau Campus: Đại lộ Nguyễn Văn Linh, Khu đô thị Nam Thành phố</li>
-                                            <li>myU Campus: 665 - 667 - 669 Điện Biên Phủ, Phường 1, Quận 3, TP. HCM</li>
-                                            <li>Số 8 - 14 Nguyễn Bá Tuyển, Phường 12, Quận Tân Bình, TP. HCM</li>
-                                            <li>2A2 Quốc lộ 1A, Phường Thạnh Xuân, Quận 12, TP.HCM</li>
-                                        </ul>
-                                    </div>
-
-                                    <div className="pt-2 space-y-2">
-                                        <div className="flex items-center gap-2">
-                                            <Phone size={16} className="text-primary" />
-                                            <span>Hotline: 1800 1568</span>
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                            <Mail size={16} className="text-primary" />
-                                            <span>Email: info@vhu.edu.vn</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div>
-                            <h3 className="font-bold text-lg text-foreground mb-4">Liên kết nhanh</h3>
-                            <ul className="space-y-3 text-sm text-muted-foreground">
-                                {['Trang chủ', 'Giới thiệu', 'Tin tức', 'Liên hệ'].map((item) => (
-                                    <li key={item}>
-                                        <a href="#" className="hover:text-primary transition-colors hover:underline">
-                                            {item}
-                                        </a>
-                                    </li>
-                                ))}
-                            </ul>
-                        </div>
-
-                        {/* Social Links */}
-                        <div>
-                            <h3 className="font-bold text-lg text-foreground mb-4">Kết nối với chúng tôi</h3>
-                            <div className="flex gap-4">
-                                {[
-                                    { icon: Facebook, href: "https://www.facebook.com/vhu.edu.vn" },
-                                    { icon: Youtube, href: "https://www.youtube.com/@VhuEduVn-daihocvanhien" }
-                                ].map((item, index) => (
+                            {/* Website */}
+                            {footerInfo.website && (
+                                <div>
+                                    <h3 className="font-bold text-lg text-foreground mb-4">Website</h3>
                                     <a
-                                        key={index}
-                                        href={item.href}
+                                        href={`https://${footerInfo.website}`}
                                         target="_blank"
                                         rel="noopener noreferrer"
-                                        className="p-3 rounded-full bg-background border border-border text-muted-foreground hover:text-primary hover:border-primary transition-all hover:scale-110"
+                                        className="text-primary hover:underline"
                                     >
-                                        <item.icon size={20} />
+                                        {footerInfo.website}
                                     </a>
-                                ))}
-                            </div>
+                                </div>
+                            )}
                         </div>
-                    </div>
+                    )}
 
                     <div className="border-t border-border mt-12 pt-8 text-center text-sm text-muted-foreground">
-                        <p>© {new Date().getFullYear()} Trường Đại học Văn Hiến. All rights reserved.</p>
+                        <p>© {new Date().getFullYear()} {footerInfo?.schoolName}</p>
                     </div>
                 </div>
             </footer>

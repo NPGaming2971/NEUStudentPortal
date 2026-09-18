@@ -1,15 +1,17 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { getStudentInfo, type StudentInfo } from '@/services/studentInfoService';
+import { getStudentAvatar, getStudentInfo, type StudentInfo } from '@/services/studentInfoService';
 
 interface InfoState {
     studentInfo: StudentInfo | null;
+    avatar: string;
     isLoading: boolean;
     error: string | null;
     lastFetched: number | null;
 
     // Actions
     fetchStudentInfo: (force?: boolean) => Promise<void>;
+    fetchStudentAvatar: (force?: boolean) => Promise<void>;
     clearStudentInfo: () => void;
     getInitials: () => string;
 }
@@ -20,6 +22,7 @@ export const useInfoStore = create<InfoState>()(
     persist(
         (set, get) => ({
             studentInfo: null,
+            avatar: '',
             isLoading: false,
             error: null,
             lastFetched: null,
@@ -49,9 +52,24 @@ export const useInfoStore = create<InfoState>()(
                 }
             },
 
+            fetchStudentAvatar: async (force = false) => {
+                const { avatar } = get();
+                if (!force && avatar) {
+                    return;
+                }
+
+                try {
+                    const response = await getStudentAvatar();
+                    set({ avatar: response.data });
+                } catch (error) {
+                    console.error('Error fetching student avatar:', error);
+                }
+            },
+
             clearStudentInfo: () => {
                 set({
                     studentInfo: null,
+                    avatar: '',
                     isLoading: false,
                     error: null,
                     lastFetched: null,
@@ -70,7 +88,7 @@ export const useInfoStore = create<InfoState>()(
             },
         }),
         {
-            name: 'student-info-storage',
+            name: 'studentInfoStorage',
             partialize: (state) => ({
                 studentInfo: state.studentInfo,
                 lastFetched: state.lastFetched,

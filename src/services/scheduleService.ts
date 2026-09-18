@@ -4,6 +4,17 @@ import api from '@/lib/api';
 export interface Term {
     TermID: string;
     TermName: string;
+    CurrentTerm?: string;
+}
+
+export interface YearAndTermItem {
+    YearStudy: string;
+    CurrentYear: string;
+    Terms: Term[];
+}
+
+export interface YearAndTermV2Data {
+    items: YearAndTermItem[];
 }
 
 export interface YearAndTermData {
@@ -35,8 +46,19 @@ export interface ScheduleData {
 
 export const getYearAndTerm = async (): Promise<YearAndTermData> => {
     try {
-        const response = await api.get('/student/yearandterm');
-        return response.data;
+        const response = await api.get('/student/YearAndTermV2');
+        const data = response.data as YearAndTermV2Data;
+        const items = data?.items ?? [];
+        const current = items.find((item) => item.CurrentYear) ?? items[0];
+        const terms = current?.Terms ?? [];
+        const currentTerm =
+            terms.find((term) => term.CurrentTerm) ?? terms[0];
+        return {
+            CurrentYear: current?.YearStudy ?? '',
+            CurrentTerm: currentTerm?.TermID ?? '',
+            YearStudy: items.map((item) => item.YearStudy),
+            Terms: terms,
+        };
     } catch (error) {
         console.error('Error fetching year and term:', error);
         throw error;

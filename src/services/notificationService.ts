@@ -11,14 +11,13 @@ export const getStudentNotifications = async () => {
     }
 };
 
-export const getNotificationDetails = async (messageId: number) => {
+export const updateMessageStatus = async (messageId: number) => {
     try {
-        const response = await api.get('/student/GetMessageDetailById', {
-            params: { p1: messageId },
+        await api.get('/student/UpdateStatusMessages', {
+            params: { id: messageId },
         });
-        return response.data;
     } catch (error) {
-        console.error('Error fetching notification details:', error);
+        console.error('Error updating message status:', error);
         throw error;
     }
 };

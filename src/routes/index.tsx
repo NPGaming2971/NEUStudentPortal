@@ -1,5 +1,6 @@
 import type { ComponentType, ReactNode } from "react";
-import { Route } from "react-router-dom";
+import { Route, Navigate } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
 
 // Layouts
 import NothingLayout from "@/components/layouts/NothingLayout";
@@ -7,6 +8,7 @@ import SidebarLayout from "@/components/layouts/SidebarLayout";
 
 // Pages
 import HomePage from "@/pages/HomePage";
+import NewsDetailPage from "@/pages/NewsDetailPage";
 import NotFoundPage from "@/pages/NotFoundPage";
 import LoginPage from "@/pages/LoginPage";
 import StudentPage from "@/pages/StudentPage";
@@ -20,20 +22,16 @@ import ConductScorePage from "@/pages/ConductScorePage";
 import AcademicResultsPage from "@/pages/AcademicResultsPage";
 import FinancePage from "@/pages/FinancePage";
 import CourseRegistrationResultsPage from "@/pages/CourseRegistrationResultsPage";
-import CourseEquivalencyPage from "@/pages/CourseEquivalencyPage";
 import GraduationPage from "@/pages/GraduationPage";
 import DiscussionPage from "@/pages/DiscussionPage";
 import ConductAssessmentPage from "@/pages/ConductAssessmentPage";
-import CommunityServicePage from "@/pages/CommunityServicePage";
 import CertificatesPage from "@/pages/CertificatesPage";
-import ScholarshipPage from "@/pages/ScholarshipPage";
 import RegistrationPage from "@/pages/RegistrationPage";
 import RegistrationPlanPage from "@/pages/RegistrationPlanPage";
 import RegistrationSearchPage from "@/pages/RegistrationSearchPage";
 import RegistrationHistoryPage from "@/pages/RegistrationHistoryPage";
-import RetakePage from "@/pages/RetakePage";
 import StudentUpdatePage from "@/pages/StudentUpdatePage";
-import ChatbotPage from "@/pages/ChatbotPage";
+import PlaceholderPage from "@/pages/PlaceholderPage";
 
 export interface RouteConfig {
 	path: string;
@@ -41,15 +39,26 @@ export interface RouteConfig {
 	layout: ComponentType<{ children: ReactNode }>;
 }
 
+function ProtectedHomePage() {
+	const { isAuthenticated } = useAuth();
+	if (!isAuthenticated) return <Navigate to="/login" replace />;
+	return <HomePage />;
+}
+
 const publicRoutes: RouteConfig[] = [
 	{
 		path: "/",
+		component: ProtectedHomePage,
+		layout: NothingLayout,
+	},
+	{
+		path: "/pagenews",
 		component: HomePage,
 		layout: NothingLayout,
 	},
 	{
-		path: "/home",
-		component: HomePage,
+		path: "/news/:newsId",
+		component: NewsDetailPage,
 		layout: NothingLayout,
 	},
 	{
@@ -66,7 +75,7 @@ const publicRoutes: RouteConfig[] = [
 
 const privateRoutes: RouteConfig[] = [
 	{
-		path: "/student",
+		path: "/student/info",
 		component: StudentPage,
 		layout: SidebarLayout,
 	},
@@ -76,22 +85,32 @@ const privateRoutes: RouteConfig[] = [
 		layout: SidebarLayout,
 	},
 	{
-		path: "/student/notifications",
+		path: "/student/index",
 		component: NotificationsPage,
 		layout: SidebarLayout,
 	},
 	{
-		path: "/student/educational-program",
+		path: "/student/tiendohoctap",
+		component: PlaceholderPage,
+		layout: SidebarLayout,
+	},
+	{
+		path: "/student/thongtintotnghiep",
+		component: PlaceholderPage,
+		layout: SidebarLayout,
+	},
+	{
+		path: "/student/studyprograms",
 		component: EducationalProgramPage,
 		layout: SidebarLayout,
 	},
 	{
-		path: "/student/schedule",
+		path: "/student/classstudentschedules",
 		component: ClassSchedulePage,
 		layout: SidebarLayout,
 	},
 	{
-		path: "/student/exam-schedule",
+		path: "/student/exam",
 		component: ExamSchedulePage,
 		layout: SidebarLayout,
 	},
@@ -101,33 +120,58 @@ const privateRoutes: RouteConfig[] = [
 		layout: SidebarLayout,
 	},
 	{
-		path: "/student/attendance",
+		path: "/student/diemdanhsinhvien",
 		component: AttendancePage,
 		layout: SidebarLayout,
 	},
 	{
-		path: "/student/conduct-score",
+		path: "/student/xemdiemrenluyen",
 		component: ConductScorePage,
 		layout: SidebarLayout,
 	},
 	{
-		path: "/student/academic-results",
+		path: "/student/marks",
 		component: AcademicResultsPage,
 		layout: SidebarLayout,
 	},
 	{
-		path: "/student/finance",
+		path: "/student/accountfees",
 		component: FinancePage,
 		layout: SidebarLayout,
 	},
 	{
-		path: "/student/registration-results",
+		path: "/student/ketquadangky",
 		component: CourseRegistrationResultsPage,
 		layout: SidebarLayout,
 	},
 	{
-		path: "/student/equivalent-courses",
-		component: CourseEquivalencyPage,
+		path: "/student/chitiethoadon",
+		component: PlaceholderPage,
+		layout: SidebarLayout,
+	},
+	{
+		path: "/student/chuandaura",
+		component: PlaceholderPage,
+		layout: SidebarLayout,
+	},
+	{
+		path: "/student/baohiemyte",
+		component: PlaceholderPage,
+		layout: SidebarLayout,
+	},
+	{
+		path: "/student/miengiamtrocap",
+		component: PlaceholderPage,
+		layout: SidebarLayout,
+	},
+	{
+		path: "/student/ketquaphancongdoan",
+		component: PlaceholderPage,
+		layout: SidebarLayout,
+	},
+	{
+		path: "/student/noingoaitrusv",
+		component: PlaceholderPage,
 		layout: SidebarLayout,
 	},
 	{
@@ -136,60 +180,60 @@ const privateRoutes: RouteConfig[] = [
 		layout: SidebarLayout,
 	},
 	{
-		path: "/student/discussion",
+		path: "/student/lienhe",
+		component: PlaceholderPage,
+		layout: SidebarLayout,
+	},
+	{
+		path: "/student/chuongtrinhdaotaothu2",
+		component: PlaceholderPage,
+		layout: SidebarLayout,
+	},
+	{
+		path: "/student/registacademic",
+		component: PlaceholderPage,
+		layout: SidebarLayout,
+	},
+	{
+		path: "/student/hoanthi",
+		component: PlaceholderPage,
+		layout: SidebarLayout,
+	},
+	{
+		path: "/student/comment",
 		component: DiscussionPage,
 		layout: SidebarLayout,
 	},
 	{
-		path: "/student/conduct-assessment",
+		path: "/student/behaviorscore",
 		component: ConductAssessmentPage,
 		layout: SidebarLayout,
 	},
 	{
-		path: "/student/community-service",
-		component: CommunityServicePage,
-		layout: SidebarLayout,
-	},
-	{
-		path: "/student/certificates",
+		path: "/student/chungchingoaingu",
 		component: CertificatesPage,
 		layout: SidebarLayout,
 	},
 	{
-		path: "/student/registration",
+		path: "/student/dangkyhocphan",
 		component: RegistrationPage,
 		layout: SidebarLayout,
 	},
 	{
-		path: "/student/registration/plan",
+		path: "/student/dangkyhocphan/plan",
 		component: RegistrationPlanPage,
 		layout: SidebarLayout,
 	},
 	{
-		path: "/student/registration/search",
+		path: "/student/dangkyhocphan/search",
 		component: RegistrationSearchPage,
 		layout: SidebarLayout,
 	},
 	{
-		path: "/student/registration/history",
+		path: "/student/dangkyhocphan/history",
 		component: RegistrationHistoryPage,
 		layout: SidebarLayout,
 	},
-	{
-		path: "/student/scholarship",
-		component: ScholarshipPage,
-		layout: SidebarLayout,
-	},
-	{
-		path: "/student/retake",
-		component: RetakePage,
-		layout: SidebarLayout,
-	},
-	{
-		path: "/student/chatbot",
-		component: ChatbotPage,
-		layout: SidebarLayout,
-	}
 ];
 
 export const renderRoutes = () => (

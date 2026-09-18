@@ -2,13 +2,11 @@ import axios from "axios";
 
 export const REGISTRATION_API_TIMEOUT = 30000;
 
-const WORKER_URL = "https://vhu-portal-proxy.duylelv17.workers.dev";
-
 const registrationApi = axios.create({
-	baseURL: `${WORKER_URL}/regist`,
+	baseURL: `https://tinchi-api.neu.edu.vn/api`,
 	headers: {
-		apikey: "pscRBF0zT2Mqo6vMw69YMOH43IrB2RtXBS0EHit2kzvL2auxaFJBvw==",
-		clientid: "vhu",
+		apikey: "pscRBF0zT2Mqo6vMw69YMOH43IrB2RtXBS0EHit2kzv",
+		clientid: "neucq",
 		accept: "application/json, text/plain, */*",
 	},
 	timeout: REGISTRATION_API_TIMEOUT,
@@ -25,11 +23,11 @@ registrationApi.interceptors.request.use(
 				} else {
 					console.warn("Registration token expired");
 					localStorage.removeItem("registToken");
-					localStorage.removeItem("registToken_authSource");
+					localStorage.removeItem("registTokenAuthSource");
 				}
 			} catch {
 				localStorage.removeItem("registToken");
-				localStorage.removeItem("registToken_authSource");
+				localStorage.removeItem("registTokenAuthSource");
 			}
 		}
 		return config;
@@ -42,7 +40,7 @@ registrationApi.interceptors.response.use(
 	(error) => {
 		if (error.response?.status === 401) {
 			localStorage.removeItem("registToken");
-			localStorage.removeItem("registToken_authSource");
+			localStorage.removeItem("registTokenAuthSource");
 		}
 		return Promise.reject(error);
 	},
