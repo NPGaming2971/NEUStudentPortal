@@ -1,4 +1,4 @@
-name = "neuportal"
+name = "neuportal-proxy"
 main = "worker.js"
 
 # Deploy command: npx wrangler deploy
