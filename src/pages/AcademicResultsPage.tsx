@@ -40,6 +40,7 @@ import {
 	Table,
 	BarChart3,
 	Users,
+	RefreshCw,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import GradeStatistics from "@/components/common/GradeStatistics";
@@ -86,6 +87,50 @@ const dashboardInflight = new Map<
 	string,
 	Promise<DashboardKetQuaHocTap>
 >();
+
+type GlobalSums = Record<
+	string,
+	{ sum: number; count: number; sumSelf: number; credits: number }
+>;
+
+const computeClassAvgInfo = (
+	globalSums: GlobalSums,
+): {
+	value10: number;
+	value4: number;
+	selfValue10: number;
+	selfValue4: number;
+	credits: number;
+	subjects: number;
+} | null => {
+	const subjectAvgs = Object.entries(globalSums).filter(
+		([, e]) => e.credits > 0,
+	);
+	if (subjectAvgs.length === 0) return null;
+
+	let totalCredits = 0;
+	let classSum10 = 0;
+	let classSum4 = 0;
+	let selfSum10 = 0;
+	let selfSum4 = 0;
+	subjectAvgs.forEach(([, e]) => {
+		const class10 = e.sum / e.count;
+		const self10 = e.sumSelf / e.count;
+		totalCredits += e.credits;
+		classSum10 += class10 * e.credits;
+		classSum4 += convertToGPA4(class10) * e.credits;
+		selfSum10 += self10 * e.credits;
+		selfSum4 += convertToGPA4(self10) * e.credits;
+	});
+	return {
+		value10: classSum10 / totalCredits,
+		value4: classSum4 / totalCredits,
+		selfValue10: selfSum10 / totalCredits,
+		selfValue4: selfSum4 / totalCredits,
+		credits: totalCredits,
+		subjects: subjectAvgs.length,
+	};
+};
 
 const fetchDashboardCached = async (
 	studyProgramId: string,
@@ -134,6 +179,8 @@ function AcademicResultsPage() {
 		credits: number;
 		subjects: number;
 	} | null>(null);
+	const [isRecalculatingClassAvg, setIsRecalculatingClassAvg] =
+		useState(false);
 	const [selectedCourseTermKey, setSelectedCourseTermKey] = useState("");
 	const [expandedSemesters, setExpandedSemesters] = useState<
 		Record<string, boolean>
@@ -222,11 +269,13 @@ function AcademicResultsPage() {
 							whole?.TongSTC ?? latestAvg?.TongSTC ?? undefined,
 					});
 
-					const dashMap: Record<string, DashboardTermData> = {};
-					const globalSums: Record<
-						string,
-						{ sum: number; count: number; sumSelf: number; credits: number }
-					> = {};
+					// Main results are ready — render the table now. The
+					// dashboard/class-average requests below populate the
+					// "—" cells in the background (lazy load).
+					setIsLoading(false);
+					setIsRecalculatingClassAvg(true);
+
+					const globalSums: GlobalSums = {};
 					let dashInfo: DashboardStudentInfo | null = null;
 					let dashCredits: DashboardCreditSummary | null = null;
 					for (const year of diem) {
@@ -298,7 +347,14 @@ function AcademicResultsPage() {
 										};
 									},
 								);
-								dashMap[key] = { courses };
+
+								// Populate each semester's class averages as
+								// soon as its dashboard request resolves
+								setDashboardByTerm((prev) => ({
+									...prev,
+									[key]: { courses },
+								}));
+
 								dashInfo =
 									dashInfo ??
 									(dashboard.info?.[0] ?? null);
@@ -313,47 +369,21 @@ function AcademicResultsPage() {
 							}
 						}
 					}
-					setDashboardByTerm(dashMap);
 					if (dashInfo) setStudentInfo(dashInfo);
 					if (dashCredits) setDashboardCredits(dashCredits);
 
-					const subjectAvgs = Object.entries(globalSums).filter(
-						([, e]) => e.credits > 0,
-					);
-					if (subjectAvgs.length > 0) {
-						let totalCredits = 0;
-						let classSum10 = 0;
-						let classSum4 = 0;
-						let selfSum10 = 0;
-						let selfSum4 = 0;
-						subjectAvgs.forEach(([, e]) => {
-							const class10 = e.sum / e.count;
-							const self10 = e.sumSelf / e.count;
-							totalCredits += e.credits;
-							classSum10 += class10 * e.credits;
-							classSum4 += convertToGPA4(class10) * e.credits;
-							selfSum10 += self10 * e.credits;
-							selfSum4 += convertToGPA4(self10) * e.credits;
-						});
-						setClassAvgInfo({
-							value10: classSum10 / totalCredits,
-							value4: classSum4 / totalCredits,
-							selfValue10: selfSum10 / totalCredits,
-							selfValue4: selfSum4 / totalCredits,
-							credits: totalCredits,
-							subjects: subjectAvgs.length,
-						});
-					} else {
-						setClassAvgInfo(null);
-					}
+					setClassAvgInfo(computeClassAvgInfo(globalSums));
+					setIsRecalculatingClassAvg(false);
 				} else {
 					setYearlyResults([]);
+					setIsRecalculatingClassAvg(false);
 				}
 			} catch (err) {
 				console.error("Error:", err);
 				setError("Không thể tải kết quả học tập.");
 			} finally {
 				setIsLoading(false);
+				setIsRecalculatingClassAvg(false);
 			}
 		};
 
@@ -624,9 +654,8 @@ function AcademicResultsPage() {
 				</Card>
 			</div>
 
-			{/* Class Average GPA */}
-			{classAvgInfo && (
-				<Card className='border shadow-lg'>
+{/* Class Average GPA */}
+			<Card className='border shadow-lg'>
 					<CardContent className='p-3 sm:p-5'>
 						<div className='flex flex-col sm:flex-row sm:items-center justify-between gap-3'>
 							<div className='flex items-center gap-3'>
@@ -640,9 +669,7 @@ function AcademicResultsPage() {
 										</p>
 										<div className='flex items-baseline gap-1 sm:gap-2 mt-1'>
 											<p className='text-2xl sm:text-3xl font-bold text-primary'>
-												{classAvgInfo.selfValue4.toFixed(
-													2,
-												)}
+												{classAvgInfo ? classAvgInfo.selfValue4.toFixed(2) : "—"}
 											</p>
 											<span className='text-xs sm:text-sm text-muted-foreground'>
 												/4.0
@@ -650,9 +677,7 @@ function AcademicResultsPage() {
 										</div>
 										<p className='text-muted-foreground text-[10px] sm:text-xs mt-1'>
 											(
-											{classAvgInfo.selfValue10.toFixed(
-												2,
-											)}
+											{classAvgInfo ? classAvgInfo.selfValue10.toFixed(2) : "—"}
 											/10)
 										</p>
 									</div>
@@ -662,28 +687,38 @@ function AcademicResultsPage() {
 										</p>
 										<div className='flex items-baseline gap-1 sm:gap-2 mt-1'>
 											<p className='text-2xl sm:text-3xl font-bold text-foreground'>
-												{classAvgInfo.value4.toFixed(2)}
+												{classAvgInfo ? classAvgInfo.value4.toFixed(2) : "—"}
 											</p>
 											<span className='text-xs sm:text-sm text-muted-foreground'>
 												/4.0
 											</span>
 										</div>
 										<p className='text-muted-foreground text-[10px] sm:text-xs mt-1'>
-											({classAvgInfo.value10.toFixed(2)}
+											({classAvgInfo ? classAvgInfo.value10.toFixed(2) : "—"}
 											/10)
 										</p>
 									</div>
 								</div>
 							</div>
 							<p className='text-xs text-muted-foreground sm:text-right sm:max-w-md'>
-								Tính theo điểm trung bình của các lớp bạn đã học. Tính từ{" "}
-								{classAvgInfo.subjects} môn,{" "}
-								{classAvgInfo.credits} TC.
+								{isRecalculatingClassAvg ? (
+									<span className='inline-flex items-center gap-1.5'>
+										<RefreshCw className='w-3 h-3 animate-spin' />
+										Đang tính toán lại...
+									</span>
+								) : classAvgInfo ? (
+									<>
+										Tính theo điểm trung bình của các lớp bạn đã học. Tính từ{" "}
+										{classAvgInfo.subjects} môn,{" "}
+										{classAvgInfo.credits} TC.
+									</>
+								) : (
+									"Không có dữ liệu lớp."
+								)}
 							</p>
 						</div>
 					</CardContent>
 				</Card>
-			)}
 
 			{/* Grade Notes - Compact horizontal display */}
 			{gradeNotes.length > 0 && (
