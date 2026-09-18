@@ -72,7 +72,7 @@ function LoginPage() {
                         Đăng Nhập
                     </CardTitle>
                     <CardDescription className="text-white/70 text-base">
-                        Cổng thông tin sinh viên NEU
+                        Cổng thông tin đào tạo
                     </CardDescription>
                 </CardHeader>
 

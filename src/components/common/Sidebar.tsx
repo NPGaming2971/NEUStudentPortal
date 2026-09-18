@@ -14,7 +14,8 @@ import {
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useTheme } from "@/hooks/useTheme";
 import { useInfoStore } from "@/stores/infoStore";
-import { getMenu, type SidebarMenuItem } from "@/services/menuService";
+import { useMenuStore } from "@/stores/menuStore";
+import type { SidebarMenuItem } from "@/services/menuService";
 import assets from "@/assets";
 import {
 	Bell,
@@ -53,6 +54,7 @@ import {
 	ClipboardPen,
 	CalendarX2,
 	Shield,
+	ExternalLink,
 } from "lucide-react";
 
 interface MenuItem {
@@ -148,9 +150,10 @@ function Sidebar({ isOpen, onClose, onLogout }: SidebarProps) {
 	const location = useLocation();
 	const [isDesktop, setIsDesktop] = useState(false);
 	const [showChangePassword, setShowChangePassword] = useState(false);
-	const [menu, setMenu] = useState<SidebarMenuItem[]>([]);
 	const { theme, setTheme } = useTheme();
 	const { studentInfo, avatar, fetchStudentInfo, fetchStudentAvatar, getInitials } = useInfoStore();
+	const menu = useMenuStore((state) => state.menu);
+	const fetchMenu = useMenuStore((state) => state.fetchMenu);
 
 	const selectedPath = location.pathname;
 	const isRegistrationMode = useMemo(() => {
@@ -168,10 +171,8 @@ function Sidebar({ isOpen, onClose, onLogout }: SidebarProps) {
 
 	// Fetch menu on mount
 	useEffect(() => {
-		getMenu()
-			.then(setMenu)
-			.catch(() => setMenu([]));
-	}, []);
+		fetchMenu();
+	}, [fetchMenu]);
 
 	useEffect(() => {
 		const checkScreenSize = () => {
@@ -339,6 +340,14 @@ function Sidebar({ isOpen, onClose, onLogout }: SidebarProps) {
 											<span className='truncate'>
 												{item.name}
 											</span>
+											{item.path.startsWith(
+												"http",
+											) && (
+												<ExternalLink
+													size={14}
+													className='shrink-0 ml-auto opacity-70'
+												/>
+											)}
 										</button>
 									);
 								})}

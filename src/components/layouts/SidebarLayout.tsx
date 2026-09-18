@@ -4,6 +4,7 @@ import { Menu, PanelLeftClose } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Sidebar from '@/components/common/Sidebar';
 import { useAuth } from '@/hooks/useAuth';
+import { usePageTitle } from '@/hooks/usePageTitle';
 
 interface SidebarLayoutProps {
     children: ReactNode;
@@ -14,6 +15,7 @@ const DESKTOP_BREAKPOINT = 1024;
 function SidebarLayout({ children }: SidebarLayoutProps) {
     const navigate = useNavigate();
     const { logout } = useAuth();
+    usePageTitle();
     const [isDesktop, setIsDesktop] = useState(() =>
         typeof window !== 'undefined' ? window.innerWidth >= DESKTOP_BREAKPOINT : false
     );
