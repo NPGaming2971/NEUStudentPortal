@@ -93,6 +93,22 @@ type GlobalSums = Record<
 	{ sum: number; count: number; sumSelf: number; credits: number }
 >;
 
+interface ClassAvgCacheEntry {
+	dashboardByTerm: Record<string, DashboardTermData>;
+	classAvgInfo: {
+		value10: number;
+		value4: number;
+		selfValue10: number;
+		selfValue4: number;
+		credits: number;
+		subjects: number;
+	} | null;
+	studentInfo: DashboardStudentInfo | null;
+	dashboardCredits: DashboardCreditSummary | null;
+}
+
+const classAvgCache = new Map<string, ClassAvgCacheEntry>();
+
 const computeClassAvgInfo = (
 	globalSums: GlobalSums,
 ): {
@@ -220,9 +236,12 @@ function AcademicResultsPage() {
 		const fetchResults = async () => {
 			if (studyPrograms.length === 0) return;
 
+			const cacheKey = `${studyPrograms[0].StudyProgramID}|${reloadKey}`;
+			const cachedClassAvg = classAvgCache.get(cacheKey);
+
 			setIsLoading(true);
 			setError(null);
-			setClassAvgInfo(null);
+
 			try {
 				const data: StudyProgramResults =
 					viewMode === "program" ?
@@ -273,107 +292,135 @@ function AcademicResultsPage() {
 					// dashboard/class-average requests below populate the
 					// "—" cells in the background (lazy load).
 					setIsLoading(false);
-					setIsRecalculatingClassAvg(true);
 
-					const globalSums: GlobalSums = {};
-					let dashInfo: DashboardStudentInfo | null = null;
-					let dashCredits: DashboardCreditSummary | null = null;
-					for (const year of diem) {
-						for (const semester of year.DanhSachDiem ?? []) {
-							if (!year.NamHoc || !semester.HocKy) continue;
-							const key = `${year.NamHoc}-${semester.HocKy}`;
-							try {
-								const dashboard =
-									await fetchDashboardCached(
-										studyPrograms[0].StudyProgramID,
-										year.NamHoc,
-										semester.HocKy,
-									);
-								const termSums: Record<
-									string,
-									{
-										sum: number;
-										count: number;
-										max10: number | null;
-									}
-								> = {};
-								(dashboard.tb1 ?? []).forEach((c) => {
-									if (
-										c.AVGClass == null ||
-										c.MaxMark10 == null ||
-										c.AVGClass === 0
-									)
-										return;
-									const id = c.CurriculumID;
-									const entry = termSums[id] ?? {
-										sum: 0,
-										count: 0,
-										max10: c.MaxMark10,
-									};
-									entry.sum += c.AVGClass;
-									entry.count += 1;
-									termSums[id] = entry;
-
-									if (
-										!isGDTCSubject(
-											c.CurriculumID,
-											c.CurriculumName,
+					// Class-average data is view-mode independent — reuse
+					// the cached computation when switching tabs so the
+					// dashboard requests aren't re-fetched / recalculated.
+					if (cachedClassAvg) {
+						setDashboardByTerm(cachedClassAvg.dashboardByTerm);
+						setClassAvgInfo(cachedClassAvg.classAvgInfo);
+						if (cachedClassAvg.studentInfo)
+							setStudentInfo(cachedClassAvg.studentInfo);
+						if (cachedClassAvg.dashboardCredits)
+							setDashboardCredits(
+								cachedClassAvg.dashboardCredits,
+							);
+						setIsRecalculatingClassAvg(false);
+					} else {
+						setIsRecalculatingClassAvg(true);
+						const globalSums: GlobalSums = {};
+						const dashMap: Record<string, DashboardTermData> = {};
+						let dashInfo: DashboardStudentInfo | null = null;
+						let dashCredits: DashboardCreditSummary | null = null;
+						for (const year of diem) {
+							for (const semester of year.DanhSachDiem ?? []) {
+								if (!year.NamHoc || !semester.HocKy)
+									continue;
+								const key = `${year.NamHoc}-${semester.HocKy}`;
+								try {
+									const dashboard =
+										await fetchDashboardCached(
+											studyPrograms[0]
+												.StudyProgramID,
+											year.NamHoc,
+											semester.HocKy,
+										);
+									const termSums: Record<
+										string,
+										{
+											sum: number;
+											count: number;
+											max10: number | null;
+										}
+									> = {};
+									(dashboard.tb1 ?? []).forEach((c) => {
+										if (
+											c.AVGClass == null ||
+											c.MaxMark10 == null ||
+											c.AVGClass === 0
 										)
-									) {
-										const g = globalSums[id] ?? {
+											return;
+										const id = c.CurriculumID;
+										const entry = termSums[id] ?? {
 											sum: 0,
 											count: 0,
-											sumSelf: 0,
-											credits: c.Credits,
+											max10: c.MaxMark10,
 										};
-										g.sum += c.AVGClass;
-										g.sumSelf += c.MaxMark10;
-										g.count += 1;
-										globalSums[id] = g;
-									}
-								});
-								const courses: Record<
-									string,
-									DashboardCourseAvg
-								> = {};
-								Object.entries(termSums).forEach(
-									([id, e]) => {
-										courses[id] = {
-											MaxMark10: e.max10,
-											AVGClass:
-												e.count > 0 ?
-													e.sum / e.count
-													: null,
-										};
-									},
-								);
+										entry.sum += c.AVGClass;
+										entry.count += 1;
+										termSums[id] = entry;
 
-								// Populate each semester's class averages as
-								// soon as its dashboard request resolves
-								setDashboardByTerm((prev) => ({
-									...prev,
-									[key]: { courses },
-								}));
+										if (
+											!isGDTCSubject(
+												c.CurriculumID,
+												c.CurriculumName,
+											)
+										) {
+											const g = globalSums[id] ?? {
+												sum: 0,
+												count: 0,
+												sumSelf: 0,
+												credits: c.Credits,
+											};
+											g.sum += c.AVGClass;
+											g.sumSelf += c.MaxMark10;
+											g.count += 1;
+											globalSums[id] = g;
+										}
+									});
+									const courses: Record<
+										string,
+										DashboardCourseAvg
+									> = {};
+									Object.entries(termSums).forEach(
+										([id, e]) => {
+											courses[id] = {
+												MaxMark10: e.max10,
+												AVGClass:
+													e.count > 0 ?
+														e.sum / e.count
+														: null,
+											};
+										},
+									);
 
-								dashInfo =
-									dashInfo ??
-									(dashboard.info?.[0] ?? null);
-								dashCredits =
-									dashCredits ??
-									(dashboard.tb2?.[0] ?? null);
-							} catch (err) {
-								console.error(
-									`Error fetching class average for ${key}:`,
-									err,
-								);
+									// Populate each semester's class
+									// averages as soon as its dashboard
+									// request resolves
+									dashMap[key] = { courses };
+									setDashboardByTerm((prev) => ({
+										...prev,
+										[key]: { courses },
+									}));
+
+									dashInfo =
+										dashInfo ??
+										(dashboard.info?.[0] ?? null);
+									dashCredits =
+										dashCredits ??
+										(dashboard.tb2?.[0] ?? null);
+								} catch (err) {
+									console.error(
+										`Error fetching class average for ${key}:`,
+										err,
+									);
+								}
 							}
 						}
-					}
-					if (dashInfo) setStudentInfo(dashInfo);
-					if (dashCredits) setDashboardCredits(dashCredits);
+						if (dashInfo) setStudentInfo(dashInfo);
+						if (dashCredits) setDashboardCredits(dashCredits);
 
-					setClassAvgInfo(computeClassAvgInfo(globalSums));
-					setIsRecalculatingClassAvg(false);
+						const classAvgInfo = computeClassAvgInfo(globalSums);
+						setClassAvgInfo(classAvgInfo);
+						setIsRecalculatingClassAvg(false);
+
+						classAvgCache.set(cacheKey, {
+							dashboardByTerm: dashMap,
+							classAvgInfo,
+							studentInfo: dashInfo,
+							dashboardCredits: dashCredits,
+						});
+					}
 				} else {
 					setYearlyResults([]);
 					setIsRecalculatingClassAvg(false);
@@ -768,7 +815,9 @@ function AcademicResultsPage() {
 							</CardContent>
 						</Card>
 						: <div className='space-y-6'>
-							{yearlyResults.map((year) => (
+							{[...yearlyResults]
+								.reverse()
+								.map((year) => (
 								<Card
 									key={year.NamHoc}
 									className='border-0 shadow-lg overflow-hidden p-0'
@@ -781,7 +830,9 @@ function AcademicResultsPage() {
 									</CardHeader>
 									<CardContent className='p-0'>
 										<div className='divide-y divide-border'>
-											{year.DanhSachDiem?.map((semester) => {
+											{[...(year.DanhSachDiem ?? [])]
+												.reverse()
+												.map((semester) => {
 											const key = `${year.NamHoc}-${semester.HocKy}`;
 											const isExpanded =
 												expandedSemesters[key];

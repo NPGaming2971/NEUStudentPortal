@@ -32,25 +32,39 @@ import {
 } from "lucide-react";
 
 const TIME_BLOCKS = {
-	MORNING: {
+	B1_2: {
 		start: 1,
-		end: 5,
-		label: "Sáng",
-		time: "7:00 - 11:00",
+		end: 2,
+		label: "Tiết 1-2",
+		time: "06:45 - 09:25",
 		color: "bg-amber-500/10 border-amber-500/30",
 	},
-	AFTERNOON: {
-		start: 6,
-		end: 10,
-		label: "Chiều",
-		time: "12:30 - 16:00",
+	B3_4: {
+		start: 3,
+		end: 4,
+		label: "Tiết 3-4",
+		time: "09:35 - 12:15",
+		color: "bg-amber-500/10 border-amber-500/30",
+	},
+	B5_6: {
+		start: 5,
+		end: 6,
+		label: "Tiết 5-6",
+		time: "13:00 - 15:40",
 		color: "bg-blue-500/10 border-blue-500/30",
 	},
-	EVENING: {
-		start: 11,
-		end: 15,
-		label: "Tối",
-		time: "17:00 - 20:00",
+	B7_8: {
+		start: 7,
+		end: 8,
+		label: "Tiết 7-8",
+		time: "15:50 - 18:30",
+		color: "bg-blue-500/10 border-blue-500/30",
+	},
+	B9_10: {
+		start: 9,
+		end: 10,
+		label: "Tiết 9-10",
+		time: "18:40 - 21:10",
 		color: "bg-purple-500/10 border-purple-500/30",
 	},
 };
@@ -85,16 +99,24 @@ function ClassSchedulePage() {
 	};
 
 	const findCurrentWeek = useCallback((weeksList: Week[]): Week | null => {
+		const marked = weeksList.find(
+			(week) => week.Week === week.CurrentWeek,
+		);
+		if (marked) {
+			setCurrentWeekNum(marked.Week);
+			return marked;
+		}
+
 		const today = new Date();
-		const currentWeek = weeksList.find((week) => {
+		const activeWeek = weeksList.find((week) => {
 			const beginDate = parseDate(week.BeginDate);
 			const endDate = parseDate(week.EndDate);
 			return today >= beginDate && today <= endDate;
 		});
 
-		if (currentWeek) {
-			setCurrentWeekNum(currentWeek.Week);
-			return currentWeek;
+		if (activeWeek) {
+			setCurrentWeekNum(activeWeek.Week);
+			return activeWeek;
 		}
 
 		const futureWeeks = weeksList.filter(
@@ -135,7 +157,7 @@ function ClassSchedulePage() {
 
 		const fetchWeeks = async () => {
 			try {
-				const data = await getWeekSchedule(selectedYear, selectedTerm);
+				const data = await getWeekSchedule(selectedYear);
 				setWeeks(data);
 				const currentWeek = findCurrentWeek(data);
 				if (currentWeek) {
@@ -197,39 +219,55 @@ function ClassSchedulePage() {
 		dayIndex: number,
 		blockType: keyof typeof TIME_BLOCKS,
 	): ScheduleItem[] => {
-		if (!schedule?.ResultDataSchedule) return [];
+		if (!schedule?.ResultDataSchedule?.length) return [];
 		const { start, end } = TIME_BLOCKS[blockType];
-		return schedule.ResultDataSchedule.filter((item) => {
-			const lessonNumber = parseInt(item.BeginTime.replace("Tiết: ", ""));
-			return (
+		return schedule.ResultDataSchedule.filter(
+			(item) =>
 				item.DayOfWeek === dayIndex + 1 &&
-				lessonNumber >= start &&
-				lessonNumber <= end
-			);
-		});
+				item.PeriodID >= start &&
+				item.PeriodID <= end,
+		);
 	};
 
 	const getScheduleItemsForDay = (dayIndex: number): ScheduleItem[] => {
-		if (!schedule?.ResultDataSchedule) return [];
+		if (!schedule?.ResultDataSchedule?.length) return [];
 		return schedule.ResultDataSchedule.filter(
 			(item) => item.DayOfWeek === dayIndex + 1,
-		).sort((a, b) => {
-			const lessonA = parseInt(a.BeginTime.replace("Tiết: ", ""));
-			const lessonB = parseInt(b.BeginTime.replace("Tiết: ", ""));
-			return lessonA - lessonB;
-		});
+		).sort((a, b) => a.PeriodID - b.PeriodID);
 	};
 
 	const getBlockType = (lessonNumber: number): keyof typeof TIME_BLOCKS => {
-		if (lessonNumber <= 5) return "MORNING";
-		if (lessonNumber <= 10) return "AFTERNOON";
-		return "EVENING";
+		if (lessonNumber <= 2) return "B1_2";
+		if (lessonNumber <= 4) return "B3_4";
+		if (lessonNumber <= 6) return "B5_6";
+		if (lessonNumber <= 8) return "B7_8";
+		return "B9_10";
+	};
+
+	const getPeriodLabel = (item: ScheduleItem): string => {
+		const start = item.PeriodID;
+		const end = start + (item.NumberOfPeriods || 1) - 1;
+		return `${start}-${end}`;
+	};
+
+	const getTooltipField = (item: ScheduleItem, key: string): string => {
+		const line = item.TKHHienThi?.split(/<br\s*\/?>/i).find((l) =>
+			l.trim().startsWith(`-${key}:`),
+		);
+		return line ? line.replace(`-${key}:`, "").trim() : "";
+	};
+
+	const getTeacherName = (item: ScheduleItem): string =>
+		getTooltipField(item, "GV") || item.ProfessorName || "—";
+
+	const getRoomName = (item: ScheduleItem): string => {
+		const room = item.RoomID?.replace(/<br\s*\/?>/i, " - ") || "—";
+		const building = item.BuildingName?.trim();
+		if (!building || building === room) return room;
+		return `${building} - ${room}`;
 	};
 
 	const renderScheduleItem = (item: ScheduleItem) => {
-		const beginLesson = item.BeginTime.replace("Tiết: ", "");
-		const endLesson = item.EndTime.replace("Tiết: ", "");
-
 		return (
 			<div className='bg-primary/10 border border-primary/20 rounded-lg p-2 text-xs space-y-1'>
 				<div className='font-semibold text-foreground line-clamp-2'>
@@ -238,18 +276,17 @@ function ClassSchedulePage() {
 				<div className='flex items-center gap-1 text-muted-foreground'>
 					<Clock className='w-3 h-3' />
 					<span>
-						Tiết {beginLesson} - {endLesson}
+						Tiết{" "}
+						{item.PeriodName || getPeriodLabel(item)}
 					</span>
 				</div>
 				<div className='flex items-center gap-1 text-muted-foreground'>
 					<MapPin className='w-3 h-3' />
-					<span>{item.RoomID?.replace("</br>", " - ") || "—"}</span>
+					<span>{getRoomName(item)}</span>
 				</div>
 				<div className='flex items-center gap-1 text-muted-foreground'>
 					<User className='w-3 h-3' />
-					<span className='line-clamp-1'>
-						{item.ProfessorName || "—"}
-					</span>
+					<span>{getTeacherName(item)}</span>
 				</div>
 			</div>
 		);
@@ -380,8 +417,7 @@ function ClassSchedulePage() {
 								>
 									<span className='flex items-center gap-1'>
 										Tuần {week.Week} (
-										{week.BeginDate} -{" "}
-										{week.EndDate})
+										{week.WeekDisPlay})
 										{week.Week ===
 											currentWeekNum && (
 												<Star className='w-3 h-3 fill-amber-400 text-amber-400' />
@@ -535,22 +571,10 @@ function ClassSchedulePage() {
 												{hasClasses ?
 													<div className='space-y-2'>
 														{dayItems.map(
-															(item, idx) => {
-																const beginLesson =
-																	parseInt(
-																		item.BeginTime.replace(
-																			"Tiết: ",
-																			"",
-																		),
-																	);
-																const endLesson =
-																	item.EndTime.replace(
-																		"Tiết: ",
-																		"",
-																	);
+															(item) => {
 																const blockType =
 																	getBlockType(
-																		beginLesson,
+																		item.PeriodID,
 																	);
 																const blockInfo =
 																	TIME_BLOCKS[
@@ -560,7 +584,7 @@ function ClassSchedulePage() {
 																return (
 																	<div
 																		key={
-																			idx
+																			item.WeekScheduleID
 																		}
 																		className={cn(
 																			"border rounded-lg p-3 space-y-2",
@@ -584,31 +608,21 @@ function ClassSchedulePage() {
 																				<Clock className='w-3 h-3' />
 																				<span>
 																					Tiết{" "}
-																					{
-																						beginLesson
-																					}{" "}
-																					-{" "}
-																					{
-																						endLesson
-																					}
+																					{item.PeriodName ||
+																						getPeriodLabel(item)}
 																				</span>
 																			</div>
 																			<div className='flex items-center gap-1.5'>
 																				<MapPin className='w-3 h-3' />
 																				<span>
-																					{item.RoomID?.replace(
-																						"</br>",
-																						" - ",
-																					) ||
-																						"—"}
+																					{getRoomName(item)}
 																				</span>
 																			</div>
 																		</div>
 																		<div className='flex items-center gap-1.5 text-xs text-muted-foreground'>
 																			<User className='w-3 h-3' />
 																			<span>
-																				{item.ProfessorName ||
-																					"—"}
+																				{getTeacherName(item)}
 																			</span>
 																		</div>
 																	</div>
