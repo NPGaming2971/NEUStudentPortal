@@ -1,6 +1,7 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import {
@@ -63,24 +64,27 @@ function FinancePage() {
     const [activeTab, setActiveTab] = useState('tuition');
     const [viewMode, setViewMode] = useState<'all' | 'byYear'>('all');
 
-    useEffect(() => {
-        const fetchData = async () => {
-            try {
-                const [finance, scholarship] = await Promise.all([
-                    getStudentFinance(),
-                    getStudentScholarshipPolicy().catch(() => []),
-                ]);
-                setFinanceData(finance || []);
-                setScholarshipData(scholarship || []);
-            } catch (err) {
-                console.error('Error:', err);
-                setError('Không thể tải thông tin tài chính. Vui lòng thử lại sau.');
-            } finally {
-                setIsLoading(false);
-            }
-        };
-        fetchData();
+    const fetchData = useCallback(async () => {
+        setIsLoading(true);
+        setError(null);
+        try {
+            const [finance, scholarship] = await Promise.all([
+                getStudentFinance(),
+                getStudentScholarshipPolicy().catch(() => []),
+            ]);
+            setFinanceData(finance || []);
+            setScholarshipData(scholarship || []);
+        } catch (err) {
+            console.error('Error:', err);
+            setError('Không thể tải thông tin tài chính. Vui lòng thử lại sau.');
+        } finally {
+            setIsLoading(false);
+        }
     }, []);
+
+    useEffect(() => {
+        fetchData();
+    }, [fetchData]);
 
     // Filter out items with no amount
     const filteredFinanceData = useMemo(() => {
@@ -146,6 +150,9 @@ function FinancePage() {
                         <div className="text-center space-y-4">
                             <AlertCircle className="w-12 h-12 text-destructive mx-auto" />
                             <p className="text-destructive">{error}</p>
+                            <Button onClick={() => fetchData()} variant="outline">
+                                Thử lại
+                            </Button>
                         </div>
                     </CardContent>
                 </Card>

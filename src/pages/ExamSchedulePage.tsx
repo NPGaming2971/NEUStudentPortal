@@ -1,6 +1,7 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import {
@@ -40,6 +41,8 @@ function ExamSchedulePage() {
     const [isLoadingCurrent, setIsLoadingCurrent] = useState(false);
     const [isLoadingAll, setIsLoadingAll] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [currentError, setCurrentError] = useState<string | null>(null);
+    const [allExamsError, setAllExamsError] = useState<string | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [filters, setFilters] = useState({
         credits: 'all',
@@ -49,58 +52,66 @@ function ExamSchedulePage() {
     });
 
     // Fetch year and term data
-    useEffect(() => {
-        const fetchYearAndTerm = async () => {
-            try {
-                const data = await getYearAndTerm();
-                setYearTermData(data);
-                setSelectedYear(data.CurrentYear);
-                setSelectedTerm(data.CurrentTerm);
-            } catch (err) {
-                console.error('Error:', err);
-                setError('Không thể tải dữ liệu năm học và học kỳ');
-            } finally {
-                setIsLoading(false);
-            }
-        };
-        fetchYearAndTerm();
+    const fetchYearAndTerm = useCallback(async () => {
+        setIsLoading(true);
+        setError(null);
+        try {
+            const data = await getYearAndTerm();
+            setYearTermData(data);
+            setSelectedYear(data.CurrentYear);
+            setSelectedTerm(data.CurrentTerm);
+        } catch (err) {
+            console.error('Error:', err);
+            setError('Không thể tải dữ liệu năm học và học kỳ');
+        } finally {
+            setIsLoading(false);
+        }
     }, []);
+
+    useEffect(() => {
+        fetchYearAndTerm();
+    }, [fetchYearAndTerm]);
 
     // Fetch current exams when year/term changes
-    useEffect(() => {
+    const fetchCurrentExams = useCallback(async () => {
         if (!selectedYear || !selectedTerm) return;
-
-        const fetchCurrentExams = async () => {
-            setIsLoadingCurrent(true);
-            try {
-                const data = await getStudentExams(selectedYear, selectedTerm);
-                setCurrentExams(data || []);
-            } catch (err) {
-                console.error('Error:', err);
-                setCurrentExams([]);
-            } finally {
-                setIsLoadingCurrent(false);
-            }
-        };
-        fetchCurrentExams();
+        setIsLoadingCurrent(true);
+        setCurrentError(null);
+        try {
+            const data = await getStudentExams(selectedYear, selectedTerm);
+            setCurrentExams(data || []);
+        } catch (err) {
+            console.error('Error:', err);
+            setCurrentError('Không thể tải lịch thi học kỳ này. Vui lòng thử lại sau.');
+            setCurrentExams([]);
+        } finally {
+            setIsLoadingCurrent(false);
+        }
     }, [selectedYear, selectedTerm]);
 
-    // Fetch all exams on mount
     useEffect(() => {
-        const fetchAllExams = async () => {
-            setIsLoadingAll(true);
-            try {
-                const data = await getStudentFullExams();
-                setAllExams(data || []);
-            } catch (err) {
-                console.error('Error:', err);
-                setAllExams([]);
-            } finally {
-                setIsLoadingAll(false);
-            }
-        };
-        fetchAllExams();
+        fetchCurrentExams();
+    }, [fetchCurrentExams]);
+
+    // Fetch all exams on mount
+    const fetchAllExams = useCallback(async () => {
+        setIsLoadingAll(true);
+        setAllExamsError(null);
+        try {
+            const data = await getStudentFullExams();
+            setAllExams(data || []);
+        } catch (err) {
+            console.error('Error:', err);
+            setAllExamsError('Không thể tải toàn bộ lịch thi. Vui lòng thử lại sau.');
+            setAllExams([]);
+        } finally {
+            setIsLoadingAll(false);
+        }
     }, []);
+
+    useEffect(() => {
+        fetchAllExams();
+    }, [fetchAllExams]);
 
     // Get unique values for filters
     const uniqueValues = useMemo(() => ({
@@ -249,6 +260,9 @@ function ExamSchedulePage() {
                         <div className="text-center space-y-4">
                             <AlertCircle className="w-12 h-12 text-destructive mx-auto" />
                             <p className="text-destructive">{error}</p>
+                            <Button onClick={() => fetchYearAndTerm()} variant="outline">
+                                Thử lại
+                            </Button>
                         </div>
                     </CardContent>
                 </Card>
@@ -313,6 +327,13 @@ function ExamSchedulePage() {
                     {isLoadingCurrent ? (
                         <div className="flex items-center justify-center py-12">
                             <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                        </div>
+                    ) : currentError ? (
+                        <div className="text-center py-8">
+                            <p className="text-destructive mb-4">{currentError}</p>
+                            <Button variant="outline" onClick={fetchCurrentExams}>
+                                Thử lại
+                            </Button>
                         </div>
                     ) : currentExams.length > 0 ? (
                         renderExamTable(currentExams)
@@ -401,6 +422,13 @@ function ExamSchedulePage() {
                     {isLoadingAll ? (
                         <div className="flex items-center justify-center py-12">
                             <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                        </div>
+                    ) : allExamsError ? (
+                        <div className="text-center py-8">
+                            <p className="text-destructive mb-4">{allExamsError}</p>
+                            <Button variant="outline" onClick={fetchAllExams}>
+                                Thử lại
+                            </Button>
                         </div>
                     ) : filteredExams.length > 0 ? (
                         <>

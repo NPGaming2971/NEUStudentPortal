@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Loader2, Newspaper } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -13,23 +13,24 @@ function NewsDetailPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState(false);
 
-    useEffect(() => {
-        const fetchNews = async () => {
-            if (!newsId) return;
-            setIsLoading(true);
-            setError(false);
-            try {
-                const data = await getNewsById(Number(newsId));
-                setNews(data);
-            } catch (error) {
-                console.error('Error fetching news detail:', error);
-                setError(true);
-            } finally {
-                setIsLoading(false);
-            }
-        };
-        fetchNews();
+    const fetchNews = useCallback(async () => {
+        if (!newsId) return;
+        setIsLoading(true);
+        setError(false);
+        try {
+            const data = await getNewsById(Number(newsId));
+            setNews(data);
+        } catch (error) {
+            console.error('Error fetching news detail:', error);
+            setError(true);
+        } finally {
+            setIsLoading(false);
+        }
     }, [newsId]);
+
+    useEffect(() => {
+        fetchNews();
+    }, [fetchNews]);
 
     return (
         <div className="min-h-screen w-full bg-background">
@@ -57,9 +58,12 @@ function NewsDetailPage() {
                         <h2 className="text-xl font-semibold text-foreground mb-2">
                             Không thể tải bài viết
                         </h2>
-                        <p className="text-muted-foreground">
+                        <p className="text-muted-foreground mb-4">
                             Bài viết không tồn tại hoặc đã bị xóa.
                         </p>
+                        <Button variant="outline" onClick={fetchNews}>
+                            Thử lại
+                        </Button>
                     </div>
                 ) : (
                     <article className="bg-card border border-border rounded-2xl overflow-hidden">

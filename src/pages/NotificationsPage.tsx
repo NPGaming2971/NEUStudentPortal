@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { Search, Filter, ChevronLeft, ChevronRight, Loader2, Mail, MailOpen } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { Search, Filter, ChevronLeft, ChevronRight, Loader2, Mail, MailOpen, AlertCircle } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import {
     Select,
@@ -55,20 +55,29 @@ export default function NotificationsPage() {
         ];
     };
 
-    useEffect(() => {
-        const fetchNotifications = async () => {
-            try {
-                const data = await getStudentNotifications();
-                setNotifications(data);
-            } catch (error) {
-                console.error("Failed to fetch notifications:", error);
-            } finally {
-                setLoading(false);
-            }
-        };
+    const [error, setError] = useState<string | null>(null);
 
-        fetchNotifications();
+    const fetchNotifications = useCallback(async () => {
+        setLoading(true);
+        setError(null);
+        try {
+            const data = await getStudentNotifications();
+            setNotifications(data);
+        } catch (error) {
+            console.error("Failed to fetch notifications:", error);
+            setError("Không thể tải thông báo. Vui lòng thử lại sau.");
+        } finally {
+            setLoading(false);
+        }
     }, []);
+
+    useEffect(() => {
+        fetchNotifications();
+    }, [fetchNotifications]);
+
+    const handleRetry = () => {
+        fetchNotifications();
+    };
 
     const filterNotifications = (notifications: Notification[]): Notification[] => {
         return notifications.filter((notification) => {
@@ -145,6 +154,18 @@ export default function NotificationsPage() {
                     <Loader2 className="size-10 animate-spin text-primary" />
                     <p className="text-muted-foreground animate-pulse">Đang tải thông báo...</p>
                 </div>
+            ) : error ? (
+                <Card className="border-destructive/50 shadow-lg">
+                    <CardContent className="pt-6">
+                        <div className="text-center space-y-4 py-8">
+                            <AlertCircle className="size-12 text-destructive mx-auto" />
+                            <p className="text-destructive">{error}</p>
+                            <Button onClick={handleRetry} variant="outline">
+                                Thử lại
+                            </Button>
+                        </div>
+                    </CardContent>
+                </Card>
             ) : (
                 <>
                     {/* Controls */}

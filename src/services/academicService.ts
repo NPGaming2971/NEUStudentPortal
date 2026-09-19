@@ -8,12 +8,6 @@ export interface StudyProgram {
     Type?: number;
 }
 
-export interface GradeNote {
-    DiemChu: string;
-    TenDiem: string;
-    GhiChu?: string;
-}
-
 export interface CourseGrade {
     CurriculumID: string;
     StudyUnitID?: string;
@@ -283,16 +277,6 @@ export const getStudyProgramResultsByCurriculum = async (studyProgramId: string)
         return normalizeMarksResponse(response.data);
     } catch (error) {
         console.error('Error fetching study program results by curriculum:', error);
-        throw error;
-    }
-};
-
-export const getGradeNotes = async (): Promise<GradeNote[]> => {
-    try {
-        const response = await api.get('/student/GetGhiChuDiem');
-        return response.data;
-    } catch (error) {
-        console.error('Error fetching grade notes:', error);
         throw error;
     }
 };

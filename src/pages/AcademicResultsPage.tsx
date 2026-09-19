@@ -12,11 +12,9 @@ import {
 	getStudyPrograms,
 	getStudyProgramResults,
 	getStudyProgramResultsByCurriculum,
-	getGradeNotes,
 	getDashboardKetQuaHocTap,
 	type StudyProgram,
 	type StudyProgramResults,
-	type GradeNote,
 	type CourseGrade,
 	type GradeYear,
 	type GradeSemester,
@@ -176,7 +174,6 @@ function AcademicResultsPage() {
 	const [isLoading, setIsLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
 	const [studyPrograms, setStudyPrograms] = useState<StudyProgram[]>([]);
-	const [gradeNotes, setGradeNotes] = useState<GradeNote[]>([]);
 	const [yearlyResults, setYearlyResults] = useState<GradeYear[]>([]);
 	const [reloadKey, setReloadKey] = useState(0);
 	const [dashboardByTerm, setDashboardByTerm] = useState<
@@ -221,12 +218,6 @@ function AcademicResultsPage() {
 			} catch (err) {
 				console.error("Error fetching study programs:", err);
 				setError("Không thể tải dữ liệu. Vui lòng thử lại sau.");
-			}
-			try {
-				const notes = await getGradeNotes();
-				setGradeNotes(notes || []);
-			} catch (err) {
-				console.error("Error fetching grade notes:", err);
 			}
 		};
 		fetchInitialData();
@@ -766,28 +757,6 @@ function AcademicResultsPage() {
 						</div>
 					</CardContent>
 				</Card>
-
-			{/* Grade Notes - Compact horizontal display */}
-			{gradeNotes.length > 0 && (
-				<div className='flex items-center gap-2 overflow-x-auto pb-2 scrollbar-thin'>
-					<span className='text-xs text-muted-foreground shrink-0'>Ghi chú:</span>
-					<div className='flex items-center gap-1.5'>
-						{gradeNotes.map((note) => (
-							<div
-								key={note.DiemChu}
-								className={cn(
-									"px-2 py-0.5 rounded-md text-xs font-medium whitespace-nowrap shrink-0 border",
-									getGradeColor(note.DiemChu),
-								)}
-								title={note.TenDiem}
-							>
-								<span className='font-bold'>{note.DiemChu}</span>
-								<span className='sm:inline text-[10px] opacity-80 ml-1'>({note.TenDiem})</span>
-							</div>
-						))}
-					</div>
-				</div>
-			)}
 
 			{/* Results by Year or Statistics */}
 			{activeTab === "statistics" ?

@@ -1,6 +1,7 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import {
     Select,
     SelectContent,
@@ -58,6 +59,7 @@ function AttendancePage() {
     const [isLoading, setIsLoading] = useState(true);
     const [isLoadingData, setIsLoadingData] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [dataError, setDataError] = useState<string | null>(null);
 
     // Group attendance data by course
     const groupedData = useMemo((): GroupedAttendance[] => {
@@ -88,41 +90,46 @@ function AttendancePage() {
     }, [groupedData]);
 
     // Fetch year and term data
-    useEffect(() => {
-        const fetchYearAndTerm = async () => {
-            try {
-                const data = await getYearAndTerm();
-                setYearTermData(data);
-                setSelectedYear(data.CurrentYear);
-                setSelectedTerm(data.CurrentTerm);
-            } catch (err) {
-                console.error('Error:', err);
-                setError('Không thể tải dữ liệu năm học và học kỳ');
-            } finally {
-                setIsLoading(false);
-            }
-        };
-        fetchYearAndTerm();
+    const fetchYearAndTerm = useCallback(async () => {
+        setIsLoading(true);
+        setError(null);
+        try {
+            const data = await getYearAndTerm();
+            setYearTermData(data);
+            setSelectedYear(data.CurrentYear);
+            setSelectedTerm(data.CurrentTerm);
+        } catch (err) {
+            console.error('Error:', err);
+            setError('Không thể tải dữ liệu năm học và học kỳ');
+        } finally {
+            setIsLoading(false);
+        }
     }, []);
 
-    // Fetch attendance when year/term changes
     useEffect(() => {
-        if (!selectedYear || !selectedTerm) return;
+        fetchYearAndTerm();
+    }, [fetchYearAndTerm]);
 
-        const fetchAttendance = async () => {
-            setIsLoadingData(true);
-            try {
-                const data = await getStudentAttendance(selectedYear, selectedTerm);
-                setAttendanceData(data || []);
-            } catch (err) {
-                console.error('Error:', err);
-                setAttendanceData([]);
-            } finally {
-                setIsLoadingData(false);
-            }
-        };
-        fetchAttendance();
+    // Fetch attendance when year/term changes
+    const fetchAttendance = useCallback(async () => {
+        if (!selectedYear || !selectedTerm) return;
+        setIsLoadingData(true);
+        setDataError(null);
+        try {
+            const data = await getStudentAttendance(selectedYear, selectedTerm);
+            setAttendanceData(data || []);
+        } catch (err) {
+            console.error('Error:', err);
+            setDataError('Không thể tải dữ liệu điểm danh. Vui lòng thử lại sau.');
+            setAttendanceData([]);
+        } finally {
+            setIsLoadingData(false);
+        }
     }, [selectedYear, selectedTerm]);
+
+    useEffect(() => {
+        fetchAttendance();
+    }, [fetchAttendance]);
 
     if (isLoading) {
         return (
@@ -143,6 +150,9 @@ function AttendancePage() {
                         <div className="text-center space-y-4">
                             <AlertCircle className="w-12 h-12 text-destructive mx-auto" />
                             <p className="text-destructive">{error}</p>
+                            <Button onClick={() => fetchYearAndTerm()} variant="outline">
+                                Thử lại
+                            </Button>
                         </div>
                     </CardContent>
                 </Card>
@@ -265,6 +275,14 @@ function AttendancePage() {
                     {isLoadingData ? (
                         <div className="flex items-center justify-center py-12">
                             <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                        </div>
+                    ) : dataError ? (
+                        <div className="text-center py-8">
+                            <AlertCircle className="w-12 h-12 mx-auto mb-4 opacity-50 text-destructive" />
+                            <p className="text-destructive mb-4">{dataError}</p>
+                            <Button variant="outline" onClick={fetchAttendance}>
+                                Thử lại
+                            </Button>
                         </div>
                     ) : groupedData.length > 0 ? (
                         <>

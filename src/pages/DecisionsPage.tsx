@@ -1,6 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
 	getStudentDecisions,
 	type DecisionItem,
@@ -20,20 +21,23 @@ function DecisionsPage() {
 	const [isLoading, setIsLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
 
-	useEffect(() => {
-		const fetchDecisions = async () => {
-			try {
-				const data = await getStudentDecisions();
-				setDecisions(data || []);
-			} catch (err) {
-				console.error("Error:", err);
-				setError("Không thể tải quyết định sinh viên");
-			} finally {
-				setIsLoading(false);
-			}
-		};
-		fetchDecisions();
+	const fetchDecisions = useCallback(async () => {
+		setIsLoading(true);
+		setError(null);
+		try {
+			const data = await getStudentDecisions();
+			setDecisions(data || []);
+		} catch (err) {
+			console.error("Error:", err);
+			setError("Không thể tải quyết định sinh viên");
+		} finally {
+			setIsLoading(false);
+		}
 	}, []);
+
+	useEffect(() => {
+		fetchDecisions();
+	}, [fetchDecisions]);
 
 	if (isLoading) {
 		return (
@@ -56,6 +60,12 @@ function DecisionsPage() {
 						<div className='text-center space-y-4'>
 							<AlertCircle className='w-12 h-12 text-destructive mx-auto' />
 							<p className='text-destructive'>{error}</p>
+							<Button
+								onClick={() => fetchDecisions()}
+								variant='outline'
+							>
+								Thử lại
+							</Button>
 						</div>
 					</CardContent>
 				</Card>

@@ -29,7 +29,10 @@ import {
 	MapPin,
 	User,
 	Star,
+	Download,
 } from "lucide-react";
+import { downloadSchedule } from "@/utils/downloadHelper";
+import { useGlobalNotification } from "@/hooks/useGlobalNotification";
 
 const TIME_BLOCKS = {
 	B1_2: {
@@ -91,7 +94,10 @@ function ClassSchedulePage() {
 	const [currentWeekNum, setCurrentWeekNum] = useState<number | null>(null);
 	const [isLoading, setIsLoading] = useState(true);
 	const [isLoadingSchedule, setIsLoadingSchedule] = useState(false);
+	const [scheduleError, setScheduleError] = useState<string | null>(null);
+	const [isDownloading, setIsDownloading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
+	const { showError } = useGlobalNotification();
 
 	const parseDate = (dateStr: string): Date => {
 		const [day, month, year] = dateStr.split("/").map(Number);
@@ -135,22 +141,25 @@ function ClassSchedulePage() {
 		return null;
 	}, []);
 
-	useEffect(() => {
-		const fetchYearAndTerm = async () => {
-			try {
-				const data = await getYearAndTerm();
-				setYearTermData(data);
-				setSelectedYear(data.CurrentYear);
-				setSelectedTerm(data.CurrentTerm);
-			} catch (err) {
-				console.error("Error:", err);
-				setError("Không thể tải dữ liệu năm học và học kỳ");
-			} finally {
-				setIsLoading(false);
-			}
-		};
-		fetchYearAndTerm();
+	const fetchYearAndTerm = useCallback(async () => {
+		setIsLoading(true);
+		setError(null);
+		try {
+			const data = await getYearAndTerm();
+			setYearTermData(data);
+			setSelectedYear(data.CurrentYear);
+			setSelectedTerm(data.CurrentTerm);
+		} catch (err) {
+			console.error("Error:", err);
+			setError("Không thể tải dữ liệu năm học và học kỳ");
+		} finally {
+			setIsLoading(false);
+		}
 	}, []);
+
+	useEffect(() => {
+		fetchYearAndTerm();
+	}, [fetchYearAndTerm]);
 
 	useEffect(() => {
 		if (!selectedYear || !selectedTerm) return;
@@ -170,26 +179,28 @@ function ClassSchedulePage() {
 		fetchWeeks();
 	}, [selectedYear, selectedTerm, findCurrentWeek]);
 
-	useEffect(() => {
+	const fetchSchedule = useCallback(async () => {
 		if (!selectedYear || !selectedTerm || !selectedWeek) return;
-
-		const fetchSchedule = async () => {
-			setIsLoadingSchedule(true);
-			try {
-				const data = await getDrawingSchedules(
-					selectedYear,
-					selectedTerm,
-					selectedWeek,
-				);
-				setSchedule(data);
-			} catch (err) {
-				console.error("Error:", err);
-			} finally {
-				setIsLoadingSchedule(false);
-			}
-		};
-		fetchSchedule();
+		setIsLoadingSchedule(true);
+		setScheduleError(null);
+		try {
+			const data = await getDrawingSchedules(
+				selectedYear,
+				selectedTerm,
+				selectedWeek,
+			);
+			setSchedule(data);
+		} catch (err) {
+			console.error("Error:", err);
+			setScheduleError("Không thể tải lịch học. Vui lòng thử lại sau.");
+		} finally {
+			setIsLoadingSchedule(false);
+		}
 	}, [selectedYear, selectedTerm, selectedWeek]);
+
+	useEffect(() => {
+		fetchSchedule();
+	}, [fetchSchedule]);
 
 	const handlePrevWeek = () => {
 		const currentIndex = weeks.findIndex(
@@ -212,6 +223,22 @@ function ClassSchedulePage() {
 	const goToCurrentWeek = () => {
 		if (currentWeekNum) {
 			setSelectedWeek(currentWeekNum);
+		}
+	};
+
+	const handleDownloadSchedule = async () => {
+		if (!selectedYear || !selectedTerm) {
+			showError("Vui lòng chọn năm học và học kỳ");
+			return;
+		}
+		try {
+			setIsDownloading(true);
+			await downloadSchedule(selectedYear, selectedTerm);
+		} catch (err) {
+			console.error("Error downloading schedule:", err);
+			showError("Không thể tải lịch học. Vui lòng thử lại sau.");
+		} finally {
+			setIsDownloading(false);
 		}
 	};
 
@@ -313,6 +340,12 @@ function ClassSchedulePage() {
 						<div className='text-center space-y-4'>
 							<AlertCircle className='w-12 h-12 text-destructive mx-auto' />
 							<p className='text-destructive'>{error}</p>
+							<Button
+								onClick={() => fetchYearAndTerm()}
+								variant='outline'
+							>
+								Thử lại
+							</Button>
 						</div>
 					</CardContent>
 				</Card>
@@ -325,13 +358,28 @@ function ClassSchedulePage() {
 	return (
 		<div className='space-y-4'>
 			{/* Page Header */}
-			<div>
-				<h1 className='text-2xl md:text-3xl font-bold text-foreground'>
-					Thời khóa biểu
-				</h1>
-				<p className='text-sm text-muted-foreground'>
-					Xem lịch học theo tuần
-				</p>
+			<div className='flex flex-wrap items-start justify-between gap-3'>
+				<div>
+					<h1 className='text-2xl md:text-3xl font-bold text-foreground'>
+						Thời khóa biểu
+					</h1>
+					<p className='text-sm text-muted-foreground'>
+						Xem lịch học theo tuần
+					</p>
+				</div>
+				<Button
+					variant='outline'
+					onClick={handleDownloadSchedule}
+					disabled={isDownloading || !selectedYear || !selectedTerm}
+					className='gap-2'
+				>
+					{isDownloading ? (
+						<Loader2 className='w-4 h-4 animate-spin' />
+					) : (
+						<Download className='w-4 h-4' />
+					)}
+					Tải lịch học (.ics)
+				</Button>
 			</div>
 
 			{/* Filters */}
@@ -463,6 +511,18 @@ function ClassSchedulePage() {
 						<div className='flex items-center justify-center py-12'>
 							<Loader2 className='w-8 h-8 animate-spin text-primary' />
 						</div>
+						: scheduleError ?
+							<div className='text-center py-12'>
+								<p className='text-destructive mb-4'>
+									{scheduleError}
+								</p>
+								<Button
+									variant='outline'
+									onClick={fetchSchedule}
+								>
+									Thử lại
+								</Button>
+							</div>
 						: <>
 							{/* Desktop Table View */}
 							<div className='hidden md:block overflow-x-auto'>

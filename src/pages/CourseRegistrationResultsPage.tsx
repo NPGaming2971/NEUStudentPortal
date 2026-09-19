@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import {
     Select,
     SelectContent,
@@ -32,42 +33,48 @@ function CourseRegistrationResultsPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [isLoadingResults, setIsLoadingResults] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [resultsError, setResultsError] = useState<string | null>(null);
 
-    useEffect(() => {
-        const fetchYearAndTerm = async () => {
-            try {
-                const data = await getYearAndTerm();
-                setYearTermData(data);
-                setSelectedYear(data.CurrentYear);
-                setSelectedTerm(data.CurrentTerm);
-            } catch (err) {
-                console.error('Error:', err);
-                setError('Không thể tải dữ liệu năm học và học kỳ');
-            } finally {
-                setIsLoading(false);
-            }
-        };
-        fetchYearAndTerm();
+    const fetchYearAndTerm = useCallback(async () => {
+        setIsLoading(true);
+        setError(null);
+        try {
+            const data = await getYearAndTerm();
+            setYearTermData(data);
+            setSelectedYear(data.CurrentYear);
+            setSelectedTerm(data.CurrentTerm);
+        } catch (err) {
+            console.error('Error:', err);
+            setError('Không thể tải dữ liệu năm học và học kỳ');
+        } finally {
+            setIsLoading(false);
+        }
     }, []);
 
     useEffect(() => {
-        if (!selectedYear || !selectedTerm) return;
+        fetchYearAndTerm();
+    }, [fetchYearAndTerm]);
 
-        const fetchResults = async () => {
-            setIsLoadingResults(true);
-            try {
-                const data = await getCourseRegistrationResults(selectedYear, selectedTerm);
-                const results = Array.isArray(data) ? data : (data?.data || []);
-                setRegistrationResults(results);
-            } catch (err) {
-                console.error('Error:', err);
-                setRegistrationResults([]);
-            } finally {
-                setIsLoadingResults(false);
-            }
-        };
-        fetchResults();
+    const fetchResults = useCallback(async () => {
+        if (!selectedYear || !selectedTerm) return;
+        setIsLoadingResults(true);
+        setResultsError(null);
+        try {
+            const data = await getCourseRegistrationResults(selectedYear, selectedTerm);
+            const results = Array.isArray(data) ? data : (data?.data || []);
+            setRegistrationResults(results);
+        } catch (err) {
+            console.error('Error:', err);
+            setResultsError('Không thể tải kết quả đăng ký học phần. Vui lòng thử lại sau.');
+            setRegistrationResults([]);
+        } finally {
+            setIsLoadingResults(false);
+        }
     }, [selectedYear, selectedTerm]);
+
+    useEffect(() => {
+        fetchResults();
+    }, [fetchResults]);
 
     const summary = {
         totalCourses: registrationResults.length,
@@ -93,6 +100,9 @@ function CourseRegistrationResultsPage() {
                         <div className="text-center space-y-4">
                             <AlertCircle className="w-12 h-12 text-destructive mx-auto" />
                             <p className="text-destructive">{error}</p>
+                            <Button onClick={() => fetchYearAndTerm()} variant="outline">
+                                Thử lại
+                            </Button>
                         </div>
                     </CardContent>
                 </Card>
@@ -181,6 +191,14 @@ function CourseRegistrationResultsPage() {
                 {isLoadingResults ? (
                     <div className="flex items-center justify-center py-12">
                         <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                    </div>
+                ) : resultsError ? (
+                    <div className="text-center py-12">
+                        <AlertCircle className="w-12 h-12 text-destructive mx-auto mb-4 opacity-80" />
+                        <p className="text-destructive mb-4">{resultsError}</p>
+                        <Button variant="outline" onClick={fetchResults}>
+                            Thử lại
+                        </Button>
                     </div>
                 ) : registrationResults.length === 0 ? (
                     <div className="text-center py-12">

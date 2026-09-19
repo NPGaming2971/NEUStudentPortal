@@ -147,7 +147,7 @@ function GraduationPage() {
 
         try {
             setIsDownloading(true);
-            await downloadTranscript(studentId, studyPrograms[0].StudyProgramID);
+            await downloadTranscript(studyPrograms[0].StudyProgramID);
         } catch (err) {
             console.error('Error:', err);
             showError('Không thể tải bảng điểm. Vui lòng thử lại sau.');

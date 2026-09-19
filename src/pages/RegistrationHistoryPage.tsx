@@ -1,4 +1,4 @@
-import {useState, useEffect, useMemo} from "react";
+import {useState, useEffect, useMemo, useCallback} from "react";
 import {Card, CardContent, CardHeader, CardTitle} from "@/components/ui/card";
 import {Badge} from "@/components/ui/badge";
 import {
@@ -50,24 +50,25 @@ function RegistrationHistoryPage() {
 	const [historyData, setHistoryData] = useState<RegistrationHistory[]>([]);
 
 	// Initialize session and fetch year/term data
-	useEffect(() => {
-		const initialize = async () => {
-			try {
-				await initializeRegistrationSession();
-				const data = await getAllYearStudyAndTerm();
-				setYearStudyAndTerm(data);
-				setSelectedYearStudy(data.CurrentYearStudy);
-				setSelectedTermId(data.CurrentTermID);
-			} catch (err) {
-				console.error("Error initializing:", err);
-				showError("Không thể kết nối đến hệ thống đăng ký");
-			} finally {
-				setIsInitializing(false);
-			}
-		};
-
-		initialize();
+	const initialize = useCallback(async () => {
+		setIsInitializing(true);
+		try {
+			await initializeRegistrationSession();
+			const data = await getAllYearStudyAndTerm();
+			setYearStudyAndTerm(data);
+			setSelectedYearStudy(data.CurrentYearStudy);
+			setSelectedTermId(data.CurrentTermID);
+		} catch (err) {
+			console.error("Error initializing:", err);
+			showError("Không thể kết nối đến hệ thống đăng ký");
+		} finally {
+			setIsInitializing(false);
+		}
 	}, [showError]);
+
+	useEffect(() => {
+		initialize();
+	}, [initialize]);
 
 	useEffect(() => {
 		if (!selectedYearStudy || !selectedTermId) return;
@@ -153,6 +154,9 @@ function RegistrationHistoryPage() {
 							<p className='text-destructive'>
 								Không thể tải thông tin năm học và học kỳ
 							</p>
+							<Button onClick={() => initialize()} variant='outline'>
+								Thử lại
+							</Button>
 						</div>
 					</CardContent>
 				</Card>

@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -37,39 +38,49 @@ function EducationalProgramPage() {
 	const [isLoading, setIsLoading] = useState(true);
 	const [isLoadingDetail, setIsLoadingDetail] = useState(false);
 	const [error, setError] = useState<string | null>(null);
+	const [detailError, setDetailError] = useState<string | null>(null);
 
-	useEffect(() => {
-		const fetchPrograms = async () => {
+	const fetchProgramDetail = useCallback(
+		async (programId: string) => {
+			setIsLoadingDetail(true);
+			setDetailError(null);
 			try {
-				const data = await getStudyPrograms();
-				if (data.length > 0) {
-					setSelectedProgram(data[0]);
-					fetchProgramDetail(data[0].StudyProgramID);
-				}
+				const data = await getStudyProgramDetail(programId);
+				setBlocks(data?.tbStudyPrograms || []);
 			} catch (err) {
-				console.error("Error fetching programs:", err);
-				setError(
-					"Không thể tải chương trình đào tạo. Vui lòng thử lại sau.",
+				console.error("Error fetching program detail:", err);
+				setDetailError(
+					"Không thể tải danh sách học phần. Vui lòng thử lại sau.",
 				);
 			} finally {
-				setIsLoading(false);
+				setIsLoadingDetail(false);
 			}
-		};
+		},
+		[],
+	);
 
-		fetchPrograms();
-	}, []);
-
-	const fetchProgramDetail = async (programId: string) => {
-		setIsLoadingDetail(true);
+	const fetchPrograms = useCallback(async () => {
+		setIsLoading(true);
+		setError(null);
 		try {
-			const data = await getStudyProgramDetail(programId);
-			setBlocks(data?.tbStudyPrograms || []);
+			const data = await getStudyPrograms();
+			if (data.length > 0) {
+				setSelectedProgram(data[0]);
+				fetchProgramDetail(data[0].StudyProgramID);
+			}
 		} catch (err) {
-			console.error("Error fetching program detail:", err);
+			console.error("Error fetching programs:", err);
+			setError(
+				"Không thể tải chương trình đào tạo. Vui lòng thử lại sau.",
+			);
 		} finally {
-			setIsLoadingDetail(false);
+			setIsLoading(false);
 		}
-	};
+	}, [fetchProgramDetail]);
+
+	useEffect(() => {
+		fetchPrograms();
+	}, [fetchPrograms]);
 
 	const allCourses = blocks.flatMap((block) =>
 		block.ChuongTrinhDaoTaos.flatMap((group) => group.ChuongTrinhs),
@@ -105,6 +116,9 @@ function EducationalProgramPage() {
 						<div className='text-center space-y-4'>
 							<AlertCircle className='w-12 h-12 text-destructive mx-auto' />
 							<p className='text-destructive'>{error}</p>
+							<Button variant='outline' onClick={fetchPrograms}>
+								Thử lại
+							</Button>
 						</div>
 					</CardContent>
 				</Card>
@@ -178,6 +192,21 @@ function EducationalProgramPage() {
 				<div className='flex items-center justify-center py-12'>
 					<Loader2 className='w-8 h-8 animate-spin text-primary' />
 				</div>
+				: detailError ?
+					<div className='text-center py-8'>
+						<p className='text-destructive mb-4'>
+							{detailError}
+						</p>
+						<Button
+							variant='outline'
+							onClick={() =>
+								selectedProgram &&
+								fetchProgramDetail(selectedProgram.StudyProgramID)
+							}
+						>
+							Thử lại
+						</Button>
+					</div>
 				: <div>
 					<h2 className='flex items-center gap-2 text-lg font-semibold mb-4'>
 						<BookOpen className='h-5 w-5 text-primary' />

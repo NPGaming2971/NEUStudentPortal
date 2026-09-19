@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import assets from '@/assets';
 import { Button } from '@/components/ui/button';
@@ -54,6 +54,7 @@ function HomePage() {
     const [selectedGroup, setSelectedGroup] = useState<number>(ALL_GROUP_ID);
     const [currentPage, setCurrentPage] = useState(1);
     const [isLoading, setIsLoading] = useState(true);
+    const [newsError, setNewsError] = useState<string | null>(null);
     const [footerInfo, setFooterInfo] = useState<FooterInfo>();
 
     const { theme, setTheme } = useTheme();
@@ -96,21 +97,29 @@ function HomePage() {
         fetchNewsGroups();
     }, []);
 
-    useEffect(() => {
-        const fetchNewsItems = async () => {
-            setIsLoading(true);
-            try {
-                const data = await getNewsItems(selectedGroup);
-                setNewsItems(data);
-                setCurrentPage(1);
-            } catch (error) {
-                console.error('Error fetching news items:', error);
-            } finally {
-                setIsLoading(false);
-            }
-        };
-        fetchNewsItems();
+    const fetchNewsItems = useCallback(async () => {
+        setIsLoading(true);
+        setNewsError(null);
+        try {
+            const data = await getNewsItems(selectedGroup);
+            setNewsItems(data);
+            setCurrentPage(1);
+        } catch (error) {
+            console.error('Error fetching news items:', error);
+            setNewsError('Không thể tải thông báo. Vui lòng thử lại sau.');
+            setNewsItems([]);
+        } finally {
+            setIsLoading(false);
+        }
     }, [selectedGroup]);
+
+    useEffect(() => {
+        fetchNewsItems();
+    }, [fetchNewsItems]);
+
+    const handleRetryNews = () => {
+        fetchNewsItems();
+    };
 
     const totalPages = Math.ceil(newsItems.length / ITEMS_PER_PAGE);
     const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
@@ -266,7 +275,17 @@ function HomePage() {
 
                                 {/* News Items */}
                                 <div className="divide-y divide-border">
-                                    {isLoading ? (
+                                    {newsError ? (
+                                        <div className="p-8 text-center">
+                                            <p className="text-destructive mb-4">{newsError}</p>
+                                            <Button
+                                                variant="outline"
+                                                onClick={handleRetryNews}
+                                            >
+                                                Thử lại
+                                            </Button>
+                                        </div>
+                                    ) : isLoading ? (
                                         <div className="p-8 text-center text-muted-foreground">
                                             Đang tải...
                                         </div>
