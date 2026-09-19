@@ -53,6 +53,23 @@ function DiscussionPage() {
         fetchYearAndTerm();
     }, [showError]);
 
+    // Reload term list + reset selected term when the year changes
+    useEffect(() => {
+        if (!selectedYear || !yearAndTerm) return;
+        const item = yearAndTerm.items.find(
+            (i) => i.YearStudy === selectedYear,
+        );
+        if (!item) return;
+        setSelectedTerm((prev) => {
+            if (item.Terms.some((t) => t.TermID === prev)) return prev;
+            return (
+                item.Terms.find((t) => t.CurrentTerm)?.TermID ??
+                item.Terms[0]?.TermID ??
+                ''
+            );
+        });
+    }, [selectedYear, yearAndTerm]);
+
     useEffect(() => {
         const fetchCourses = async () => {
             if (!selectedYear || !selectedTerm) return;
@@ -145,7 +162,9 @@ function DiscussionPage() {
                             <SelectValue placeholder="Chọn học kỳ" />
                         </SelectTrigger>
                         <SelectContent>
-                            {yearAndTerm.Terms.map((term: Term) => (
+                            {(yearAndTerm.items.find(
+                                (i) => i.YearStudy === selectedYear,
+                            )?.Terms ?? yearAndTerm.Terms).map((term: Term) => (
                                 <SelectItem key={term.TermID} value={term.TermID}>
                                     {term.TermName}
                                 </SelectItem>

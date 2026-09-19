@@ -72,6 +72,23 @@ function ExamSchedulePage() {
         fetchYearAndTerm();
     }, [fetchYearAndTerm]);
 
+    // Reload term list + reset selected term when the year changes
+    useEffect(() => {
+        if (!selectedYear || !yearTermData) return;
+        const item = yearTermData.items.find(
+            (i) => i.YearStudy === selectedYear,
+        );
+        if (!item) return;
+        setSelectedTerm((prev) => {
+            if (item.Terms.some((t) => t.TermID === prev)) return prev;
+            return (
+                item.Terms.find((t) => t.CurrentTerm)?.TermID ??
+                item.Terms[0]?.TermID ??
+                ''
+            );
+        });
+    }, [selectedYear, yearTermData]);
+
     // Fetch current exams when year/term changes
     const fetchCurrentExams = useCallback(async () => {
         if (!selectedYear || !selectedTerm) return;
@@ -167,7 +184,7 @@ function ExamSchedulePage() {
                 </div>
                 <div className="flex items-center gap-1.5">
                     <FileText className="w-3 h-3" />
-                    <span>{exam.HinhThucThi} • Lần {exam.LanThi}</span>
+                    <span>{exam.HinhThucThi} • {exam.LanThi}</span>
                 </div>
             </div>
         </div>
@@ -187,7 +204,7 @@ function ExamSchedulePage() {
                             <th className="text-left p-3 font-medium">Ngày thi</th>
                             <th className="text-left p-3 font-medium">Giờ thi</th>
                             <th className="text-left p-3 font-medium">Phòng</th>
-                            <th className="text-center p-3 font-medium">Lần</th>
+                            <th className="text-center p-3 font-medium"></th>
                             <th className="text-center p-3 font-medium">Trạng thái</th>
                         </tr>
                     </thead>
@@ -315,7 +332,9 @@ function ExamSchedulePage() {
                                     <SelectValue placeholder="Học kỳ" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {yearTermData?.Terms.map((term) => (
+                                    {(yearTermData?.items.find(
+                                        (i) => i.YearStudy === selectedYear,
+                                    )?.Terms ?? yearTermData?.Terms ?? []).map((term) => (
                                         <SelectItem key={term.TermID} value={term.TermID}>
                                             {term.TermName}
                                         </SelectItem>
@@ -410,7 +429,7 @@ function ExamSchedulePage() {
                                     <SelectItem value="all">Tất cả</SelectItem>
                                     {uniqueValues.examAttempts.map((attempt) => (
                                         <SelectItem key={attempt} value={attempt.toString()}>
-                                            Lần {attempt}
+                                            {attempt}
                                         </SelectItem>
                                     ))}
                                 </SelectContent>

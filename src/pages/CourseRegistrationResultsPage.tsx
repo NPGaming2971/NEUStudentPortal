@@ -55,6 +55,23 @@ function CourseRegistrationResultsPage() {
         fetchYearAndTerm();
     }, [fetchYearAndTerm]);
 
+    // Reload term list + reset selected term when the year changes
+    useEffect(() => {
+        if (!selectedYear || !yearTermData) return;
+        const item = yearTermData.items.find(
+            (i) => i.YearStudy === selectedYear,
+        );
+        if (!item) return;
+        setSelectedTerm((prev) => {
+            if (item.Terms.some((t) => t.TermID === prev)) return prev;
+            return (
+                item.Terms.find((t) => t.CurrentTerm)?.TermID ??
+                item.Terms[0]?.TermID ??
+                ''
+            );
+        });
+    }, [selectedYear, yearTermData]);
+
     const fetchResults = useCallback(async () => {
         if (!selectedYear || !selectedTerm) return;
         setIsLoadingResults(true);
@@ -142,7 +159,9 @@ function CourseRegistrationResultsPage() {
                         <SelectValue placeholder="Chọn học kỳ" />
                     </SelectTrigger>
                     <SelectContent>
-                        {yearTermData?.Terms.map((term) => (
+                        {(yearTermData?.items.find(
+                            (i) => i.YearStudy === selectedYear,
+                        )?.Terms ?? yearTermData?.Terms ?? []).map((term) => (
                             <SelectItem key={term.TermID} value={term.TermID}>
                                 {term.TermName}
                             </SelectItem>
