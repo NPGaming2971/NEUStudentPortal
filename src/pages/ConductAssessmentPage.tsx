@@ -726,8 +726,8 @@ function ConductAssessmentPage() {
 																		const rowDisabled = !editable || item.ReadOnly === "1";
 																		const cellBg =
 																			!editable || item.ReadOnly === "1"
-																				? "bg-blue-50"
-																				: "bg-white";
+																				? "bg-blue-50 dark:bg-blue-950/30"
+																				: "bg-white dark:bg-transparent";
 																		const childEvidence = item.IsAdd === true
 																			? groupedItems.filter((i) => i.BehaviorDetailIDParent === item.BehaviorDetailID)
 																			: [];
@@ -940,8 +940,8 @@ function ConductAssessmentPage() {
 																		const rowDisabled = !editable || item.ReadOnly === "1";
 																		const cellBg =
 																			!editable || item.ReadOnly === "1"
-																				? "bg-blue-50"
-																				: "bg-white";
+																				? "bg-blue-50 dark:bg-blue-950/30"
+																				: "bg-white dark:bg-transparent";
 																		const checked =
 																			Number(scores[item.BehaviorDetailID] ?? 0) ===
 																			Number(item.MaxScore);
