@@ -1,6 +1,6 @@
 import type { ComponentType, ReactNode } from "react";
-import { Route, Navigate } from "react-router-dom";
-import { useAuth } from "@/hooks/useAuth";
+import { Route } from "react-router-dom";
+import { RedirectToStudent, RedirectToStudentInfo } from "@/components/common/AuthRedirect";
 
 // Layouts
 import NothingLayout from "@/components/layouts/NothingLayout";
@@ -39,16 +39,15 @@ export interface RouteConfig {
 	layout: ComponentType<{ children: ReactNode }>;
 }
 
-function ProtectedHomePage() {
-	const { isAuthenticated } = useAuth();
-	if (!isAuthenticated) return <Navigate to="/login" replace />;
-	return <HomePage />;
-}
-
 const publicRoutes: RouteConfig[] = [
 	{
 		path: "/",
-		component: ProtectedHomePage,
+		component: RedirectToStudent,
+		layout: NothingLayout,
+	},
+	{
+		path: "/student",
+		component: RedirectToStudentInfo,
 		layout: NothingLayout,
 	},
 	{
