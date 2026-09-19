@@ -80,7 +80,7 @@ export default {
 					body,
 					cf: { cacheTtl: 0, cacheEverything: false },
 				});
-				const responseBody = await response.text();
+				const responseBody = await response.arrayBuffer();
 				return new Response(responseBody, {
 					status: response.status,
 					statusText: response.statusText,
