@@ -1,11 +1,16 @@
-import { getToken } from "./authService";
-import { PORTAL_PROXY_URL, REGIST_PROXY_URL } from "../lib/proxyConfig";
+import { getToken, decodeJwt } from "./authService";
+import {
+	PORTAL_PROXY_URL,
+	REGIST_PROXY_URL,
+	PORTAL_CLIENT_ID,
+	PORTAL_API_KEY,
+} from "../lib/proxyConfig";
 
 const CONFIG = {
-	portal_api: `${PORTAL_PROXY_URL}/`,
-	regist_api: `${REGIST_PROXY_URL}/`,
-	apiKey: "pscRBF0zT2Mqo6vMw69YMOH43IrB2RtXBS0EHit2kzv",
-	clientId: "neucq",
+	portal_api: `${PORTAL_PROXY_URL}`,
+	regist_api: `${REGIST_PROXY_URL}`,
+	apiKey: PORTAL_API_KEY,
+	clientId: PORTAL_CLIENT_ID,
 };
 
 /**
@@ -62,14 +67,10 @@ export const initializeRegistrationSession = async () => {
 
 		if (existingRegistToken && lastAuthToken === portalToken) {
 			// Kiểm tra token còn hạn không
-			try {
-				const tokenData = JSON.parse(atob(existingRegistToken.split(".")[1]));
-				// Token còn hạn ít nhất 30 giây
-				if (tokenData.exp * 1000 > Date.now() + 30000) {
-					return existingRegistToken;
-				}
-			} catch {
-				// Token không hợp lệ, tiếp tục tạo mới
+			const tokenData = decodeJwt<{ exp?: number }>(existingRegistToken);
+			// Token còn hạn ít nhất 30 giây
+			if (tokenData && tokenData.exp && tokenData.exp * 1000 > Date.now() + 30000) {
+				return existingRegistToken;
 			}
 		}
 

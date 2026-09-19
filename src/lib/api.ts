@@ -1,13 +1,14 @@
 import axios from 'axios';
-import { PORTAL_PROXY_URL } from './proxyConfig';
+import { PORTAL_PROXY_URL, PORTAL_API_KEY, PORTAL_CLIENT_ID } from './proxyConfig';
+import { getToken, getTokenPayload } from '@/services/authService';
 
 export const API_TIMEOUT = 30000;
 
 const api = axios.create({
     baseURL: import.meta.env.VITE_API_URL || PORTAL_PROXY_URL,
     headers: {
-        apikey: import.meta.env.VITE_API_KEY || 'neucqpscrbf0zt2mqo6vmw69ymoh43irb2rtxbs0ehit2kzvl2auxafjbvw==',
-        clientid: 'neucq',
+        apikey: import.meta.env.VITE_API_KEY || PORTAL_API_KEY,
+        clientid: PORTAL_CLIENT_ID,
         accept: 'application/json, text/plain, */*',
     },
     
@@ -16,26 +17,14 @@ const api = axios.create({
 
 api.interceptors.request.use(
     (config) => {
-        let token: string | null = null;
-        const raw = localStorage.getItem('authorizationData');
-        if (raw) {
-            try {
-                token = JSON.parse(raw).Token ?? null;
-            } catch {
-                token = null;
-            }
-        }
+        const token = getToken();
         if (token) {
-            try {
-                const tokenData = JSON.parse(atob(token.split('.')[1]));
-                if (tokenData.exp * 1000 > Date.now()) {
-                    config.headers.authorization = `Bearer ${token}`;
-                } else {
-                    localStorage.removeItem('authorizationData');
-                    window.location.href = '/login';
-                }
-            } catch {
+            const tokenData = getTokenPayload();
+            if (tokenData && tokenData.exp && tokenData.exp * 1000 > Date.now()) {
+                config.headers.authorization = `Bearer ${token}`;
+            } else {
                 localStorage.removeItem('authorizationData');
+                window.location.href = '/login';
             }
         }
         return config;

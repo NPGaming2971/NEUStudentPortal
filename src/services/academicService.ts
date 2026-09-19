@@ -1,12 +1,8 @@
 // Academic Service - Study programs, grades, conduct score, course registration, graduation
 import api from '@/lib/api';
+import { getStudyPrograms, type StudyProgram } from './programService';
 
-export interface StudyProgram {
-    StudentID?: string;
-    StudyProgramID: string;
-    StudyProgramName: string;
-    Type?: number;
-}
+export { getStudyPrograms, type StudyProgram };
 
 export interface CourseGrade {
     CurriculumID: string;
@@ -168,16 +164,6 @@ export interface RegistrationResult {
     ListOfWeekSchedules: string;
     RegistType: string;
 }
-
-export const getStudyPrograms = async (): Promise<StudyProgram[]> => {
-    try {
-        const response = await api.get('/student/getstudyprogram');
-        return response.data;
-    } catch (error) {
-        console.error('Error fetching study programs:', error);
-        throw error;
-    }
-};
 
 // The /student/marks endpoint returns two different shapes depending on `loai`:
 //   - loai=SV    -> { diem: [{ NamHoc, DanhSachDiem: [{ HocKy, DanhSachDiemHK, AverageScore }] }], diemToanKhoa }

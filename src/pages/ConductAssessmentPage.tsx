@@ -25,7 +25,7 @@ import {
 	type BehaviorDetailItem,
 	type BehaviorDiscussion,
 } from "@/services/conductService";
-import { getToken } from "@/services/authService";
+import { getStudentId } from "@/services/authService";
 import { useGlobalNotification } from "@/hooks/useGlobalNotification";
 import { Input } from "@/components/ui/input";
 import {
@@ -105,17 +105,6 @@ function getConductRankFromScore(score: number): string {
 
 const clampScore = (value: number, max: number): number =>
 	Math.max(0, Math.min(value, Math.max(0, max)));
-
-const getStudentId = (): string => {
-	try {
-		const token = getToken();
-		if (!token) return "";
-		const payload = JSON.parse(atob(token.split(".")[1]));
-		return payload.Id || payload.StudentID || "";
-	} catch {
-		return "";
-	}
-};
 
 function ConductAssessmentPage() {
 	const [yearTermData, setYearTermData] = useState<YearTermScoreData | null>(null);

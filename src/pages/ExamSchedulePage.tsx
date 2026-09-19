@@ -29,7 +29,9 @@ import {
     MapPin,
     Search,
     FileText,
+    Download,
 } from 'lucide-react';
+import ExamExportDialog from '@/components/common/ExamExportDialog';
 
 function ExamSchedulePage() {
     const [yearTermData, setYearTermData] = useState<YearAndTermData | null>(null);
@@ -44,6 +46,8 @@ function ExamSchedulePage() {
     const [currentError, setCurrentError] = useState<string | null>(null);
     const [allExamsError, setAllExamsError] = useState<string | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
+    const [activeTab, setActiveTab] = useState('current');
+    const [exportOpen, setExportOpen] = useState(false);
     const [filters, setFilters] = useState({
         credits: 'all',
         status: 'all',
@@ -290,17 +294,28 @@ function ExamSchedulePage() {
     return (
         <div className="space-y-4">
             {/* Page Header */}
-            <div>
-                <h1 className="text-2xl md:text-3xl font-bold text-foreground">
-                    Lịch thi
-                </h1>
-                <p className="text-sm text-muted-foreground">
-                    Xem lịch thi theo học kỳ và toàn khóa
-                </p>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div>
+                    <h1 className="text-2xl md:text-3xl font-bold text-foreground">
+                        Lịch thi
+                    </h1>
+                    <p className="text-sm text-muted-foreground">
+                        Xem lịch thi theo học kỳ và toàn khóa
+                    </p>
+                </div>
+                <Button
+                    onClick={() => setExportOpen(true)}
+                    disabled={activeTab === 'all' || !selectedYear || !selectedTerm}
+                    title={activeTab === 'all' ? 'Chỉ hỗ trợ xuất lịch thi theo học kỳ' : undefined}
+                    className="gap-2"
+                >
+                    <Download className="w-4 h-4" />
+                    Tải lịch thi (.ics)
+                </Button>
             </div>
 
             {/* Tabs */}
-            <Tabs defaultValue="current" className="w-full">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                 <TabsList className="grid w-full grid-cols-2 max-w-md">
                     <TabsTrigger value="current">Lịch thi hiện tại</TabsTrigger>
                     <TabsTrigger value="all">Tất cả lịch thi</TabsTrigger>
@@ -464,6 +479,14 @@ function ExamSchedulePage() {
                     )}
                 </TabsContent>
             </Tabs>
+
+            <ExamExportDialog
+                open={exportOpen}
+                onOpenChange={setExportOpen}
+                yearItems={yearTermData?.items ?? []}
+                currentYear={selectedYear}
+                currentTerm={selectedTerm}
+            />
         </div>
     );
 }

@@ -55,6 +55,25 @@ export const logout = (): void => {
     document.cookie = 'YIF+pxrGp0isUkYUsAWxn3rQH6pBrNY_=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
 };
 
+export interface JwtPayload {
+    exp?: number;
+    Id?: string;
+    StudentID?: string;
+    Name?: string;
+    Role?: string;
+    GraduateLevel?: string;
+    DVDaoTao?: string;
+}
+
+export const decodeJwt = <T = JwtPayload>(token: string): T | null => {
+    try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        return payload && typeof payload === 'object' ? (payload as T) : null;
+    } catch {
+        return null;
+    }
+};
+
 export const getToken = (): string | null => {
     const raw = localStorage.getItem('authorizationData');
     if (!raw) return null;
@@ -65,39 +84,38 @@ export const getToken = (): string | null => {
     }
 };
 
+export const getTokenPayload = (): JwtPayload | null => {
+    const token = getToken();
+    if (!token) return null;
+    return decodeJwt(token);
+};
+
+export const getStudentId = (): string => {
+    const payload = getTokenPayload();
+    if (!payload) return '';
+    return payload.Id || payload.StudentID || '';
+};
+
 export const setToken = (token: string, authData?: AuthData): void => {
     localStorage.setItem('authorizationData', JSON.stringify({ ...authData, Token: token }));
 };
 
 export const isTokenValid = (): boolean => {
-    const token = getToken();
-    if (!token) return false;
-
-    try {
-        const tokenData = JSON.parse(atob(token.split('.')[1]));
-        return tokenData.exp * 1000 > Date.now();
-    } catch {
-        return false;
-    }
+    const payload = getTokenPayload();
+    if (!payload || typeof payload.exp !== 'number') return false;
+    return payload.exp * 1000 > Date.now();
 };
 
 export const getUserFromToken = (): User | null => {
-    const token = getToken();
-    if (!token) return null;
-
-    try {
-        const tokenData = JSON.parse(atob(token.split('.')[1]));
-        if (tokenData.exp * 1000 > Date.now()) {
-            return {
-                id: tokenData.Id,
-                fullName: tokenData.Name,
-                role: tokenData.Role,
-                graduateLevel: tokenData.GraduateLevel,
-                dvDaoTao: tokenData.DVDaoTao,
-            };
-        }
-        return null;
-    } catch {
+    const payload = getTokenPayload();
+    if (!payload || typeof payload.exp !== 'number' || payload.exp * 1000 <= Date.now()) {
         return null;
     }
+    return {
+        id: payload.Id || '',
+        fullName: payload.Name || '',
+        role: payload.Role || '',
+        graduateLevel: payload.GraduateLevel || '',
+        dvDaoTao: payload.DVDaoTao,
+    };
 };

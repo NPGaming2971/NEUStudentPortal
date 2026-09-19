@@ -13,7 +13,7 @@ import {
 } from '@/services/academicService';
 import { downloadTranscript, downloadGraduationApplication } from '@/utils/downloadHelper';
 import { useGlobalNotification } from '@/hooks/useGlobalNotification';
-import { getToken } from '@/services/authService';
+import { getStudentId } from '@/services/authService';
 import {
     Loader2,
     GraduationCap,
@@ -37,20 +37,9 @@ function GraduationPage() {
     const getStudyProgramIdString = (): string | null => {
         if (studyPrograms.length === 0) return null;
         // Convert StudyProgramID to the format used by the API (e.g., "1A222901")
-        const studentId = getStudentIdFromToken();
+        const studentId = getStudentId();
         if (!studentId) return null;
         return `1A${studentId.substring(0, 2)}${String(studyPrograms[0].StudyProgramID).substring(4, 8)}`;
-    };
-
-    const getStudentIdFromToken = (): string | null => {
-        try {
-            const token = getToken();
-            if (!token) return null;
-            const payload = JSON.parse(atob(token.split('.')[1]));
-            return payload.Id || payload.StudentID || null;
-        } catch {
-            return null;
-        }
     };
 
     const fetchGraduationData = async () => {
@@ -72,15 +61,11 @@ function GraduationPage() {
                 setStudyPrograms(programsData);
 
                 if (programsData.length > 0) {
-                    const token = getToken();
-                    if (token) {
-                        const payload = JSON.parse(atob(token.split('.')[1]));
-                        const studentId = payload.Id || payload.StudentID;
-                        if (studentId) {
-                            const studyProgramIdStr = `1A${studentId.substring(0, 2)}${String(programsData[0].StudyProgramID).substring(4, 8)}`;
-                            const data = await getGraduationCourses(studyProgramIdStr);
-                            setGraduationData(data);
-                        }
+                    const studentId = getStudentId();
+                    if (studentId) {
+                        const studyProgramIdStr = `1A${studentId.substring(0, 2)}${String(programsData[0].StudyProgramID).substring(4, 8)}`;
+                        const data = await getGraduationCourses(studyProgramIdStr);
+                        setGraduationData(data);
                     }
                 }
             } catch (err) {
@@ -139,7 +124,7 @@ function GraduationPage() {
             return;
         }
 
-        const studentId = getStudentIdFromToken();
+        const studentId = getStudentId();
         if (!studentId) {
             showError('Không thể xác định mã sinh viên. Vui lòng đăng nhập lại.');
             return;
