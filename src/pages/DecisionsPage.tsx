@@ -98,35 +98,43 @@ function DecisionsPage() {
 								key={index}
 								className='border rounded-lg p-4 space-y-3 bg-card hover:bg-muted/30 transition-colors hover:shadow-md'
 							>
-								<div className='flex items-center justify-between flex-wrap gap-2'>
-									<div className='flex items-center gap-2'>
-										<Badge variant='outline'>
-											{decision.YearStudy}
-										</Badge>
-										<Badge variant='outline'>
-											HK{decision.TermID}
-										</Badge>
-									</div>
-									<Badge variant='secondary'>
-										{decision.DecisionName}
+<div className='flex items-center justify-between flex-wrap gap-2'>
+								<div className='flex items-center gap-2'>
+									<Badge variant='outline'>
+										{decision.YearStudy}
+									</Badge>
+									<Badge variant='outline'>
+										HK{decision.TermID}
+									</Badge>
+									<Badge variant='outline'>
+										{decision.StudentID}
 									</Badge>
 								</div>
+								<Badge variant='secondary'>
+									{decision.DecisionName}
+								</Badge>
+							</div>
 
-								<div className='space-y-2'>
-									<div className='flex items-center gap-2'>
-										<Hash className='w-4 h-4 text-primary flex-shrink-0' />
-										<span className='font-mono font-medium'>
-											{decision.DecisionNumber}
+							<div className='space-y-3'>
+								<div className='flex items-center gap-2'>
+									<Hash className='w-4 h-4 text-primary flex-shrink-0' />
+									<span className='font-mono font-medium'>
+										{decision.DecisionNumber}
+									</span>
+								</div>
+
+								<div className='rounded-md bg-muted/50 p-3'>
+									<div className='flex items-center gap-2 mb-2'>
+										<FileText className='w-4 h-4 text-primary flex-shrink-0' />
+										<span className='text-sm font-semibold'>
+											Nội dung quyết định
 										</span>
 									</div>
-
-									<div className='flex items-start gap-2'>
-										<FileText className='w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0' />
-										<p className='text-sm text-muted-foreground'>
-											{decision.FullText}
-										</p>
-									</div>
+									<p className='text-sm text-foreground whitespace-pre-wrap'>
+										{decision.InfringeContentName || "—"}
+									</p>
 								</div>
+							</div>
 
 								<div className='flex items-center justify-between pt-3 border-t text-sm'>
 									<div className='flex items-center gap-1.5 text-muted-foreground'>

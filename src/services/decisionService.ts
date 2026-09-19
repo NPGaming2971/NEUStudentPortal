@@ -2,11 +2,12 @@
 import api from '@/lib/api';
 
 export interface DecisionItem {
+    StudentID: string;
     YearStudy: string;
     TermID: string;
     DecisionNumber: string;
     DecisionName: string;
-    FullText: string;
+    InfringeContentName: string;
     SignStaff: string;
     SignDate: string;
 }
