@@ -22,6 +22,7 @@ export interface YearAndTermData {
     CurrentTerm: string;
     YearStudy: string[];
     Terms: Term[];
+    items: YearAndTermItem[];
 }
 
 export interface Week {
@@ -79,6 +80,7 @@ export const getYearAndTerm = async (): Promise<YearAndTermData> => {
             CurrentTerm: currentTerm?.TermID ?? '',
             YearStudy: items.map((item) => item.YearStudy),
             Terms: terms,
+            items: items,
         };
     } catch (error) {
         console.error('Error fetching year and term:', error);
@@ -108,6 +110,114 @@ export const getDrawingSchedules = async (yearStudy: string, termId: string, wee
         return response.data;
     } catch (error) {
         console.error('Error fetching drawing schedules:', error);
+        throw error;
+    }
+};
+
+export interface PeriodScheduleItem {
+    MaSV: string;
+    HoTenSV: string;
+    MaLHP: string;
+    TenHP: string;
+    SoTC: number;
+    LoaiHP: string;
+    SoLuong: number;
+    Thu: string;
+    CaHoc: string;
+    TietHoc: string;
+    Phong: string;
+    TuanHoc: string;
+    XepTKB: string;
+    DayOfWeek: number;
+    PeriodID: number;
+    NumberOfPeriods: number;
+    LopSV: string;
+    MaGV: string;
+    HoTenGV: string;
+    CampusName: string;
+    CampusAddress: string;
+    TKBHienThi1: string;
+    TKBHienThi: string;
+}
+
+export interface PeriorScheduleData {
+    result: PeriodScheduleItem[];
+    Sort: number;
+}
+
+export const getPeriorSchedules = async (yearStudy: string, termId: string): Promise<PeriorScheduleData> => {
+    try {
+        const response = await api.get('/student/DrawingStudentSchedule_Perior', {
+            params: { namhoc: yearStudy, hocky: termId },
+        });
+        return response.data;
+    } catch (error) {
+        console.error('Error fetching perior schedules:', error);
+        throw error;
+    }
+};
+
+export interface ClassStudentOption {
+    ClassStudentID: string;
+    ClassStudentName: string;
+}
+
+export const getClassStudentForSchedules = async (yearStudy: string, termId: string): Promise<ClassStudentOption[]> => {
+    try {
+        const response = await api.get('/student/GetClassStudentForSChedules', {
+            params: { namhoc: yearStudy, hocky: termId },
+        });
+        return response.data;
+    } catch (error) {
+        console.error('Error fetching class students for schedules:', error);
+        throw error;
+    }
+};
+
+export interface ClassScheduleItem {
+    CurriculumName: string;
+    WeekScheduleID: number;
+    ScheduleStudyUnitID: string;
+    Unit: number;
+    PeriodID: number;
+    NumberOfPeriods: number;
+    DayOfWeek: number;
+    Week: number;
+    RoomID: string;
+    Year: number;
+    CampusName: string;
+    ShiftName: string;
+    Thu: string;
+    Ngay: string;
+    NgayHienTai: string;
+    TuanHienTaiTrongNam: number;
+    BeginTime: string;
+    EndTime: string;
+    FullName: string;
+    StartDate: string;
+    EndDate: string;
+    Address: string;
+    BuildingName: string;
+    Color: string;
+    PeriodName: string;
+    YearStudy: string;
+    TermID: string;
+    TKHHienThi: string;
+}
+
+export const getDrawingClassSchedule = async (classStudentId: string, yearStudy: string, termId: string, week: number): Promise<ClassScheduleItem[]> => {
+    try {
+        const response = await api.get('/student/DrawingClassSchedule', {
+            params: {
+                ClassStudentID: classStudentId,
+                namhoc: yearStudy,
+                hocky: termId,
+                tuan: week,
+            },
+        });
+        return response.data;
+    } catch (error) {
+        console.error('Error fetching drawing class schedule:', error);
         throw error;
     }
 };

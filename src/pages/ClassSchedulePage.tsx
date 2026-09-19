@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
 	Select,
@@ -13,11 +14,19 @@ import {
 	getYearAndTerm,
 	getWeekSchedule,
 	getDrawingSchedules,
+	getPeriorSchedules,
+	getClassStudentForSchedules,
+	getDrawingClassSchedule,
 	type YearAndTermData,
+	type YearAndTermItem,
+	type Term,
 	type Week,
 	type ScheduleData,
-	type ScheduleItem,
+	type PeriodScheduleItem,
+	type ClassStudentOption,
+	type ClassScheduleItem,
 } from "@/services/scheduleService";
+import { getStudentInfo } from "@/services/studentInfoService";
 import {
 	Loader2,
 	AlertCircle,
@@ -28,11 +37,18 @@ import {
 	Clock,
 	MapPin,
 	User,
+	Users,
+	List,
+	LayoutGrid,
 	Star,
 	Download,
+	BookOpen,
+	GraduationCap,
 } from "lucide-react";
-import { downloadSchedule } from "@/utils/downloadHelper";
+import ScheduleExportDialog from "@/components/common/ScheduleExportDialog";
 import { useGlobalNotification } from "@/hooks/useGlobalNotification";
+
+type ViewMode = "week" | "period" | "class";
 
 const TIME_BLOCKS = {
 	B1_2: {
@@ -82,20 +98,69 @@ const DAYS_OF_WEEK = [
 	"CN",
 ];
 
+const VIEW_OPTIONS: { key: ViewMode; label: string; Icon: typeof Calendar }[] = [
+	{ key: "week", label: "Theo tuần", Icon: LayoutGrid },
+	{ key: "period", label: "Theo kỳ", Icon: List },
+	{ key: "class", label: "Theo lớp", Icon: Users },
+];
+
+interface GridItem {
+	DayOfWeek: number;
+	PeriodID: number;
+	NumberOfPeriods: number;
+	PeriodName?: string;
+	CurriculumName: string;
+	RoomID?: string;
+	BuildingName?: string;
+	ProfessorName?: string;
+	FullName?: string;
+	TKHHienThi?: string;
+	WeekScheduleID: number;
+	Color?: string;
+}
+
+const findStudentClass = (
+	options: ClassStudentOption[],
+	lopSinhVien: string,
+): ClassStudentOption | undefined => {
+	const target = lopSinhVien.trim().toLowerCase();
+	if (!target) return undefined;
+	return options.find(
+		(option) =>
+			option.ClassStudentName.trim().toLowerCase() === target,
+	);
+};
+
 function ClassSchedulePage() {
 	const [yearTermData, setYearTermData] = useState<YearAndTermData | null>(
 		null,
 	);
+	const [yearItems, setYearItems] = useState<YearAndTermItem[]>([]);
+	const [terms, setTerms] = useState<Term[]>([]);
 	const [weeks, setWeeks] = useState<Week[]>([]);
 	const [schedule, setSchedule] = useState<ScheduleData | null>(null);
 	const [selectedYear, setSelectedYear] = useState<string>("");
 	const [selectedTerm, setSelectedTerm] = useState<string>("");
 	const [selectedWeek, setSelectedWeek] = useState<number | null>(null);
 	const [currentWeekNum, setCurrentWeekNum] = useState<number | null>(null);
+	const [viewMode, setViewMode] = useState<ViewMode>("week");
+
+	const [periodSchedule, setPeriodSchedule] = useState<PeriodScheduleItem[]>(
+		[],
+	);
+	const [isLoadingPeriod, setIsLoadingPeriod] = useState(false);
+
+	const [classOptions, setClassOptions] = useState<ClassStudentOption[]>([]);
+	const [selectedClass, setSelectedClass] = useState<string>("");
+	const [classSchedule, setClassSchedule] = useState<ClassScheduleItem[]>([]);
+	const [isLoadingClasses, setIsLoadingClasses] = useState(false);
+	const [isLoadingClassSchedule, setIsLoadingClassSchedule] = useState(false);
+	const [classError, setClassError] = useState<string | null>(null);
+
 	const [isLoading, setIsLoading] = useState(true);
 	const [isLoadingSchedule, setIsLoadingSchedule] = useState(false);
 	const [scheduleError, setScheduleError] = useState<string | null>(null);
-	const [isDownloading, setIsDownloading] = useState(false);
+	const [exportOpen, setExportOpen] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const { showError } = useGlobalNotification();
 
@@ -147,6 +212,16 @@ function ClassSchedulePage() {
 		try {
 			const data = await getYearAndTerm();
 			setYearTermData(data);
+			setYearItems(
+				data.items ?? [
+					{
+						YearStudy: data.CurrentYear,
+						CurrentYear: data.CurrentYear,
+						Terms: data.Terms,
+					},
+				],
+			);
+			setTerms(data.Terms ?? []);
 			setSelectedYear(data.CurrentYear);
 			setSelectedTerm(data.CurrentTerm);
 		} catch (err) {
@@ -160,6 +235,21 @@ function ClassSchedulePage() {
 	useEffect(() => {
 		fetchYearAndTerm();
 	}, [fetchYearAndTerm]);
+
+	// Reload term list + reset selected term when the year changes
+	useEffect(() => {
+		if (!selectedYear) return;
+		const item = yearItems.find((i) => i.YearStudy === selectedYear);
+		if (!item) return;
+		setTerms(item.Terms ?? []);
+		const fallbackTerm =
+			item.Terms.find((t) => t.CurrentTerm)?.TermID ??
+			item.Terms[0]?.TermID ??
+			"";
+		setSelectedTerm((prev) =>
+			item.Terms.some((t) => t.TermID === prev) ? prev : fallbackTerm,
+		);
+	}, [selectedYear, yearItems]);
 
 	useEffect(() => {
 		if (!selectedYear || !selectedTerm) return;
@@ -179,6 +269,7 @@ function ClassSchedulePage() {
 		fetchWeeks();
 	}, [selectedYear, selectedTerm, findCurrentWeek]);
 
+	// Week view
 	const fetchSchedule = useCallback(async () => {
 		if (!selectedYear || !selectedTerm || !selectedWeek) return;
 		setIsLoadingSchedule(true);
@@ -199,8 +290,91 @@ function ClassSchedulePage() {
 	}, [selectedYear, selectedTerm, selectedWeek]);
 
 	useEffect(() => {
+		if (viewMode !== "week") return;
 		fetchSchedule();
-	}, [fetchSchedule]);
+	}, [fetchSchedule, viewMode]);
+
+	// Period (whole term) view
+	useEffect(() => {
+		if (viewMode !== "period" || !selectedYear || !selectedTerm) return;
+		setIsLoadingPeriod(true);
+		getPeriorSchedules(selectedYear, selectedTerm)
+			.then((data) => setPeriodSchedule(data?.result ?? []))
+			.catch((err) => {
+				console.error("Error fetching perior schedules:", err);
+				setPeriodSchedule([]);
+				showError("Không thể tải lịch học theo kỳ. Vui lòng thử lại sau.");
+			})
+			.finally(() => setIsLoadingPeriod(false));
+	}, [viewMode, selectedYear, selectedTerm, showError]);
+
+	// Class view - class dropdown
+	useEffect(() => {
+		if (viewMode !== "class" || !selectedYear || !selectedTerm) return;
+		setIsLoadingClasses(true);
+		setClassError(null);
+		getClassStudentForSchedules(selectedYear, selectedTerm)
+			.then(async (data) => {
+				const list = data ?? [];
+				setClassOptions(list);
+
+				let defaultId = list[0]?.ClassStudentID ?? "";
+				try {
+					const info = await getStudentInfo();
+					const match = findStudentClass(
+						list,
+						info?.sinhVien?.LopSinhVien ?? "",
+					);
+					if (match) defaultId = match.ClassStudentID;
+				} catch (err) {
+					console.error("Error fetching student info:", err);
+				}
+
+				setSelectedClass((prev) =>
+					prev && list.some((c) => c.ClassStudentID === prev)
+						? prev
+						: defaultId,
+				);
+			})
+			.catch((err) => {
+				console.error("Error fetching classes:", err);
+				setClassOptions([]);
+				setClassError("Không thể tải danh sách lớp. Vui lòng thử lại sau.");
+			})
+			.finally(() => setIsLoadingClasses(false));
+	}, [viewMode, selectedYear, selectedTerm, showError]);
+
+	// Class view - class schedule for selected class + week
+	const fetchClassSchedule = useCallback(async () => {
+		if (
+			viewMode !== "class" ||
+			!selectedYear ||
+			!selectedTerm ||
+			!selectedClass ||
+			!selectedWeek
+		)
+			return;
+		setIsLoadingClassSchedule(true);
+		try {
+			const data = await getDrawingClassSchedule(
+				selectedClass,
+				selectedYear,
+				selectedTerm,
+				selectedWeek,
+			);
+			setClassSchedule(data ?? []);
+		} catch (err) {
+			console.error("Error fetching class schedule:", err);
+			setClassSchedule([]);
+			showError("Không thể tải lịch học của lớp. Vui lòng thử lại sau.");
+		} finally {
+			setIsLoadingClassSchedule(false);
+		}
+	}, [viewMode, selectedYear, selectedTerm, selectedClass, selectedWeek, showError]);
+
+	useEffect(() => {
+		fetchClassSchedule();
+	}, [fetchClassSchedule]);
 
 	const handlePrevWeek = () => {
 		const currentIndex = weeks.findIndex(
@@ -226,29 +400,21 @@ function ClassSchedulePage() {
 		}
 	};
 
-	const handleDownloadSchedule = async () => {
+	const handleDownloadSchedule = () => {
 		if (!selectedYear || !selectedTerm) {
 			showError("Vui lòng chọn năm học và học kỳ");
 			return;
 		}
-		try {
-			setIsDownloading(true);
-			await downloadSchedule(selectedYear, selectedTerm);
-		} catch (err) {
-			console.error("Error downloading schedule:", err);
-			showError("Không thể tải lịch học. Vui lòng thử lại sau.");
-		} finally {
-			setIsDownloading(false);
-		}
+		setExportOpen(true);
 	};
 
 	const getScheduleItemsForDayAndBlock = (
+		items: GridItem[],
 		dayIndex: number,
 		blockType: keyof typeof TIME_BLOCKS,
-	): ScheduleItem[] => {
-		if (!schedule?.ResultDataSchedule?.length) return [];
+	): GridItem[] => {
 		const { start, end } = TIME_BLOCKS[blockType];
-		return schedule.ResultDataSchedule.filter(
+		return items.filter(
 			(item) =>
 				item.DayOfWeek === dayIndex + 1 &&
 				item.PeriodID >= start &&
@@ -256,45 +422,39 @@ function ClassSchedulePage() {
 		);
 	};
 
-	const getScheduleItemsForDay = (dayIndex: number): ScheduleItem[] => {
-		if (!schedule?.ResultDataSchedule?.length) return [];
-		return schedule.ResultDataSchedule.filter(
-			(item) => item.DayOfWeek === dayIndex + 1,
-		).sort((a, b) => a.PeriodID - b.PeriodID);
+	const getScheduleItemsForDay = (items: GridItem[], dayIndex: number): GridItem[] => {
+		return items
+			.filter((item) => item.DayOfWeek === dayIndex + 1)
+			.sort((a, b) => a.PeriodID - b.PeriodID);
 	};
 
-	const getBlockType = (lessonNumber: number): keyof typeof TIME_BLOCKS => {
-		if (lessonNumber <= 2) return "B1_2";
-		if (lessonNumber <= 4) return "B3_4";
-		if (lessonNumber <= 6) return "B5_6";
-		if (lessonNumber <= 8) return "B7_8";
-		return "B9_10";
-	};
-
-	const getPeriodLabel = (item: ScheduleItem): string => {
+	const getPeriodLabel = (item: GridItem): string => {
 		const start = item.PeriodID;
 		const end = start + (item.NumberOfPeriods || 1) - 1;
 		return `${start}-${end}`;
 	};
 
-	const getTooltipField = (item: ScheduleItem, key: string): string => {
+	const getTooltipField = (item: GridItem, key: string): string => {
 		const line = item.TKHHienThi?.split(/<br\s*\/?>/i).find((l) =>
 			l.trim().startsWith(`-${key}:`),
 		);
 		return line ? line.replace(`-${key}:`, "").trim() : "";
 	};
 
-	const getTeacherName = (item: ScheduleItem): string =>
-		getTooltipField(item, "GV") || item.ProfessorName || "—";
+	const getTeacherName = (item: GridItem): string =>
+		getTooltipField(item, "GV") ||
+		item.ProfessorName ||
+		item.FullName ||
+		"—";
 
-	const getRoomName = (item: ScheduleItem): string => {
+	const getRoomName = (item: GridItem): string => {
 		const room = item.RoomID?.replace(/<br\s*\/?>/i, " - ") || "—";
 		const building = item.BuildingName?.trim();
 		if (!building || building === room) return room;
 		return `${building} - ${room}`;
 	};
 
-	const renderScheduleItem = (item: ScheduleItem) => {
+	const renderScheduleItem = (item: GridItem) => {
 		return (
 			<div className='bg-primary/10 border border-primary/20 rounded-lg p-2 text-xs space-y-1'>
 				<div className='font-semibold text-foreground line-clamp-2'>
@@ -303,8 +463,7 @@ function ClassSchedulePage() {
 				<div className='flex items-center gap-1 text-muted-foreground'>
 					<Clock className='w-3 h-3' />
 					<span>
-						Tiết{" "}
-						{item.PeriodName || getPeriodLabel(item)}
+						Tiết {item.PeriodName || getPeriodLabel(item)}
 					</span>
 				</div>
 				<div className='flex items-center gap-1 text-muted-foreground'>
@@ -315,6 +474,517 @@ function ClassSchedulePage() {
 					<User className='w-3 h-3' />
 					<span>{getTeacherName(item)}</span>
 				</div>
+			</div>
+		);
+	};
+
+	const renderGrid = (items: GridItem[], weekLabel: string) => (
+		<Card>
+			<CardHeader className='pb-3'>
+				<CardTitle className='flex items-center gap-2 text-base'>
+					<Calendar className='h-5 w-5 text-primary' />
+					<span>{weekLabel}</span>
+				</CardTitle>
+			</CardHeader>
+			<CardContent>
+				{items.length === 0 ? (
+					<div className='text-center py-12 text-sm text-muted-foreground'>
+						Không có lịch học trong tuần này
+					</div>
+				) : (
+					<>
+						{/* Desktop Table View */}
+						<div className='hidden md:block overflow-x-auto'>
+							<table className='w-full text-sm border-collapse'>
+								<thead>
+									<tr className='bg-muted/50'>
+										<th className='p-2 text-left font-medium border w-24'>
+											Buổi
+										</th>
+										{DAYS_OF_WEEK.map((day, index) => (
+											<th
+												key={index}
+												className='p-2 text-center font-medium border min-w-[120px]'
+											>
+												{day}
+											</th>
+										))}
+									</tr>
+								</thead>
+								<tbody>
+									{Object.entries(TIME_BLOCKS).map(
+										([block, { label, time, color }]) => (
+											<tr key={block}>
+												<td
+													className={cn(
+														"p-2 border font-medium",
+														color,
+													)}
+												>
+													<div>{label}</div>
+													<div className='text-xs text-muted-foreground'>
+														({time})
+													</div>
+												</td>
+												{DAYS_OF_WEEK.map(
+													(_, dayIndex) => {
+														const blockItems =
+															getScheduleItemsForDayAndBlock(
+																items,
+																dayIndex,
+																block as keyof typeof TIME_BLOCKS,
+															);
+														return (
+															<td
+																key={dayIndex}
+																className='p-1 border align-top'
+															>
+																<div className='space-y-1'>
+																	{blockItems.map(
+																		(
+																			item,
+																			idx,
+																		) => (
+																			<div
+																				key={
+																					idx
+																				}
+																			>
+																				{renderScheduleItem(
+																					item,
+																				)}
+																			</div>
+																		),
+																	)}
+																</div>
+															</td>
+														);
+													},
+												)}
+											</tr>
+										),
+									)}
+								</tbody>
+							</table>
+						</div>
+
+						{/* Mobile View - Daily Cards */}
+						<div className='md:hidden space-y-4'>
+							{DAYS_OF_WEEK.map((day, dayIndex) => {
+								const dayItems =
+									getScheduleItemsForDay(items, dayIndex);
+								const hasClasses = dayItems.length > 0;
+
+								return (
+									<div
+										key={dayIndex}
+										className='border rounded-lg overflow-hidden'
+									>
+										<div
+											className={cn(
+												"px-3 py-2 font-medium text-sm",
+												hasClasses
+													? "bg-primary text-primary-foreground"
+													: "bg-muted text-muted-foreground",
+											)}
+										>
+											{day}
+											{hasClasses && (
+												<span className='ml-2 text-xs opacity-80'>
+													({dayItems.length} môn)
+												</span>
+											)}
+										</div>
+										<div className='p-2'>
+											{hasClasses ? (
+												<div className='space-y-2'>
+													{dayItems.map((item) => {
+														const blockType =
+															item.PeriodID <= 2
+																? "B1_2"
+																: item.PeriodID <= 4
+																	? "B3_4"
+																	: item.PeriodID <= 6
+																		? "B5_6"
+																		: item.PeriodID <= 8
+																			? "B7_8"
+																			: "B9_10";
+														const blockInfo =
+															TIME_BLOCKS[blockType];
+
+														return (
+															<div
+																key={
+																	item.WeekScheduleID
+																}
+																className={cn(
+																	"border rounded-lg p-3 space-y-2",
+																	blockInfo.color,
+																)}
+															>
+																<div className='flex items-start justify-between gap-2'>
+																	<h4 className='font-semibold text-sm leading-tight flex-1'>
+																		{
+																			item.CurriculumName
+																		}
+																	</h4>
+																	<span className='text-xs px-2 py-0.5 bg-background/50 rounded font-medium flex-shrink-0'>
+																		{
+																			blockInfo.label
+																		}
+																	</span>
+																</div>
+																<div className='grid grid-cols-2 gap-2 text-xs text-muted-foreground'>
+																	<div className='flex items-center gap-1.5'>
+																		<Clock className='w-3 h-3' />
+																		<span>
+																			Tiết{" "}
+																			{item.PeriodName ||
+																				getPeriodLabel(
+																					item,
+																				)}
+																		</span>
+																	</div>
+																	<div className='flex items-center gap-1.5'>
+																		<MapPin className='w-3 h-3' />
+																		<span>
+																			{getRoomName(
+																				item,
+																			)}
+																		</span>
+																	</div>
+																</div>
+																<div className='flex items-center gap-1.5 text-xs text-muted-foreground'>
+																	<User className='w-3 h-3' />
+																	<span>
+																		{getTeacherName(
+																			item,
+																		)}
+																	</span>
+																</div>
+															</div>
+														);
+													})}
+												</div>
+											) : (
+												<div className='text-center py-4 text-sm text-muted-foreground'>
+													Không có lịch học
+												</div>
+											)}
+										</div>
+									</div>
+								);
+							})}
+						</div>
+					</>
+				)}
+			</CardContent>
+		</Card>
+	);
+
+	const renderPeriodSchedule = () => {
+		if (isLoadingPeriod) {
+			return (
+				<div className='flex items-center justify-center py-12'>
+					<Loader2 className='w-8 h-8 animate-spin text-primary' />
+				</div>
+			);
+		}
+
+		if (periodSchedule.length === 0) {
+			return (
+				<Card>
+					<CardContent className='py-12 text-center text-sm text-muted-foreground'>
+						Không có lịch học trong học kỳ này
+					</CardContent>
+				</Card>
+			);
+		}
+
+		const courses = periodSchedule.reduce<
+			Record<string, { MaLHP: string; TenHP: string; SoTC: number; sessions: PeriodScheduleItem[] }>
+		>((acc, session) => {
+			const key = session.MaLHP;
+			if (!acc[key]) {
+				acc[key] = {
+					MaLHP: session.MaLHP,
+					TenHP: session.TenHP,
+					SoTC: session.SoTC,
+					sessions: [],
+				};
+			}
+			acc[key].sessions.push(session);
+			return acc;
+		}, {});
+
+		const courseList = Object.values(courses);
+
+		const getLoaiBadge = (type: string) => {
+			if (!type) return null;
+			return (
+				<Badge
+					variant='outline'
+					className={cn(
+						"shrink-0 border-0 px-2 py-0.5 text-xs font-medium",
+						type === "Thảo luận"
+							? "bg-blue-500/10 text-blue-600 dark:text-blue-400"
+							: type === "Thực hành"
+								? "bg-purple-500/10 text-purple-600 dark:text-purple-400"
+								: "bg-green-500/10 text-green-600 dark:text-green-400",
+					)}
+				>
+					{type}
+				</Badge>
+			);
+		};
+
+		const cleanTuanHoc = (value: string): string =>
+			value.replace(/\s*\)\s*$/, "").trim() || "—";
+
+		const getTeacher = (session: PeriodScheduleItem): string =>
+			session.HoTenGV
+				?.replace(/\(Email:[^)]*\)/i, "")
+				.trim() || "—";
+
+		return (
+			<div className='space-y-4'>
+				{/* Summary */}
+				<div className='grid grid-cols-2 md:grid-cols-3 gap-3'>
+					<Card>
+						<CardContent className='flex items-center gap-3 p-4'>
+							<span className='flex h-10 w-10 items-center justify-center rounded-full bg-primary/10'>
+								<BookOpen className='h-5 w-5 text-primary' />
+							</span>
+							<div>
+								<p className='text-2xl font-bold text-foreground'>
+									{courseList.length}
+								</p>
+								<p className='text-xs text-muted-foreground'>
+									Môn học
+								</p>
+							</div>
+						</CardContent>
+					</Card>
+					<Card>
+						<CardContent className='flex items-center gap-3 p-4'>
+							<span className='flex h-10 w-10 items-center justify-center rounded-full bg-primary/10'>
+								<GraduationCap className='h-5 w-5 text-primary' />
+							</span>
+							<div>
+								<p className='text-2xl font-bold text-foreground'>
+									{courseList.reduce(
+										(sum, c) => sum + (c.SoTC || 0),
+										0,
+									)}
+								</p>
+								<p className='text-xs text-muted-foreground'>
+									Tổng tín chỉ
+								</p>
+							</div>
+						</CardContent>
+					</Card>
+					<Card className='col-span-2 md:col-span-1'>
+						<CardContent className='flex items-center gap-3 p-4'>
+							<span className='flex h-10 w-10 items-center justify-center rounded-full bg-primary/10'>
+								<Calendar className='h-5 w-5 text-primary' />
+							</span>
+							<div>
+								<p className='text-2xl font-bold text-foreground'>
+									{periodSchedule.length}
+								</p>
+								<p className='text-xs text-muted-foreground'>
+									Buổi học
+								</p>
+							</div>
+						</CardContent>
+					</Card>
+				</div>
+
+				{courseList.map((course) => (
+					<Card key={course.MaLHP} className='overflow-hidden'>
+						<CardHeader className='border-b border-border/60 py-3.5'>
+							<div className='flex items-center justify-between gap-3'>
+								<div className='flex items-center gap-3 min-w-0'>
+									<span className='flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary'>
+										<BookOpen className='h-5 w-5' />
+									</span>
+									<div className='min-w-0'>
+										<CardTitle className='truncate text-base'>
+											{course.TenHP}
+										</CardTitle>
+										<p className='truncate text-xs text-muted-foreground'>
+											{course.MaLHP} · {course.SoTC}{" "}
+											tín chỉ
+										</p>
+									</div>
+								</div>
+								<Badge variant='secondary' className='shrink-0'>
+									{course.sessions.length} buổi
+								</Badge>
+							</div>
+						</CardHeader>
+
+						{/* Desktop table */}
+						<div className='hidden md:block'>
+							<div className='grid grid-cols-[130px_96px_160px_1fr_200px] gap-3 border-b border-border/60 bg-muted/30 px-4 py-2 text-xs font-medium uppercase tracking-wide text-muted-foreground'>
+								<span>Ngày / ca</span>
+								<span>Loại</span>
+								<span>Phòng</span>
+								<span>Thời gian học</span>
+								<span>Giảng viên</span>
+							</div>
+							<ul>
+								{course.sessions.map((session, idx) => (
+									<li
+										key={idx}
+										className='grid grid-cols-[130px_96px_160px_1fr_200px] items-center gap-3 border-b border-border/40 px-4 py-3 text-sm last:border-0 hover:bg-muted/20 transition-colors'
+									>
+										<div>
+											<p className='font-medium text-foreground'>
+												{session.Thu || "—"}
+											</p>
+											<p className='text-xs text-muted-foreground'>
+												Ca {session.CaHoc || "—"}
+											</p>
+										</div>
+										<div>{getLoaiBadge(session.LoaiHP)}</div>
+										<div className='flex items-center gap-1.5 text-muted-foreground'>
+											<MapPin className='h-3.5 w-3.5 shrink-0' />
+											<span className='truncate'>
+												{session.Phong || "—"}
+											</span>
+										</div>
+										<div className='flex items-center gap-1.5 text-xs text-muted-foreground'>
+											<Calendar className='h-3.5 w-3.5 shrink-0' />
+											<span className='truncate'>
+												{cleanTuanHoc(session.TuanHoc)}
+											</span>
+										</div>
+										<div className='flex items-center gap-1.5 text-muted-foreground'>
+											<User className='h-3.5 w-3.5 shrink-0' />
+											<span className='truncate'>
+												{getTeacher(session)}
+											</span>
+										</div>
+									</li>
+								))}
+							</ul>
+						</div>
+
+						{/* Mobile cards */}
+						<div className='md:hidden space-y-2 p-3'>
+							{course.sessions.map((session, idx) => (
+								<div
+									key={idx}
+									className='rounded-lg border border-border bg-card p-3 space-y-2'
+								>
+									<div className='flex items-center justify-between gap-2'>
+										<div>
+											<p className='text-sm font-medium text-foreground'>
+												{session.Thu || "—"}
+											</p>
+											<p className='text-xs text-muted-foreground'>
+												Ca {session.CaHoc || "—"}
+											</p>
+										</div>
+										{getLoaiBadge(session.LoaiHP)}
+									</div>
+									<div className='flex items-center gap-1.5 text-xs text-muted-foreground'>
+										<MapPin className='h-3.5 w-3.5 shrink-0' />
+										<span>{session.Phong || "—"}</span>
+									</div>
+									<div className='flex items-center gap-1.5 text-xs text-muted-foreground'>
+										<Calendar className='h-3.5 w-3.5 shrink-0' />
+										<span>{cleanTuanHoc(session.TuanHoc)}</span>
+									</div>
+									<div className='flex items-center gap-1.5 text-xs text-muted-foreground'>
+										<User className='h-3.5 w-3.5 shrink-0' />
+										<span>{getTeacher(session)}</span>
+									</div>
+								</div>
+							))}
+						</div>
+					</Card>
+				))}
+			</div>
+		);
+	};
+
+	const renderClassSchedule = () => {
+		if (isLoadingClasses) {
+			return (
+				<div className='flex items-center justify-center py-12'>
+					<Loader2 className='w-8 h-8 animate-spin text-primary' />
+				</div>
+			);
+		}
+
+		if (classError) {
+			return (
+				<Card>
+					<CardContent className='py-12 text-center'>
+						<p className='text-destructive mb-4'>{classError}</p>
+						<Button
+							variant='outline'
+							onClick={() => {
+								setViewMode("period");
+								setTimeout(() => setViewMode("class"), 0);
+							}}
+						>
+							Thử lại
+						</Button>
+					</CardContent>
+				</Card>
+			);
+		}
+
+		if (classOptions.length === 0) {
+			return (
+				<Card>
+					<CardContent className='py-12 text-center text-sm text-muted-foreground'>
+						Không có danh sách lớp cho học kỳ này
+					</CardContent>
+				</Card>
+			);
+		}
+
+		const weekLabel =
+			weeks.find((w) => w.Week === selectedWeek)
+				? `Tuần ${selectedWeek} (${weeks.find((w) => w.Week === selectedWeek)?.BeginDate} - ${weeks.find((w) => w.Week === selectedWeek)?.EndDate})`
+				: "";
+
+		return (
+			<div className='space-y-4'>
+				<Select
+					value={selectedClass}
+					onValueChange={setSelectedClass}
+				>
+					<SelectTrigger className='w-full md:w-[380px]'>
+						<SelectValue placeholder='Chọn lớp' />
+					</SelectTrigger>
+					<SelectContent>
+						{classOptions.map((option) => (
+							<SelectItem
+								key={option.ClassStudentID}
+								value={option.ClassStudentID}
+							>
+								{option.ClassStudentName}
+							</SelectItem>
+						))}
+					</SelectContent>
+				</Select>
+
+				{selectedClass && selectedWeek && (
+					<div className='relative'>
+						{isLoadingClassSchedule ? (
+							<div className='flex items-center justify-center py-12'>
+								<Loader2 className='w-8 h-8 animate-spin text-primary' />
+							</div>
+						) : (
+							renderGrid(classSchedule, weekLabel)
+						)}
+					</div>
+				)}
 			</div>
 		);
 	};
@@ -354,6 +1024,7 @@ function ClassSchedulePage() {
 	}
 
 	const currentWeekData = weeks.find((w) => w.Week === selectedWeek);
+	const showWeekNav = viewMode === "week" || viewMode === "class";
 
 	return (
 		<div className='space-y-4'>
@@ -364,20 +1035,16 @@ function ClassSchedulePage() {
 						Thời khóa biểu
 					</h1>
 					<p className='text-sm text-muted-foreground'>
-						Xem lịch học theo tuần
+						Xem lịch học theo tuần, theo kỳ hoặc theo lớp
 					</p>
 				</div>
 				<Button
 					variant='outline'
 					onClick={handleDownloadSchedule}
-					disabled={isDownloading || !selectedYear || !selectedTerm}
+					disabled={!selectedYear || !selectedTerm}
 					className='gap-2'
 				>
-					{isDownloading ? (
-						<Loader2 className='w-4 h-4 animate-spin' />
-					) : (
-						<Download className='w-4 h-4' />
-					)}
+					<Download className='w-4 h-4' />
 					Tải lịch học (.ics)
 				</Button>
 			</div>
@@ -410,7 +1077,7 @@ function ClassSchedulePage() {
 							<SelectValue placeholder='Chọn học kỳ' />
 						</SelectTrigger>
 						<SelectContent>
-							{yearTermData?.Terms.map((term) => (
+							{terms.map((term) => (
 								<SelectItem
 									key={term.TermID}
 									value={term.TermID}
@@ -422,8 +1089,30 @@ function ClassSchedulePage() {
 					</Select>
 				</div>
 
-				{/* Week Navigation */}
-				<div className='flex items-center gap-2 w-full md:w-auto md:ml-auto'>
+				{/* View Mode Switcher */}
+				<div className='flex items-center rounded-lg border border-border bg-muted/40 p-0.5 w-full sm:w-auto sm:ml-auto'>
+					{VIEW_OPTIONS.map(({ key, label, Icon }) => (
+						<button
+							key={key}
+							type='button'
+							onClick={() => setViewMode(key)}
+							className={cn(
+								"flex flex-1 sm:flex-none items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+								viewMode === key
+									? "bg-primary text-primary-foreground shadow-sm"
+									: "text-muted-foreground hover:text-foreground",
+							)}
+						>
+							<Icon className='w-4 h-4' />
+							<span className='hidden sm:inline'>{label}</span>
+						</button>
+					))}
+				</div>
+			</div>
+
+			{/* Week Navigation (week & class views) */}
+			{showWeekNav && (
+				<div className='flex items-center gap-2 w-full md:w-auto'>
 					<Button
 						variant='outline'
 						size='icon'
@@ -468,8 +1157,8 @@ function ClassSchedulePage() {
 										{week.WeekDisPlay})
 										{week.Week ===
 											currentWeekNum && (
-												<Star className='w-3 h-3 fill-amber-400 text-amber-400' />
-											)}
+											<Star className='w-3 h-3 fill-amber-400 text-amber-400' />
+										)}
 									</span>
 								</SelectItem>
 							))}
@@ -491,218 +1180,49 @@ function ClassSchedulePage() {
 						<ChevronRight className='w-4 h-4' />
 					</Button>
 				</div>
-			</div>
+			)}
 
-			{/* Schedule Table */}
-			<Card>
-				<CardHeader className='pb-3'>
-					<CardTitle className='flex items-center gap-2 text-base'>
-						<Calendar className='h-5 w-5 text-primary' />
-						{currentWeekData && (
-							<span>
-								Tuần {selectedWeek} ({currentWeekData.BeginDate}{" "}
-								- {currentWeekData.EndDate})
-							</span>
-						)}
-					</CardTitle>
-				</CardHeader>
-				<CardContent>
-					{isLoadingSchedule ?
+			{/* Content by view */}
+			{viewMode === "week" && (
+				<>
+					{isLoadingSchedule ? (
 						<div className='flex items-center justify-center py-12'>
 							<Loader2 className='w-8 h-8 animate-spin text-primary' />
 						</div>
-						: scheduleError ?
-							<div className='text-center py-12'>
-								<p className='text-destructive mb-4'>
-									{scheduleError}
-								</p>
-								<Button
-									variant='outline'
-									onClick={fetchSchedule}
-								>
-									Thử lại
-								</Button>
-							</div>
-						: <>
-							{/* Desktop Table View */}
-							<div className='hidden md:block overflow-x-auto'>
-								<table className='w-full text-sm border-collapse'>
-									<thead>
-										<tr className='bg-muted/50'>
-											<th className='p-2 text-left font-medium border w-24'>
-												Buổi
-											</th>
-											{DAYS_OF_WEEK.map((day, index) => (
-												<th
-													key={index}
-													className='p-2 text-center font-medium border min-w-[120px]'
-												>
-													{day}
-												</th>
-											))}
-										</tr>
-									</thead>
-									<tbody>
-										{Object.entries(TIME_BLOCKS).map(
-											([block, { label, time, color }]) => (
-												<tr key={block}>
-													<td
-														className={cn(
-															"p-2 border font-medium",
-															color,
-														)}
-													>
-														<div>{label}</div>
-														<div className='text-xs text-muted-foreground'>
-															({time})
-														</div>
-													</td>
-													{DAYS_OF_WEEK.map(
-														(_, dayIndex) => {
-															const items =
-																getScheduleItemsForDayAndBlock(
-																	dayIndex,
-																	block as keyof typeof TIME_BLOCKS,
-																);
-															return (
-																<td
-																	key={
-																		dayIndex
-																	}
-																	className='p-1 border align-top'
-																>
-																	<div className='space-y-1'>
-																		{items.map(
-																			(
-																				item,
-																				idx,
-																			) => (
-																				<div
-																					key={
-																						idx
-																					}
-																				>
-																					{renderScheduleItem(
-																						item,
-																					)}
-																				</div>
-																			),
-																		)}
-																	</div>
-																</td>
-															);
-														},
-													)}
-												</tr>
-											),
-										)}
-									</tbody>
-								</table>
-							</div>
+					) : scheduleError ? (
+						<div className='text-center py-12'>
+							<p className='text-destructive mb-4'>
+								{scheduleError}
+							</p>
+							<Button
+								variant='outline'
+								onClick={fetchSchedule}
+							>
+								Thử lại
+							</Button>
+						</div>
+					) : (
+						renderGrid(
+							schedule?.ResultDataSchedule ?? [],
+							currentWeekData
+								? `Tuần ${selectedWeek} (${currentWeekData.BeginDate} - ${currentWeekData.EndDate})`
+								: `Tuần ${selectedWeek}`,
+						)
+					)}
+				</>
+			)}
 
-							{/* Mobile View - Daily Cards */}
-							<div className='md:hidden space-y-4'>
-								{DAYS_OF_WEEK.map((day, dayIndex) => {
-									const dayItems =
-										getScheduleItemsForDay(dayIndex);
-									const hasClasses = dayItems.length > 0;
+			{viewMode === "period" && renderPeriodSchedule()}
 
-									return (
-										<div
-											key={dayIndex}
-											className='border rounded-lg overflow-hidden'
-										>
-											<div
-												className={cn(
-													"px-3 py-2 font-medium text-sm",
-													hasClasses ?
-														"bg-primary text-primary-foreground"
-														: "bg-muted text-muted-foreground",
-												)}
-											>
-												{day}
-												{hasClasses && (
-													<span className='ml-2 text-xs opacity-80'>
-														({dayItems.length} môn)
-													</span>
-												)}
-											</div>
-											<div className='p-2'>
-												{hasClasses ?
-													<div className='space-y-2'>
-														{dayItems.map(
-															(item) => {
-																const blockType =
-																	getBlockType(
-																		item.PeriodID,
-																	);
-																const blockInfo =
-																	TIME_BLOCKS[
-																	blockType
-																	];
+			{viewMode === "class" && renderClassSchedule()}
 
-																return (
-																	<div
-																		key={
-																			item.WeekScheduleID
-																		}
-																		className={cn(
-																			"border rounded-lg p-3 space-y-2",
-																			blockInfo.color,
-																		)}
-																	>
-																		<div className='flex items-start justify-between gap-2'>
-																			<h4 className='font-semibold text-sm leading-tight flex-1'>
-																				{
-																					item.CurriculumName
-																				}
-																			</h4>
-																			<span className='text-xs px-2 py-0.5 bg-background/50 rounded font-medium flex-shrink-0'>
-																				{
-																					blockInfo.label
-																				}
-																			</span>
-																		</div>
-																		<div className='grid grid-cols-2 gap-2 text-xs text-muted-foreground'>
-																			<div className='flex items-center gap-1.5'>
-																				<Clock className='w-3 h-3' />
-																				<span>
-																					Tiết{" "}
-																					{item.PeriodName ||
-																						getPeriodLabel(item)}
-																				</span>
-																			</div>
-																			<div className='flex items-center gap-1.5'>
-																				<MapPin className='w-3 h-3' />
-																				<span>
-																					{getRoomName(item)}
-																				</span>
-																			</div>
-																		</div>
-																		<div className='flex items-center gap-1.5 text-xs text-muted-foreground'>
-																			<User className='w-3 h-3' />
-																			<span>
-																				{getTeacherName(item)}
-																			</span>
-																		</div>
-																	</div>
-																);
-															},
-														)}
-													</div>
-													: <div className='text-center py-4 text-sm text-muted-foreground'>
-														Không có lịch học
-													</div>
-												}
-											</div>
-										</div>
-									);
-								})}
-							</div>
-						</>
-					}
-				</CardContent>
-			</Card>
+			<ScheduleExportDialog
+				open={exportOpen}
+				onOpenChange={setExportOpen}
+				currentYear={selectedYear}
+				currentTerm={selectedTerm}
+				yearItems={yearItems}
+			/>
 		</div>
 	);
 }

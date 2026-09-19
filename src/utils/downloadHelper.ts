@@ -109,9 +109,34 @@ const PE_TIMES: Record<number, [string, string]> = {
     7: ['15:45', '17:45'],
 };
 
+export const TERM_LABELS: Record<string, string> = {
+    PHU: 'Kỳ thi phụ',
+    HK03: 'Học kỳ Hè',
+    HK02: 'Học kỳ Xuân',
+    HK01: 'Học kỳ Thu',
+};
+
+export const getTermLabel = (termId: string): string => TERM_LABELS[termId] ?? termId;
+
 const parseVNDate = (dateStr: string): Date => {
     const [d, m, y] = dateStr.trim().split('/');
     return new Date(parseInt(y), parseInt(m) - 1, parseInt(d));
+};
+
+const DISCUSSION_SUFFIX = /_TL(?:_\d+)?$/i;
+
+const getBiweeklyCodes = (items: SchedulePeriodItem[]): Set<string> => {
+    const allCodes = new Set(items.map((item) => item.MaLHP));
+    const biweekly = new Set<string>();
+    items.forEach((item) => {
+        if (!DISCUSSION_SUFFIX.test(item.MaLHP)) return;
+        const theoryCode = item.MaLHP.replace(DISCUSSION_SUFFIX, '');
+        if (theoryCode && allCodes.has(theoryCode)) {
+            biweekly.add(item.MaLHP);
+            biweekly.add(theoryCode);
+        }
+    });
+    return biweekly;
 };
 
 const formatIcsDateTime = (dateObj: Date, timeStr: string): string => {
@@ -120,11 +145,6 @@ const formatIcsDateTime = (dateObj: Date, timeStr: string): string => {
     const m = String(dateObj.getMonth() + 1).padStart(2, '0');
     const d = String(dateObj.getDate()).padStart(2, '0');
     return `${yyyy}${m}${d}T${hh}${mm}00`;
-};
-
-const getBaseCode = (maLhp: string): string => {
-    const match = maLhp.match(/^([A-Za-z0-9]+)/);
-    return match ? match[1] : maLhp;
 };
 
 const escapeIcsText = (value: string): string =>
@@ -138,12 +158,33 @@ interface SchedulePeriodItem {
     HoTenGV?: string;
     HoTenSV?: string;
     LopSV?: string;
+    SoTC?: number;
+    CampusName?: string;
+    CampusAddress?: string;
     PeriodID: number;
     NumberOfPeriods?: number;
     TuanHoc: string;
 }
 
-export const downloadSchedule = async (yearStudy: string, termId: string): Promise<boolean> => {
+export type ScheduleTitleStyle = "subject" | "subjectType" | "codeSubject" | "subjectRoom";
+
+export interface ScheduleExportOptions {
+    reminderTrigger?: string | null;
+    titleStyle?: ScheduleTitleStyle;
+    courseCodes?: string[] | null;
+    includeCourseCode?: boolean;
+    includeLoaiHp?: boolean;
+    includeCredits?: boolean;
+    includeTeacher?: boolean;
+    includeClass?: boolean;
+    includeCampus?: boolean;
+}
+
+export const downloadSchedule = async (
+    yearStudy: string,
+    termId: string,
+    options: ScheduleExportOptions = {},
+): Promise<boolean> => {
     try {
         const token = getToken();
         if (!token) throw new Error('No authentication token found');
@@ -161,44 +202,29 @@ export const downloadSchedule = async (yearStudy: string, termId: string): Promi
         });
 
         const data: { result?: SchedulePeriodItem[] } = response.data ?? {};
-        const items = data.result ?? [];
+        const allowedCodes = options.courseCodes?.length ? new Set(options.courseCodes) : null;
+        const items = (data.result ?? []).filter(
+            (item) => !allowedCodes || allowedCodes.has(item.MaLHP),
+        );
         if (items.length === 0) {
             throw new Error('Không có dữ liệu lịch học');
         }
 
-        // Detect bi-weekly alternating courses (Repeat every 2 weeks)
-        const grouped = new Map<string, SchedulePeriodItem[]>();
-        items.forEach((item) => {
-            const base = getBaseCode(item.MaLHP);
-            const list = grouped.get(base) ?? [];
-            list.push(item);
-            grouped.set(base, list);
-        });
+        const biweeklyCodes = getBiweeklyCodes(data.result ?? []);
 
-        const alternatingMap = new Map<string, number>();
-        grouped.forEach((list, base) => {
-            if (list.length <= 1) return;
-            const dates = list
-                .map((i) => parseVNDate(i.TuanHoc.replace(')', '').split('->')[0]))
-                .sort((a, b) => a.getTime() - b.getTime());
+        const calendarName = `Lịch học ${getTermLabel(termId)} ${yearStudy}`;
+        const dtStamp = new Date()
+            .toISOString()
+            .replace(/[-:]/g, '')
+            .replace(/\..+/, 'Z');
 
-            for (let i = 0; i < dates.length - 1; i++) {
-                const diffDays = Math.abs((dates[i + 1].getTime() - dates[i].getTime()) / (1000 * 60 * 60 * 24));
-                if (diffDays === 7) {
-                    alternatingMap.set(base, 2);
-                    break;
-                }
-            }
-        });
-
-        const studentName = items[0].HoTenSV || 'Student';
         const lines: string[] = [
             'BEGIN:VCALENDAR',
             'VERSION:2.0',
             'PRODID:-//NEU Student Schedule Generator//EN',
             'CALSCALE:GREGORIAN',
             'METHOD:PUBLISH',
-            `X-WR-CALNAME:Lịch Học NEU - ${studentName}`,
+            `X-WR-CALNAME:${escapeIcsText(calendarName)}`,
             'X-WR-TIMEZONE:Asia/Ho_Chi_Minh',
             'BEGIN:VTIMEZONE',
             'TZID:Asia/Ho_Chi_Minh',
@@ -212,24 +238,27 @@ export const downloadSchedule = async (yearStudy: string, termId: string): Promi
             'END:VTIMEZONE',
         ];
 
-        items.forEach((item) => {
+        items.forEach((item, index) => {
             const maLhp = item.MaLHP;
             const tenHp = item.TenHP;
             const loaiHp = item.LoaiHP;
             const phong = item.Phong || '';
             const gv = item.HoTenGV || '';
             const lop = item.LopSV || '';
+            const soTc = item.SoTC;
+            const campus = [item.CampusName, item.CampusAddress]
+                .filter(Boolean)
+                .join(', ')
+                .trim();
             const periodId = item.PeriodID;
             const numPeriods = item.NumberOfPeriods || 2;
 
-            // Date range from TuanHoc ("startDate->endDate (" format)
             const tuanClean = item.TuanHoc.replace(')', '').trim();
             const [startDateStr, endDateStr] = tuanClean.split('->');
             if (!startDateStr || !endDateStr) return;
             const startDate = parseVNDate(startDateStr);
             const endDate = parseVNDate(endDateStr);
 
-            // Time slot determination (PE lessons use full slots)
             const isPE = maLhp.includes('GDTC') || tenHp.includes('Giáo dục thể chất');
             let startTimeStr: string;
             let endTimeStr: string;
@@ -250,38 +279,83 @@ export const downloadSchedule = async (yearStudy: string, termId: string): Promi
             const dtStart = formatIcsDateTime(startDate, startTimeStr);
             const dtEnd = formatIcsDateTime(startDate, endTimeStr);
 
-            // RRULE until date
-            const untilYyyy = endDate.getFullYear();
-            const untilMm = String(endDate.getMonth() + 1).padStart(2, '0');
-            const untilDd = String(endDate.getDate()).padStart(2, '0');
-            const untilStr = `${untilYyyy}${untilMm}${untilDd}T235959Z`;
+            const untilDate = [
+                endDate.getFullYear(),
+                String(endDate.getMonth() + 1).padStart(2, '0'),
+                String(endDate.getDate()).padStart(2, '0'),
+            ].join('');
+            const untilStr = `${untilDate}T235959Z`;
 
-            const baseCode = getBaseCode(maLhp);
-            const interval = alternatingMap.get(baseCode) || 1;
-
-            let weekSuffix = '';
-            if (interval === 2) {
-                weekSuffix = startDate.getDate() > 10 ? ' (Tuần Chẵn)' : ' (Tuần Lẻ)';
+            let summary: string;
+            switch (options.titleStyle) {
+                case 'codeSubject':
+                    summary = [maLhp, tenHp].filter(Boolean).join(' - ');
+                    break;
+                case 'subjectRoom':
+                    summary = [tenHp, phong].filter(Boolean).join(' - ');
+                    break;
+                case 'subject':
+                    summary = tenHp;
+                    break;
+                default:
+                    summary = [
+                        tenHp,
+                        options.includeLoaiHp && loaiHp ? ` (${loaiHp})` : '',
+                    ].join('');
+                    break;
             }
 
-            const summary = `${tenHp} (${loaiHp})${weekSuffix}`;
-            const description = [`Mã LHP: ${maLhp}`, `Lớp: ${lop}`, `Giảng viên: ${gv}`].join('\n');
+            const descriptionLines: string[] = [];
+            if (options.includeCourseCode !== false && maLhp) {
+                descriptionLines.push(`Mã lớp học phần: ${maLhp}`);
+            }
+            if (options.includeLoaiHp !== false && loaiHp) {
+                descriptionLines.push(`Loại: ${loaiHp}`);
+            }
+            if (options.includeCredits !== false && soTc) {
+                descriptionLines.push(`Số tín chỉ: ${soTc}`);
+            }
+            if (options.includeClass !== false && lop) {
+                descriptionLines.push(`Lớp: ${lop}`);
+            }
+            if (options.includeTeacher !== false && gv) {
+                descriptionLines.push(`Giảng viên: ${gv}`);
+            }
+            if (options.includeCampus !== false && campus) {
+                descriptionLines.push(`Cơ sở: ${campus}`);
+            }
+            const description = descriptionLines.join('\n');
+
+            const location = [
+                phong,
+                options.includeCampus !== false ? campus : '',
+            ].filter(Boolean).join(', ');
+
+            const interval = biweeklyCodes.has(maLhp) ? 2 : 1;
 
             lines.push(
                 'BEGIN:VEVENT',
+                `UID:${dtStamp}-schedule-${index}@neu`,
+                `DTSTAMP:${dtStamp}`,
                 `SUMMARY:${escapeIcsText(summary)}`,
-                `LOCATION:${escapeIcsText(phong)}`,
+                `LOCATION:${escapeIcsText(location)}`,
                 `DESCRIPTION:${escapeIcsText(description)}`,
                 `DTSTART;TZID=Asia/Ho_Chi_Minh:${dtStart}`,
                 `DTEND;TZID=Asia/Ho_Chi_Minh:${dtEnd}`,
                 `RRULE:FREQ=WEEKLY;INTERVAL=${interval};UNTIL=${untilStr}`,
-                'BEGIN:VALARM',
-                'ACTION:DISPLAY',
-                `DESCRIPTION:Nhắc nhở lịch học ${tenHp}`,
-                'TRIGGER:-PT30M',
-                'END:VALARM',
-                'END:VEVENT',
             );
+
+            if (options.reminderTrigger !== undefined && options.reminderTrigger !== null) {
+                lines.push(
+                    'BEGIN:VALARM',
+                    'ACTION:DISPLAY',
+                    `DESCRIPTION:Nhắc nhở lịch học ${escapeIcsText(tenHp)}`,
+                    `TRIGGER:-${escapeIcsText(options.reminderTrigger)}`,
+                    'END:VALARM',
+                );
+            }
+
+            lines.push('END:VEVENT');
         });
 
         lines.push('END:VCALENDAR');
@@ -290,7 +364,8 @@ export const downloadSchedule = async (yearStudy: string, termId: string): Promi
         const url = window.URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
-        link.setAttribute('download', `LichHoc_${yearStudy}.ics`);
+        const fileName = `LichHoc_${termId}_${yearStudy}.ics`;
+        link.setAttribute('download', fileName);
         document.body.appendChild(link);
         link.click();
         link.remove();
