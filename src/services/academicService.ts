@@ -267,6 +267,28 @@ export const getStudyProgramResultsByCurriculum = async (studyProgramId: string)
     }
 };
 
+export interface MarkDetailItem {
+    OrderNumber?: number;
+    CurriculumName?: string;
+    AssignmentID: string;
+    AssignmentName: string;
+    FirstMark?: number | null;
+    SecondMark?: number | null;
+    Assignmentdetail?: string;
+}
+
+export const getMarkDetail = async (curriculumId: string): Promise<MarkDetailItem[]> => {
+    try {
+        const response = await api.get('/student/showmarkdetail', {
+            params: { id: curriculumId },
+        });
+        return response.data;
+    } catch (error) {
+        console.error('Error fetching mark detail:', error);
+        throw error;
+    }
+};
+
 export const getCourseRegistrationResults = async (yearStudy: string, termId: string) => {
     try {
         const response = await api.get('/student/XemKetQuaDangKyHP', {

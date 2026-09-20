@@ -13,6 +13,7 @@ import {
 	getStudyProgramResults,
 	getStudyProgramResultsByCurriculum,
 	getDashboardKetQuaHocTap,
+	getMarkDetail,
 	type StudyProgram,
 	type StudyProgramResults,
 	type CourseGrade,
@@ -21,6 +22,7 @@ import {
 	type DashboardCreditSummary,
 	type DashboardStudentInfo,
 	type DashboardKetQuaHocTap,
+	type MarkDetailItem,
 } from "@/services/academicService";
 import {
 	Loader2,
@@ -78,6 +80,25 @@ const convertToGPA4 = (score10: number): number => {
 	if (score10 >= 5) return 1.5;
 	if (score10 >= 4) return 1;
 	return 0;
+};
+
+const dedupeMarkDetail = (items: MarkDetailItem[]): MarkDetailItem[] => {
+	const seen = new Set<string>();
+	return items
+		.filter((item) => {
+			if (!item.AssignmentID || seen.has(item.AssignmentID)) return false;
+			seen.add(item.AssignmentID);
+			return true;
+		})
+		.sort(
+			(a, b) =>
+				(b.OrderNumber ?? 0) - (a.OrderNumber ?? 0),
+		);
+};
+
+const formatMark = (mark: number | null | undefined): string => {
+	if (mark === null || mark === undefined || Number.isNaN(mark)) return "—";
+	return Number(mark.toFixed(2)).toString();
 };
 
 const dashboardCache = new Map<string, DashboardKetQuaHocTap>();
@@ -208,6 +229,45 @@ function AcademicResultsPage() {
 	const [activeTab, setActiveTab] = useState<"results" | "statistics">(
 		"results",
 	);
+	const [markDetail, setMarkDetail] = useState<MarkDetailItem[] | null>(
+		null,
+	);
+	const [isLoadingMarkDetail, setIsLoadingMarkDetail] = useState(false);
+	const [markDetailError, setMarkDetailError] = useState<string | null>(
+		null,
+	);
+	const [markDetailRetry, setMarkDetailRetry] = useState(0);
+
+	useEffect(() => {
+		if (!selectedCourse?.StudyUnitID) {
+			setMarkDetail(null);
+			setMarkDetailError(null);
+			setIsLoadingMarkDetail(false);
+			return;
+		}
+
+		let cancelled = false;
+		setIsLoadingMarkDetail(true);
+		setMarkDetailError(null);
+
+		getMarkDetail(selectedCourse.StudyUnitID)
+			.then((items) => {
+				if (cancelled) return;
+				setMarkDetail(dedupeMarkDetail(items ?? []));
+			})
+			.catch((err) => {
+				console.error("Error fetching mark detail:", err);
+				if (!cancelled)
+					setMarkDetailError("Không thể tải chi tiết điểm");
+			})
+			.finally(() => {
+				if (!cancelled) setIsLoadingMarkDetail(false);
+			});
+
+		return () => {
+			cancelled = true;
+		};
+	}, [selectedCourse, markDetailRetry]);
 
 	useEffect(() => {
 		const fetchInitialData = async () => {
@@ -1187,7 +1247,7 @@ className={cn(
 				open={!!selectedCourse}
 				onOpenChange={(open) => !open && setSelectedCourse(null)}
 			>
-				<DialogContent className='max-w-md'>
+				<DialogContent className='max-w-md p-4 sm:p-6 max-h-[85vh] overflow-y-auto'>
 					<DialogHeader>
 						<DialogTitle className='text-lg font-semibold text-foreground'>
 							Chi tiết môn học
@@ -1196,7 +1256,7 @@ className={cn(
 					{selectedCourse && (
 						<div className='space-y-4'>
 							{/* Course Name */}
-							<div className='p-4 rounded-lg bg-muted/50'>
+							<div className='p-3 rounded-lg bg-muted/50'>
 								<p className='text-xs text-muted-foreground mb-1'>
 									Tên môn học
 								</p>
@@ -1210,36 +1270,122 @@ className={cn(
 										{selectedCourse.EnglishCurriculumName}
 									</p>
 								)}
+								{(selectedCourse.ScheduleStudyUnitID ||
+									selectedCourse.ListOfProfessorName) && (
+									<p className='text-xs text-muted-foreground mt-2 pt-2 border-t border-muted-foreground/15 truncate'>
+										{selectedCourse.ScheduleStudyUnitID && (
+											<span className='font-medium text-foreground'>
+												{
+													selectedCourse.ScheduleStudyUnitID
+												}
+											</span>
+										)}
+										{selectedCourse.ScheduleStudyUnitID &&
+											selectedCourse.ListOfProfessorName &&
+											"  •  "}
+										{selectedCourse.ListOfProfessorName}
+									</p>
+								)}
 							</div>
 
 							{/* Course Info Grid */}
-							<div className='grid grid-cols-2 gap-3'>
-								<div className='p-3 rounded-lg border bg-card'>
+							<div className='grid grid-cols-2 gap-2'>
+								<div className='px-2.5 py-2 rounded-lg border bg-card'>
 									<p className='text-xs text-muted-foreground'>
 										Mã môn
 									</p>
-									<p className='font-medium text-foreground'>
+									<p className='text-sm font-medium text-foreground'>
 										{selectedCourse.CurriculumID}
 									</p>
 								</div>
-								<div className='p-3 rounded-lg border bg-card'>
+								<div className='px-2.5 py-2 rounded-lg border bg-card'>
 									<p className='text-xs text-muted-foreground'>
 										Số tín chỉ
 									</p>
-									<p className='font-medium text-foreground'>
+									<p className='text-sm font-medium text-foreground'>
 										{selectedCourse.Credits} TC
 									</p>
 								</div>
-								{selectedCourse.ScheduleStudyUnitID && (
-									<div className='p-3 rounded-lg border bg-card col-span-2'>
-										<p className='text-xs text-muted-foreground'>
-											Mã lớp học phần
-										</p>
-										<p className='font-medium text-foreground'>
-											{selectedCourse.ScheduleStudyUnitID}
-										</p>
+							</div>
+
+							{/* Mark Detail (component scores) */}
+							<div className='space-y-2'>
+								<p className='text-sm font-medium text-foreground'>
+									Điểm thành phần
+								</p>
+								{isLoadingMarkDetail ?
+									<div className='flex items-center justify-center gap-2 py-6 text-muted-foreground'>
+										<Loader2 className='w-5 h-5 animate-spin' />
+										<span className='text-sm'>
+											Đang tải chi tiết điểm...
+										</span>
 									</div>
-								)}
+									: markDetailError ?
+										<div className='flex flex-col items-center gap-2 py-4 text-center'>
+											<p className='text-sm text-destructive'>
+												{markDetailError}
+											</p>
+											<Button
+												variant='outline'
+												size='sm'
+												onClick={() =>
+													setMarkDetailRetry(
+														(key) => key + 1,
+													)
+												}
+											>
+												Thử lại
+											</Button>
+										</div>
+										: markDetail && markDetail.length > 0 ?
+											<div className='rounded-lg border divide-y divide-border overflow-hidden'>
+												{markDetail.map((item) => (
+													<div
+														key={item.AssignmentID}
+														className='flex items-center justify-between gap-3 px-3 py-1.5 bg-card'
+													>
+														<div className='flex-1 min-w-0'>
+															<p className='text-sm font-medium text-foreground truncate'>
+																{item.AssignmentName}
+																{item.Assignmentdetail && (
+																	<span className='ml-1.5 text-xs text-muted-foreground'>
+																		(
+																		{
+																			item.Assignmentdetail
+																		}
+																		)
+																	</span>
+																)}
+															</p>
+														</div>
+														<div className='flex items-center gap-1 flex-shrink-0'>
+															<span className='text-xs text-muted-foreground'>
+																L1
+															</span>
+															<span className='text-sm font-semibold text-foreground'>
+																{formatMark(
+																	item.FirstMark,
+																)}
+															</span>
+															<span className='text-xs text-muted-foreground ml-1'>
+																L2
+															</span>
+															<span className='text-sm font-semibold text-foreground'>
+																{formatMark(
+																	item.SecondMark,
+																)}
+															</span>
+														</div>
+													</div>
+												))}
+											</div>
+											: markDetail && (
+												<p className='text-sm text-muted-foreground text-center py-4'>
+													Không có dữ liệu điểm thành
+													phần
+												</p>
+											)
+								}
 							</div>
 
 							{/* Scores Section */}
@@ -1347,33 +1493,16 @@ className={cn(
 							</div>
 
 							{/* Additional Info */}
-							{(selectedCourse.ListOfProfessorName ||
-								selectedCourse.Note) && (
-									<div className='space-y-2 pt-2 border-t'>
-										{selectedCourse.ListOfProfessorName && (
-											<div>
-												<p className='text-xs text-muted-foreground'>
-													Giảng viên
-												</p>
-												<p className='text-sm text-foreground'>
-													{
-														selectedCourse.ListOfProfessorName
-													}
-												</p>
-											</div>
-										)}
-										{selectedCourse.Note && (
-											<div>
-												<p className='text-xs text-muted-foreground'>
-													Ghi chú
-												</p>
-												<p className='text-sm text-foreground'>
-													{selectedCourse.Note}
-												</p>
-											</div>
-										)}
-									</div>
-								)}
+							{selectedCourse.Note && (
+								<div className='pt-2 border-t'>
+									<p className='text-xs text-muted-foreground'>
+										Ghi chú
+									</p>
+									<p className='text-sm text-foreground'>
+										{selectedCourse.Note}
+									</p>
+								</div>
+							)}
 
 							{selectedCourse.NotComputeAverageScore && (
 								<p className='text-xs text-muted-foreground text-center italic'>
