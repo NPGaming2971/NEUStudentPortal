@@ -101,6 +101,83 @@ const formatMark = (mark: number | null | undefined): string => {
 	return Number(mark.toFixed(2)).toString();
 };
 
+const normalizeMarkName = (name: string): string =>
+	name.toLowerCase().replace(/\s+/g, " ").trim();
+
+const MARK_NAME_MAP: Record<string, string> = {
+	"thi lý thuyết": "Điểm thi kết thúc học phần",
+	"kttx1 lý thuyết": "Điểm kiểm tra thường xuyên 1",
+	"kttx2 lý thuyết": "Điểm kiểm tra thường xuyên 2",
+	"cc lý thuyết": "Điểm chuyên cần",
+};
+
+const IGNORED_MARK_NAMES = new Set(["điểm qt lý thuyết", "điểm quá trình"]);
+
+const parseMarkInfo = (info: string | null | undefined): MarkDetailItem[] => {
+	if (!info) return [];
+	const result: MarkDetailItem[] = [];
+	const seen = new Set<string>();
+	for (const part of info.split(";")) {
+		const trimmed = part.trim();
+		if (!trimmed) continue;
+		const sep = trimmed.indexOf(":");
+		if (sep <= 0) continue;
+		const key = normalizeMarkName(trimmed.slice(0, sep).trim());
+		if (IGNORED_MARK_NAMES.has(key) || seen.has(key)) continue;
+		seen.add(key);
+		const name = MARK_NAME_MAP[key] ?? trimmed.slice(0, sep).trim();
+		const numeric = Number(trimmed.slice(sep + 1).trim().replace(",", "."));
+		result.push({
+			AssignmentID: `info-${key}`,
+			AssignmentName: name,
+			FirstMark: Number.isNaN(numeric) ? null : numeric,
+			SecondMark: null,
+		});
+	}
+	return result;
+};
+
+const mergeMarkItems = (
+	detail: MarkDetailItem[],
+	info: MarkDetailItem[],
+): { items: MarkDetailItem[]; filledIds: Set<string> } => {
+	const infoByKey = new Map<string, MarkDetailItem>();
+	for (const item of info) {
+		const key = normalizeMarkName(item.AssignmentName);
+		if (!infoByKey.has(key)) infoByKey.set(key, item);
+	}
+
+	const items: MarkDetailItem[] = [];
+	const filledIds = new Set<string>();
+	const usedKeys = new Set<string>();
+
+	for (const item of detail) {
+		const key = normalizeMarkName(item.AssignmentName);
+		usedKeys.add(key);
+		const infoItem = infoByKey.get(key);
+		const updated = { ...item };
+		if (infoItem) {
+			if (updated.FirstMark == null && infoItem.FirstMark != null) {
+				updated.FirstMark = infoItem.FirstMark;
+				filledIds.add(String(updated.AssignmentID));
+			}
+			if (updated.SecondMark == null && infoItem.SecondMark != null) {
+				updated.SecondMark = infoItem.SecondMark;
+				filledIds.add(String(updated.AssignmentID));
+			}
+		}
+		items.push(updated);
+	}
+
+	for (const [key, infoItem] of infoByKey) {
+		if (usedKeys.has(key)) continue;
+		items.push(infoItem);
+		filledIds.add(String(infoItem.AssignmentID));
+	}
+
+	return { items, filledIds };
+};
+
 const dashboardCache = new Map<string, DashboardKetQuaHocTap>();
 const dashboardInflight = new Map<
 	string,
@@ -237,12 +314,23 @@ function AcademicResultsPage() {
 		null,
 	);
 	const [markDetailRetry, setMarkDetailRetry] = useState(0);
+	const [markDetailFilledIds, setMarkDetailFilledIds] = useState<Set<string>>(
+		new Set(),
+	);
 
 	useEffect(() => {
-		if (!selectedCourse?.StudyUnitID) {
-			setMarkDetail(null);
+		const infoItems = parseMarkInfo(selectedCourse?.Info);
+
+		const applyMarkDetail = (detailItems: MarkDetailItem[]) => {
+			const { items, filledIds } = mergeMarkItems(detailItems, infoItems);
+			setMarkDetail(items.length > 0 ? items : null);
+			setMarkDetailFilledIds(filledIds);
 			setMarkDetailError(null);
 			setIsLoadingMarkDetail(false);
+		};
+
+		if (!selectedCourse?.StudyUnitID) {
+			applyMarkDetail([]);
 			return;
 		}
 
@@ -253,12 +341,19 @@ function AcademicResultsPage() {
 		getMarkDetail(selectedCourse.StudyUnitID)
 			.then((items) => {
 				if (cancelled) return;
-				setMarkDetail(dedupeMarkDetail(items ?? []));
+				applyMarkDetail(dedupeMarkDetail(items ?? []));
 			})
 			.catch((err) => {
 				console.error("Error fetching mark detail:", err);
-				if (!cancelled)
+				if (cancelled) return;
+				if (infoItems.length > 0) {
+					applyMarkDetail([]);
+				} else {
+					setMarkDetail(null);
+					setMarkDetailFilledIds(new Set());
 					setMarkDetailError("Không thể tải chi tiết điểm");
+					setIsLoadingMarkDetail(false);
+				}
 			})
 			.finally(() => {
 				if (!cancelled) setIsLoadingMarkDetail(false);
@@ -1312,7 +1407,17 @@ className={cn(
 							<div className='space-y-2'>
 								<p className='text-sm font-medium text-foreground'>
 									Điểm thành phần
+									{markDetailFilledIds.size > 0 && (
+										<span className='ml-1.5 text-xs font-normal text-muted-foreground'>
+											(*)
+										</span>
+									)}
 								</p>
+								{markDetailFilledIds.size > 0 && (
+									<p className='text-xs text-muted-foreground'>
+										* Bổ sung từ thông tin môn học
+									</p>
+								)}
 								{isLoadingMarkDetail ?
 									<div className='flex items-center justify-center gap-2 py-6 text-muted-foreground'>
 										<Loader2 className='w-5 h-5 animate-spin' />
@@ -1345,9 +1450,19 @@ className={cn(
 														className='flex items-center justify-between gap-3 px-3 py-1.5 bg-card'
 													>
 														<div className='flex-1 min-w-0'>
-															<p className='text-sm font-medium text-foreground truncate'>
-																{item.AssignmentName}
-																{item.Assignmentdetail && (
+<p className='text-sm font-medium text-foreground truncate'>
+															{item.AssignmentName}
+															{markDetailFilledIds.has(
+																String(
+																	item
+																		.AssignmentID,
+																),
+															) && (
+																<span className='ml-1 text-xs text-muted-foreground'>
+																	(*)
+																</span>
+															)}
+															{item.Assignmentdetail && (
 																	<span className='ml-1.5 text-xs text-muted-foreground'>
 																		(
 																		{
