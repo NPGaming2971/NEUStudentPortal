@@ -15,6 +15,7 @@ import {
 import { useGlobalNotification } from '@/hooks/useGlobalNotification';
 import { Loader2, MessageSquare, ChevronDown, ChevronUp, Send, BookOpen, Calendar } from 'lucide-react';
 import { cn, formatDate } from '@/lib/utils';
+import { PageLoader } from '@/components/common/PageLoader';
 
 function DiscussionPage() {
 	const [yearAndTerm, setYearAndTerm] = useState<YearAndTermData | null>(null);
@@ -95,14 +96,7 @@ function DiscussionPage() {
 	}, [selectedYear, selectedTerm, showError]);
 
 	if (!yearAndTerm) {
-		return (
-			<div className="flex items-center justify-center min-h-[60vh]">
-				<div className="text-center space-y-4">
-					<Loader2 className="w-12 h-12 animate-spin text-primary mx-auto" />
-					<p className="text-muted-foreground">Đang tải dữ liệu...</p>
-				</div>
-			</div>
-		);
+		return <PageLoader />;
 	}
 
 	return (

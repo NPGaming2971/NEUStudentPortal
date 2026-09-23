@@ -4,7 +4,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { getPeriorSchedules, type YearAndTermItem } from '@/services/scheduleService';
 import { downloadSchedule, type ScheduleExportOptions, type ScheduleTitleStyle } from '@/utils/downloadHelper';
-import { DEFAULT_SCHEDULE_REMINDER } from '@/lib/exportOptions';
+import { DefaultScheduleReminder } from '@/lib/exportOptions';
 import { useGlobalNotification } from '@/hooks/useGlobalNotification';
 import IcsExportDialog, {
 	type IcsExportDownloadPayload,
@@ -28,7 +28,7 @@ interface CoursePayload {
 	sessions: number;
 }
 
-const TITLE_STYLE_OPTIONS: { value: ScheduleTitleStyle; label: string; example: string }[] = [
+const TitleStyleOptions: { value: ScheduleTitleStyle; label: string; example: string }[] = [
 	{ value: 'subject', label: 'Tên môn học', example: 'Kinh tế quốc tế 2' },
 	{ value: 'subjectType', label: 'Tên môn học (Loại)', example: 'Kinh tế quốc tế 2 (Thảo luận)' },
 	{
@@ -39,7 +39,7 @@ const TITLE_STYLE_OPTIONS: { value: ScheduleTitleStyle; label: string; example: 
 	{ value: 'subjectRoom', label: 'Tên môn - Phòng', example: 'Kinh tế quốc tế 2 - B-204' }
 ];
 
-const INCLUDE_FIELDS: IcsExportIncludeField[] = [
+const IncludeFields: IcsExportIncludeField[] = [
 	{ key: 'includeCourseCode', label: 'Mã lớp học phần' },
 	{ key: 'includeLoaiHp', label: 'Loại học phần' },
 	{ key: 'includeCredits', label: 'Số tín chỉ' },
@@ -48,7 +48,7 @@ const INCLUDE_FIELDS: IcsExportIncludeField[] = [
 	{ key: 'includeCampus', label: 'Cơ sở học' }
 ];
 
-const INCLUDE_DEFAULTS: Record<string, boolean> = {
+const IncludeDefaults: Record<string, boolean> = {
 	includeCourseCode: true,
 	includeLoaiHp: true,
 	includeCredits: false,
@@ -72,7 +72,7 @@ function ScheduleExportDialog({ open, onOpenChange, currentYear, currentTerm, ye
 		setDialogTerm(term);
 	}, []);
 
-	const selectedTitleStyle = TITLE_STYLE_OPTIONS.find((o) => o.value === titleStyle);
+	const selectedTitleStyle = TitleStyleOptions.find((o) => o.value === titleStyle);
 
 	const fetchSummary = useCallback(async () => {
 		if (!dialogYear || !dialogTerm) return;
@@ -194,9 +194,9 @@ function ScheduleExportDialog({ open, onOpenChange, currentYear, currentTerm, ye
 			currentTerm={currentTerm}
 			onSelectionChange={handleSelectionChange}
 			reminderLabel="Nhắc nhở trước buổi học"
-			reminderDefault={DEFAULT_SCHEDULE_REMINDER}
-			includeFields={INCLUDE_FIELDS}
-			includeDefaults={INCLUDE_DEFAULTS}
+			reminderDefault={DefaultScheduleReminder}
+			includeFields={IncludeFields}
+			includeDefaults={IncludeDefaults}
 			items={courses}
 			downloadDisabled={isSummaryLoading || summaryError !== null || courses.length === 0}
 			panel={panel}
@@ -209,7 +209,7 @@ function ScheduleExportDialog({ open, onOpenChange, currentYear, currentTerm, ye
 						<SelectValue />
 					</SelectTrigger>
 					<SelectContent>
-						{TITLE_STYLE_OPTIONS.map((opt) => (
+						{TitleStyleOptions.map((opt) => (
 							<SelectItem key={opt.value} value={opt.value}>
 								{opt.label}
 							</SelectItem>

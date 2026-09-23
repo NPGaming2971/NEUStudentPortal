@@ -16,7 +16,7 @@ interface InfoState {
 	getInitials: () => string;
 }
 
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+const CacheDuration = 5 * 60 * 1000; // 5 minutes
 
 export const useInfoStore = create<InfoState>()(
 	persist(
@@ -30,7 +30,7 @@ export const useInfoStore = create<InfoState>()(
 			fetchStudentInfo: async (force = false) => {
 				const { lastFetched, studentInfo } = get();
 
-				if (!force && studentInfo && lastFetched && Date.now() - lastFetched < CACHE_DURATION) {
+				if (!force && studentInfo && lastFetched && Date.now() - lastFetched < CacheDuration) {
 					return;
 				}
 

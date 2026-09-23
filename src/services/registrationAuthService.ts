@@ -1,11 +1,11 @@
 import { getToken, decodeJwt } from './authService';
-import { PORTAL_PROXY_URL, REGIST_PROXY_URL, PORTAL_CLIENT_ID, PORTAL_API_KEY } from '../lib/proxyConfig';
+import { PortalProxyUrl, RegistProxyUrl, PortalClientId, PortalApiKey } from '../lib/proxyConfig';
 
 const CONFIG = {
-	portal_api: `${PORTAL_PROXY_URL}`,
-	regist_api: `${REGIST_PROXY_URL}`,
-	apiKey: PORTAL_API_KEY,
-	clientId: PORTAL_CLIENT_ID
+	portal_api: `${PortalProxyUrl}`,
+	regist_api: `${RegistProxyUrl}`,
+	apiKey: PortalApiKey,
+	clientId: PortalClientId
 };
 
 /**

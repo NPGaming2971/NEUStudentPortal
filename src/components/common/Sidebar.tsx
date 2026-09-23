@@ -75,7 +75,7 @@ interface SidebarProps {
 	onLogout: () => void;
 }
 
-const MENU_ICONS: Record<string, React.ElementType> = {
+const MenuIcons: Record<string, React.ElementType> = {
 	DocumentObject: FileText,
 	User,
 	TienDoHocTap: TrendingUp,
@@ -110,9 +110,9 @@ const MENU_ICONS: Record<string, React.ElementType> = {
 	BaoHiemYTe: Shield
 };
 
-const DEFAULT_ICON: React.ElementType = HelpCircle;
+const DefaultIcon: React.ElementType = HelpCircle;
 
-const getMenuIcon = (iconKey: string): React.ElementType => MENU_ICONS[iconKey] ?? DEFAULT_ICON;
+const getMenuIcon = (iconKey: string): React.ElementType => MenuIcons[iconKey] ?? DefaultIcon;
 
 const buildMenuTree = (items: SidebarMenuItem[]): MenuGroup[] => {
 	const groups: MenuGroup[] = [];

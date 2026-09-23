@@ -50,9 +50,22 @@ export const login = async (username: string, password: string): Promise<LoginRe
 	}
 };
 
-export const logout = (): void => {
+export const clearSession = (): void => {
 	localStorage.removeItem('authorizationData');
+	localStorage.removeItem('registToken');
+	localStorage.removeItem('registTokenAuthSource');
 	document.cookie = 'YIF+pxrGp0isUkYUsAWxn3rQH6pBrNY_=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+};
+
+export const redirectToLogin = (): void => {
+	clearSession();
+	if (window.location.pathname !== '/login') {
+		window.location.href = '/login';
+	}
+};
+
+export const logout = (): void => {
+	clearSession();
 };
 
 export interface JwtPayload {

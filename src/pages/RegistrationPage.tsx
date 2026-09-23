@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
-import { Loader2, AlertCircle } from 'lucide-react';
+import { PageLoader } from '@/components/common/PageLoader';
+import { PageError } from '@/components/common/PageError';
 import { useGlobalNotification } from '@/hooks/useGlobalNotification';
 import {
 	getAllStudyPrograms,
@@ -274,29 +274,11 @@ function RegistrationPage() {
 	};
 
 	if (isInitializing) {
-		return (
-			<div className="flex items-center justify-center min-h-[60vh]">
-				<div className="text-center space-y-4">
-					<Loader2 className="w-12 h-12 animate-spin text-primary mx-auto" />
-					<p className="text-muted-foreground">Đang kết nối hệ thống đăng ký...</p>
-				</div>
-			</div>
-		);
+		return <PageLoader label="Đang kết nối hệ thống đăng ký..." />;
 	}
 
 	if (studyPrograms.length === 0) {
-		return (
-			<div className="flex items-center justify-center min-h-[60vh]">
-				<Card className="max-w-md w-full border-destructive/50">
-					<CardContent className="pt-6">
-						<div className="text-center space-y-4">
-							<AlertCircle className="w-12 h-12 text-destructive mx-auto" />
-							<p className="text-destructive">Không tìm thấy chương trình đào tạo nào</p>
-						</div>
-					</CardContent>
-				</Card>
-			</div>
-		);
+		return <PageError message="Không tìm thấy chương trình đào tạo nào" />;
 	}
 
 	return (

@@ -3,14 +3,14 @@ import { useLocation } from 'react-router-dom';
 import { useMenuStore } from '@/stores/menuStore';
 import type { SidebarMenuItem } from '@/services/menuService';
 
-const REGISTRATION_TITLES: Record<string, string> = {
+const RegistrationTitles: Record<string, string> = {
 	'/student/dangkyhocphan': 'Đăng ký học phần',
 	'/student/dangkyhocphan/plan': 'Đăng ký ghi danh',
 	'/student/dangkyhocphan/search': 'Tra cứu học phần',
 	'/student/dangkyhocphan/history': 'Lịch sử đăng ký'
 };
 
-const DEFAULT_TITLE = 'Cổng thông tin đào tạo';
+const DefaultTitle = 'Cổng thông tin đào tạo';
 
 const flattenMenu = (items: SidebarMenuItem[]): { path: string; name: string }[] => {
 	const result: { path: string; name: string }[] = [];
@@ -30,8 +30,8 @@ export const usePageTitle = () => {
 	const menu = useMenuStore((state) => state.menu);
 
 	useEffect(() => {
-		const title = REGISTRATION_TITLES[pathname] ?? flattenMenu(menu).find((item) => item.path === pathname)?.name;
+		const title = RegistrationTitles[pathname] ?? flattenMenu(menu).find((item) => item.path === pathname)?.name;
 
-		document.title = title ? title : DEFAULT_TITLE;
+		document.title = title ? title : DefaultTitle;
 	}, [pathname, menu]);
 };

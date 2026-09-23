@@ -1,9 +1,10 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn, formatCurrency } from '@/lib/utils';
+import { PageLoader } from '@/components/common/PageLoader';
+import { PageError } from '@/components/common/PageError';
 import {
 	getStudentFinance,
 	getStudentScholarshipPolicy,
@@ -11,8 +12,6 @@ import {
 	type ScholarshipItem
 } from '@/services/financeService';
 import {
-	Loader2,
-	AlertCircle,
 	Wallet,
 	Receipt,
 	CheckCircle2,
@@ -63,7 +62,10 @@ function FinancePage() {
 		try {
 			const [finance, scholarship] = await Promise.all([
 				getStudentFinance(),
-				getStudentScholarshipPolicy().catch(() => [])
+				getStudentScholarshipPolicy().catch((err) => {
+					console.error('Error fetching scholarship policy:', err);
+					return [];
+				})
 			]);
 			setFinanceData(finance || []);
 			setScholarshipData(scholarship || []);
@@ -133,32 +135,11 @@ function FinancePage() {
 	const normalizedScholarshipData = Array.isArray(scholarshipData) ? scholarshipData : [];
 
 	if (isLoading) {
-		return (
-			<div className="flex items-center justify-center min-h-[60vh]">
-				<div className="text-center space-y-4">
-					<Loader2 className="w-12 h-12 animate-spin text-primary mx-auto" />
-					<p className="text-muted-foreground">Đang tải thông tin tài chính...</p>
-				</div>
-			</div>
-		);
+		return <PageLoader label="Đang tải thông tin tài chính..." />;
 	}
 
 	if (error) {
-		return (
-			<div className="flex items-center justify-center min-h-[60vh]">
-				<Card className="max-w-md w-full border-destructive/50">
-					<CardContent className="pt-6">
-						<div className="text-center space-y-4">
-							<AlertCircle className="w-12 h-12 text-destructive mx-auto" />
-							<p className="text-destructive">{error}</p>
-							<Button onClick={() => fetchData()} variant="outline">
-								Thử lại
-							</Button>
-						</div>
-					</CardContent>
-				</Card>
-			</div>
-		);
+		return <PageError message={error} onRetry={fetchData} />;
 	}
 
 	return (

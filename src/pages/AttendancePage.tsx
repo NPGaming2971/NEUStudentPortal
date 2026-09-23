@@ -7,6 +7,8 @@ import { cn } from '@/lib/utils';
 import { getYearAndTerm, type YearAndTermData } from '@/services/scheduleService';
 import { getStudentAttendance, type AttendanceItem } from '@/services/attendanceService';
 import { Loader2, AlertCircle, UserCheck, BookOpen, Clock } from 'lucide-react';
+import { PageLoader } from '@/components/common/PageLoader';
+import { PageError } from '@/components/common/PageError';
 
 interface GroupedAttendance {
 	MaLHP: string;
@@ -128,32 +130,11 @@ function AttendancePage() {
 	}, [fetchAttendance]);
 
 	if (isLoading) {
-		return (
-			<div className="flex items-center justify-center min-h-[60vh]">
-				<div className="text-center space-y-4">
-					<Loader2 className="w-12 h-12 animate-spin text-primary mx-auto" />
-					<p className="text-muted-foreground">Đang tải dữ liệu...</p>
-				</div>
-			</div>
-		);
+		return <PageLoader />;
 	}
 
 	if (error) {
-		return (
-			<div className="flex items-center justify-center min-h-[60vh]">
-				<Card className="max-w-md w-full">
-					<CardContent className="pt-6">
-						<div className="text-center space-y-4">
-							<AlertCircle className="w-12 h-12 text-destructive mx-auto" />
-							<p className="text-destructive">{error}</p>
-							<Button onClick={() => fetchYearAndTerm()} variant="outline">
-								Thử lại
-							</Button>
-						</div>
-					</CardContent>
-				</Card>
-			</div>
-		);
+		return <PageError message={error} onRetry={() => fetchYearAndTerm()} />;
 	}
 
 	return (

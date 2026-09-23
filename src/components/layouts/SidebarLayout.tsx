@@ -10,23 +10,23 @@ interface SidebarLayoutProps {
 	children: ReactNode;
 }
 
-const DESKTOP_BREAKPOINT = 1024;
+const DesktopBreakpoint = 1024;
 
 function SidebarLayout({ children }: SidebarLayoutProps) {
 	const navigate = useNavigate();
 	const { logout } = useAuth();
 	usePageTitle();
 	const [isDesktop, setIsDesktop] = useState(() =>
-		typeof window !== 'undefined' ? window.innerWidth >= DESKTOP_BREAKPOINT : false
+		typeof window !== 'undefined' ? window.innerWidth >= DesktopBreakpoint : false
 	);
 	const [isSidebarOpen, setIsSidebarOpen] = useState(() =>
-		typeof window !== 'undefined' ? window.innerWidth >= DESKTOP_BREAKPOINT : false
+		typeof window !== 'undefined' ? window.innerWidth >= DesktopBreakpoint : false
 	);
 	const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
 	useEffect(() => {
 		const checkScreenSize = () => {
-			const desktop = window.innerWidth >= DESKTOP_BREAKPOINT;
+			const desktop = window.innerWidth >= DesktopBreakpoint;
 			setIsDesktop(desktop);
 			setIsSidebarOpen(desktop);
 		};

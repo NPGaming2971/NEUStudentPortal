@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Loader2, Newspaper } from 'lucide-react';
+import { ArrowLeft, Newspaper } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { PageLoader } from '@/components/common/PageLoader';
 import { getNewsById } from '@/services/newsService';
 import type { NewsItem } from '@/services/newsService';
 import { formatDate, formatTitle } from '@/lib/utils';
@@ -48,10 +49,7 @@ function NewsDetailPage() {
 				</div>
 
 				{isLoading ? (
-					<div className="flex flex-col items-center justify-center py-24 gap-4">
-						<Loader2 className="size-10 animate-spin text-primary" />
-						<p className="text-muted-foreground animate-pulse">Đang tải bài viết...</p>
-					</div>
+					<PageLoader label="Đang tải bài viết..." />
 				) : error || !news ? (
 					<div className="bg-card border border-border rounded-2xl p-12 text-center">
 						<Newspaper className="size-12 text-muted-foreground/50 mx-auto mb-4" />

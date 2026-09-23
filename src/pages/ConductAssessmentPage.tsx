@@ -41,6 +41,7 @@ import {
 	AlertCircle
 } from 'lucide-react';
 import { cn, formatDate } from '@/lib/utils';
+import { PageLoader } from '@/components/common/PageLoader';
 
 interface GroupSection {
 	name: string;
@@ -444,14 +445,7 @@ function ConductAssessmentPage() {
 		: null;
 
 	if (!yearTermData) {
-		return (
-			<div className="flex items-center justify-center min-h-[60vh]">
-				<div className="text-center space-y-4">
-					<Loader2 className="w-12 h-12 animate-spin text-primary mx-auto" />
-					<p className="text-muted-foreground">Đang tải dữ liệu...</p>
-				</div>
-			</div>
-		);
+		return <PageLoader />;
 	}
 
 	return (

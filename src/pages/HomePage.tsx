@@ -11,8 +11,8 @@ import { useTheme } from '@/hooks/useTheme';
 import { useAuth } from '@/hooks/useAuth';
 import { formatDate } from '@/lib/utils';
 
-const ITEMS_PER_PAGE = 6;
-const ALL_GROUP_ID = 0;
+const ItemsPerPage = 6;
+const AllGroupId = 0;
 
 interface NewsGroupNode extends NewsGroup {
 	children?: NewsGroupNode[];
@@ -48,7 +48,7 @@ function HomePage() {
 	const navigate = useNavigate();
 	const [newsGroups, setNewsGroups] = useState<NewsGroup[]>([]);
 	const [newsItems, setNewsItems] = useState<NewsItem[]>([]);
-	const [selectedGroup, setSelectedGroup] = useState<number>(ALL_GROUP_ID);
+	const [selectedGroup, setSelectedGroup] = useState<number>(AllGroupId);
 	const [currentPage, setCurrentPage] = useState(1);
 	const [isLoading, setIsLoading] = useState(true);
 	const [newsError, setNewsError] = useState<string | null>(null);
@@ -63,7 +63,7 @@ function HomePage() {
 		return buildNewsTree(filtered);
 	}, [newsGroups, user?.dvDaoTao]);
 	const selectedGroupName = useMemo(() => {
-		if (selectedGroup === ALL_GROUP_ID) return 'Tất cả tin';
+		if (selectedGroup === AllGroupId) return 'Tất cả tin';
 		const flat = newsGroups.find((g) => g.MaNhomTin === selectedGroup);
 		return flat?.TenNhomTin || 'Tin tức';
 	}, [newsGroups, selectedGroup]);
@@ -116,9 +116,9 @@ function HomePage() {
 		fetchNewsItems();
 	};
 
-	const totalPages = Math.ceil(newsItems.length / ITEMS_PER_PAGE);
-	const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-	const paginatedItems = newsItems.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+	const totalPages = Math.ceil(newsItems.length / ItemsPerPage);
+	const startIndex = (currentPage - 1) * ItemsPerPage;
+	const paginatedItems = newsItems.slice(startIndex, startIndex + ItemsPerPage);
 
 	const handlePageChange = (newPage: number) => {
 		if (newPage >= 1 && newPage <= totalPages) {
@@ -188,9 +188,9 @@ function HomePage() {
 								<ul className="space-y-1">
 									<li>
 										<button
-											onClick={() => setSelectedGroup(ALL_GROUP_ID)}
+											onClick={() => setSelectedGroup(AllGroupId)}
 											className={`w-full text-left px-4 py-3 rounded-xl text-sm transition-all ${
-												selectedGroup === ALL_GROUP_ID
+												selectedGroup === AllGroupId
 													? 'bg-primary text-primary-foreground font-medium'
 													: 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
 											}`}

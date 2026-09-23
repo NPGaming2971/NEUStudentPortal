@@ -39,7 +39,7 @@ interface GradeStatisticsProps {
 	};
 }
 
-const GRADE_COLORS: Record<string, string> = {
+const GradeColors: Record<string, string> = {
 	'A+': '#22c55e',
 	A: '#22c55e',
 	'B+': '#3b82f6',
@@ -51,7 +51,7 @@ const GRADE_COLORS: Record<string, string> = {
 	F: '#ef4444'
 };
 
-const PIE_COLORS = ['#22c55e', '#3b82f6', '#06b6d4', '#f97316', '#ef4444', '#8b5cf6'];
+const PieColors = ['#22c55e', '#3b82f6', '#06b6d4', '#f97316', '#ef4444', '#8b5cf6'];
 
 export default function GradeStatistics({ yearlyResults, gpa }: GradeStatisticsProps) {
 	// Calculate statistics
@@ -260,7 +260,7 @@ export default function GradeStatistics({ yearlyResults, gpa }: GradeStatisticsP
 									{stats.gradeData.map((entry, index) => (
 										<Cell
 											key={`cell-${index}`}
-											fill={GRADE_COLORS[entry.name] || PIE_COLORS[index % PIE_COLORS.length]}
+											fill={GradeColors[entry.name] || PieColors[index % PieColors.length]}
 										/>
 									))}
 								</Pie>

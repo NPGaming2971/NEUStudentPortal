@@ -19,9 +19,10 @@ import {
 	type DashboardKetQuaHocTap,
 	type MarkDetailItem
 } from '@/services/academicService';
+import { PageLoader } from '@/components/common/PageLoader';
+import { PageError } from '@/components/common/PageError';
 import {
 	Loader2,
-	AlertCircle,
 	BookOpen,
 	GraduationCap,
 	TrendingUp,
@@ -94,14 +95,14 @@ const formatMark = (mark: number | null | undefined): string => {
 
 const normalizeMarkName = (name: string): string => name.toLowerCase().replace(/\s+/g, ' ').trim();
 
-const MARK_NAME_MAP: Record<string, string> = {
+const MarkNameMap: Record<string, string> = {
 	'thi lý thuyết': 'Điểm thi kết thúc học phần',
 	'kttx1 lý thuyết': 'Điểm kiểm tra thường xuyên 1',
 	'kttx2 lý thuyết': 'Điểm kiểm tra thường xuyên 2',
 	'cc lý thuyết': 'Điểm chuyên cần'
 };
 
-const IGNORED_MARK_NAMES = new Set(['điểm qt lý thuyết', 'điểm quá trình']);
+const IgnoredMarkNames = new Set(['điểm qt lý thuyết', 'điểm quá trình']);
 
 const parseMarkInfo = (info: string | null | undefined): MarkDetailItem[] => {
 	if (!info) return [];
@@ -113,9 +114,9 @@ const parseMarkInfo = (info: string | null | undefined): MarkDetailItem[] => {
 		const sep = trimmed.indexOf(':');
 		if (sep <= 0) continue;
 		const key = normalizeMarkName(trimmed.slice(0, sep).trim());
-		if (IGNORED_MARK_NAMES.has(key) || seen.has(key)) continue;
+		if (IgnoredMarkNames.has(key) || seen.has(key)) continue;
 		seen.add(key);
-		const name = MARK_NAME_MAP[key] ?? trimmed.slice(0, sep).trim();
+		const name = MarkNameMap[key] ?? trimmed.slice(0, sep).trim();
 		const numeric = Number(
 			trimmed
 				.slice(sep + 1)
@@ -549,32 +550,11 @@ function AcademicResultsPage() {
 	};
 
 	if (isLoading && studyPrograms.length === 0) {
-		return (
-			<div className="flex items-center justify-center min-h-[60vh]">
-				<div className="text-center space-y-4">
-					<Loader2 className="w-12 h-12 animate-spin text-primary mx-auto" />
-					<p className="text-muted-foreground">Đang tải kết quả học tập...</p>
-				</div>
-			</div>
-		);
+		return <PageLoader label="Đang tải kết quả học tập..." />;
 	}
 
 	if (error) {
-		return (
-			<div className="flex items-center justify-center min-h-[60vh]">
-				<Card className="max-w-md w-full border-destructive/50">
-					<CardContent className="pt-6">
-						<div className="text-center space-y-4">
-							<AlertCircle className="w-12 h-12 text-destructive mx-auto" />
-							<p className="text-destructive">{error}</p>
-							<Button onClick={handleRetry} variant="outline">
-								Thử lại
-							</Button>
-						</div>
-					</CardContent>
-				</Card>
-			</div>
-		);
+		return <PageError message={error} onRetry={handleRetry} />;
 	}
 
 	return (

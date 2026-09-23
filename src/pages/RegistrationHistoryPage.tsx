@@ -7,6 +7,8 @@ import { cn } from '@/lib/utils';
 import { getTermLabel } from '@/lib/exportOptions';
 import { Loader2, History, AlertCircle, Calendar, Clock, CheckCircle2, XCircle, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { PageLoader } from '@/components/common/PageLoader';
+import { PageError } from '@/components/common/PageError';
 import { initializeRegistrationSession } from '@/services/registrationAuthService';
 import {
 	getAllYearStudyAndTerm,
@@ -91,32 +93,11 @@ function RegistrationHistoryPage() {
 	}, [historyData]);
 
 	if (isInitializing) {
-		return (
-			<div className="flex items-center justify-center min-h-[60vh]">
-				<div className="text-center space-y-4">
-					<Loader2 className="w-12 h-12 animate-spin text-primary mx-auto" />
-					<p className="text-muted-foreground">Đang kết nối hệ thống đăng ký...</p>
-				</div>
-			</div>
-		);
+		return <PageLoader label="Đang kết nối hệ thống đăng ký..." />;
 	}
 
 	if (!yearStudyAndTerm) {
-		return (
-			<div className="flex items-center justify-center min-h-[60vh]">
-				<Card className="max-w-md w-full border-destructive/50">
-					<CardContent className="pt-6">
-						<div className="text-center space-y-4">
-							<AlertCircle className="w-12 h-12 text-destructive mx-auto" />
-							<p className="text-destructive">Không thể tải thông tin năm học và học kỳ</p>
-							<Button onClick={() => initialize()} variant="outline">
-								Thử lại
-							</Button>
-						</div>
-					</CardContent>
-				</Card>
-			</div>
-		);
+		return <PageError message="Không thể tải thông tin năm học và học kỳ" onRetry={initialize} />;
 	}
 
 	return (

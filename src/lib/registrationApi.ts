@@ -1,17 +1,17 @@
 import axios from 'axios';
-import { REGIST_PROXY_URL, REGIST_API_KEY, PORTAL_CLIENT_ID } from './proxyConfig';
-import { decodeJwt } from '@/services/authService';
+import { RegistProxyUrl, RegistApiKey, PortalClientId } from './proxyConfig';
+import { decodeJwt, redirectToLogin } from '@/services/authService';
 
-export const REGISTRATION_API_TIMEOUT = 30000;
+export const RegistrationApiTimeout = 30000;
 
 const registrationApi = axios.create({
-	baseURL: REGIST_PROXY_URL,
+	baseURL: RegistProxyUrl,
 	headers: {
-		apikey: REGIST_API_KEY,
-		clientid: PORTAL_CLIENT_ID,
+		apikey: RegistApiKey,
+		clientid: PortalClientId,
 		accept: 'application/json, text/plain, */*'
 	},
-	timeout: REGISTRATION_API_TIMEOUT
+	timeout: RegistrationApiTimeout
 });
 
 registrationApi.interceptors.request.use(
@@ -22,9 +22,7 @@ registrationApi.interceptors.request.use(
 			if (tokenData && tokenData.exp && tokenData.exp * 1000 > Date.now() + 10000) {
 				config.headers.authorization = `Bearer ${token}`;
 			} else {
-				console.warn('Registration token expired');
-				localStorage.removeItem('registToken');
-				localStorage.removeItem('registTokenAuthSource');
+				redirectToLogin();
 			}
 		}
 		return config;
@@ -36,8 +34,7 @@ registrationApi.interceptors.response.use(
 	(response) => response,
 	(error) => {
 		if (error.response?.status === 401) {
-			localStorage.removeItem('registToken');
-			localStorage.removeItem('registTokenAuthSource');
+			redirectToLogin();
 		}
 		return Promise.reject(error);
 	}

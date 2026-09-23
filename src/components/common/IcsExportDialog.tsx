@@ -15,11 +15,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Download, Loader2, SlidersHorizontal, type LucideIcon } from 'lucide-react';
 import {
 	buildReminderTrigger,
-	DEFAULT_CUSTOM_REMINDER_UNIT,
-	DEFAULT_CUSTOM_REMINDER_VALUE,
+	DefaultCustomReminderUnit,
+	DefaultCustomReminderValue,
 	getTermLabel,
-	REMINDER_PRESETS,
-	REMINDER_UNITS
+	ReminderPresets,
+	ReminderUnits
 } from '@/lib/exportOptions';
 import type { YearAndTermItem } from '@/services/scheduleService';
 import { useGlobalNotification } from '@/hooks/useGlobalNotification';
@@ -117,8 +117,8 @@ function IcsExportDialog<T>({
 	const [customYear, setCustomYear] = useState(currentYear);
 	const [customTerm, setCustomTerm] = useState(currentTerm);
 	const [reminderValue, setReminderValue] = useState(reminderDefault);
-	const [customReminderValue, setCustomReminderValue] = useState(DEFAULT_CUSTOM_REMINDER_VALUE);
-	const [customReminderUnit, setCustomReminderUnit] = useState(DEFAULT_CUSTOM_REMINDER_UNIT);
+	const [customReminderValue, setCustomReminderValue] = useState(DefaultCustomReminderValue);
+	const [customReminderUnit, setCustomReminderUnit] = useState(DefaultCustomReminderUnit);
 	const [include, setInclude] = useState<Record<string, boolean>>({ ...includeDefaultsProp });
 	const [selectedIds, setSelectedIds] = useState<string[]>([]);
 	const [openCustomize, setOpenCustomize] = useState(false);
@@ -396,7 +396,7 @@ function IcsExportDialog<T>({
 									<SelectValue />
 								</SelectTrigger>
 								<SelectContent>
-									{REMINDER_PRESETS.map((opt) => (
+									{ReminderPresets.map((opt) => (
 										<SelectItem key={opt.value} value={opt.value}>
 											{opt.label}
 										</SelectItem>
@@ -417,7 +417,7 @@ function IcsExportDialog<T>({
 											<SelectValue />
 										</SelectTrigger>
 										<SelectContent>
-											{REMINDER_UNITS.map((unit) => (
+											{ReminderUnits.map((unit) => (
 												<SelectItem key={unit.value} value={unit.value}>
 													{unit.label}
 												</SelectItem>

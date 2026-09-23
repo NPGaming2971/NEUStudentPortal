@@ -18,6 +18,7 @@ import {
 	updateStudent
 } from '@/services/studentInfoService';
 import { ArrowLeft, Save, Loader2, User, MapPin, Users, UserCheck } from 'lucide-react';
+import { PageLoader } from '@/components/common/PageLoader';
 
 interface SelectOption {
 	id: number | string;
@@ -163,14 +164,7 @@ function StudentUpdatePage() {
 	};
 
 	if (loading) {
-		return (
-			<div className="flex items-center justify-center min-h-[60vh]">
-				<div className="text-center space-y-4">
-					<Loader2 className="w-12 h-12 animate-spin text-primary mx-auto" />
-					<p className="text-muted-foreground">Đang tải form...</p>
-				</div>
-			</div>
-		);
+		return <PageLoader label="Đang tải form..." />;
 	}
 
 	const inputClassName = 'h-10 bg-background border-border focus:ring-primary';

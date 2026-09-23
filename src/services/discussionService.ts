@@ -48,7 +48,7 @@ export const getDiscussions = async (scheduleStudyUnitID: string): Promise<Discu
 		return Array.isArray(response.data) ? response.data : [];
 	} catch (error) {
 		console.error('Error fetching discussions:', error);
-		return [];
+		throw error;
 	}
 };
 

@@ -10,6 +10,7 @@ import { Loader2, Search, AlertCircle, BookOpen, User, Calendar, Clock, Users, G
 import { initializeRegistrationSession } from '@/services/registrationAuthService';
 import { searchScheduleStudyUnits, type ScheduleStudyUnitSearch } from '@/services/registrationService';
 import { useGlobalNotification } from '@/hooks/useGlobalNotification';
+import { PageLoader } from '@/components/common/PageLoader';
 
 function RegistrationSearchPage() {
 	const { showError, showInfo } = useGlobalNotification();
@@ -86,14 +87,7 @@ function RegistrationSearchPage() {
 	};
 
 	if (isInitializing) {
-		return (
-			<div className="flex items-center justify-center min-h-[60vh]">
-				<div className="text-center space-y-4">
-					<Loader2 className="w-12 h-12 animate-spin text-primary mx-auto" />
-					<p className="text-muted-foreground">Đang kết nối hệ thống đăng ký...</p>
-				</div>
-			</div>
-		);
+		return <PageLoader label="Đang kết nối hệ thống đăng ký..." />;
 	}
 
 	return (

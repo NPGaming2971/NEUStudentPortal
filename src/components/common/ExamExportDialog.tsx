@@ -4,12 +4,7 @@ import { Input } from '@/components/ui/input';
 import { getStudentExams, type ExamItem } from '@/services/examService';
 import type { YearAndTermItem } from '@/services/scheduleService';
 import { downloadExamSchedule, type ExamExportOptions } from '@/utils/downloadHelper';
-import {
-	DEFAULT_EXAM_DURATION,
-	DEFAULT_EXAM_REMINDER,
-	getExamDurationMinutes,
-	getTermLabel
-} from '@/lib/exportOptions';
+import { DefaultExamDuration, DefaultExamReminder, getExamDurationMinutes, getTermLabel } from '@/lib/exportOptions';
 import { useGlobalNotification } from '@/hooks/useGlobalNotification';
 import IcsExportDialog, {
 	type IcsExportDownloadPayload,
@@ -26,7 +21,7 @@ interface ExamExportDialogProps {
 	currentTerm: string;
 }
 
-const INCLUDE_FIELDS: IcsExportIncludeField[] = [
+const IncludeFields: IcsExportIncludeField[] = [
 	{ key: 'includeExamCode', label: 'Mã học phần' },
 	{ key: 'includeExamFormat', label: 'Hình thức thi' },
 	{ key: 'includeAttempt', label: 'Lần thi' },
@@ -34,7 +29,7 @@ const INCLUDE_FIELDS: IcsExportIncludeField[] = [
 	{ key: 'includeStatus', label: 'Trạng thái' }
 ];
 
-const INCLUDE_DEFAULTS: Record<string, boolean> = {
+const IncludeDefaults: Record<string, boolean> = {
 	includeExamCode: true,
 	includeExamFormat: true,
 	includeAttempt: true,
@@ -62,7 +57,7 @@ function ExamExportDialog({ open, onOpenChange, yearItems, currentYear, currentT
 		examItems.forEach((item) => {
 			const format = item.payload.HinhThucThi;
 			if (!format || defaults[format] !== undefined) return;
-			defaults[format] = getExamDurationMinutes(format, Number(DEFAULT_EXAM_DURATION));
+			defaults[format] = getExamDurationMinutes(format, Number(DefaultExamDuration));
 		});
 		return defaults;
 	}, [examItems]);
@@ -95,7 +90,7 @@ function ExamExportDialog({ open, onOpenChange, yearItems, currentYear, currentT
 						]
 							.filter(Boolean)
 							.join(' • '),
-						minutes: getExamDurationMinutes(exam.HinhThucThi, Number(DEFAULT_EXAM_DURATION)),
+						minutes: getExamDurationMinutes(exam.HinhThucThi, Number(DefaultExamDuration)),
 						payload: exam
 					};
 				})
@@ -126,7 +121,7 @@ function ExamExportDialog({ open, onOpenChange, yearItems, currentYear, currentT
 				<p className="text-xs text-muted-foreground">
 					Thời lượng mặc định:{' '}
 					{examTypes
-						.map((type) => `${type} ${typeDefaults[type] ?? Number(DEFAULT_EXAM_DURATION)} phút`)
+						.map((type) => `${type} ${typeDefaults[type] ?? Number(DefaultExamDuration)} phút`)
 						.join(' · ')}
 				</p>
 			) : null,
@@ -141,7 +136,7 @@ function ExamExportDialog({ open, onOpenChange, yearItems, currentYear, currentT
 					type="number"
 					min={15}
 					step={5}
-					value={durationOverrides[item.id] ?? String(item.minutes ?? Number(DEFAULT_EXAM_DURATION))}
+					value={durationOverrides[item.id] ?? String(item.minutes ?? Number(DefaultExamDuration))}
 					onChange={(e) => setDurationOverrides((prev) => ({ ...prev, [item.id]: e.target.value }))}
 					className="h-7 w-16 px-2 text-xs"
 				/>
@@ -164,7 +159,7 @@ function ExamExportDialog({ open, onOpenChange, yearItems, currentYear, currentT
 				return {
 					...item.payload,
 					DurationMinutes:
-						Number.isFinite(parsed) && parsed > 0 ? parsed : (item.minutes ?? Number(DEFAULT_EXAM_DURATION))
+						Number.isFinite(parsed) && parsed > 0 ? parsed : (item.minutes ?? Number(DefaultExamDuration))
 				};
 			});
 		if (selected.length === 0) {
@@ -201,9 +196,9 @@ function ExamExportDialog({ open, onOpenChange, yearItems, currentYear, currentT
 			currentTerm={currentTerm}
 			onSelectionChange={handleSelectionChange}
 			reminderLabel="Nhắc nhở trước giờ thi"
-			reminderDefault={DEFAULT_EXAM_REMINDER}
-			includeFields={INCLUDE_FIELDS}
-			includeDefaults={INCLUDE_DEFAULTS}
+			reminderDefault={DefaultExamReminder}
+			includeFields={IncludeFields}
+			includeDefaults={IncludeDefaults}
 			items={examItems}
 			downloadDisabled={isLoadingExams || examsError !== null || examItems.length === 0}
 			panel={panel}

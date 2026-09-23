@@ -23,7 +23,6 @@ import {
 import { getStudentInfo } from '@/services/studentInfoService';
 import {
 	Loader2,
-	AlertCircle,
 	Calendar,
 	ChevronLeft,
 	ChevronRight,
@@ -39,12 +38,14 @@ import {
 	BookOpen,
 	GraduationCap
 } from 'lucide-react';
+import { PageLoader } from '@/components/common/PageLoader';
+import { PageError } from '@/components/common/PageError';
 import ScheduleExportDialog from '@/components/common/ScheduleExportDialog';
 import { useGlobalNotification } from '@/hooks/useGlobalNotification';
 
 type ViewMode = 'week' | 'period' | 'class';
 
-const TIME_BLOCKS = {
+const TimeBlocks = {
 	B1_2: {
 		start: 1,
 		end: 2,
@@ -82,9 +83,9 @@ const TIME_BLOCKS = {
 	}
 };
 
-const DAYS_OF_WEEK = ['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7', 'CN'];
+const DaysOfWeek = ['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7', 'CN'];
 
-const VIEW_OPTIONS: { key: ViewMode; label: string; Icon: typeof Calendar }[] = [
+const ViewOptions: { key: ViewMode; label: string; Icon: typeof Calendar }[] = [
 	{ key: 'week', label: 'Theo tuần', Icon: LayoutGrid },
 	{ key: 'period', label: 'Theo kỳ', Icon: List },
 	{ key: 'class', label: 'Theo lớp', Icon: Users }
@@ -351,9 +352,9 @@ function ClassSchedulePage() {
 	const getScheduleItemsForDayAndBlock = (
 		items: GridItem[],
 		dayIndex: number,
-		blockType: keyof typeof TIME_BLOCKS
+		blockType: keyof typeof TimeBlocks
 	): GridItem[] => {
-		const { start, end } = TIME_BLOCKS[blockType];
+		const { start, end } = TimeBlocks[blockType];
 		return items.filter(
 			(item) => item.DayOfWeek === dayIndex + 1 && item.PeriodID >= start && item.PeriodID <= end
 		);
@@ -425,7 +426,7 @@ function ClassSchedulePage() {
 								<thead>
 									<tr className="bg-muted/50">
 										<th className="p-2 text-left font-medium border w-24">Buổi</th>
-										{DAYS_OF_WEEK.map((day, index) => (
+										{DaysOfWeek.map((day, index) => (
 											<th
 												key={index}
 												className="p-2 text-center font-medium border min-w-[120px]"
@@ -436,17 +437,17 @@ function ClassSchedulePage() {
 									</tr>
 								</thead>
 								<tbody>
-									{Object.entries(TIME_BLOCKS).map(([block, { label, time, color }]) => (
+									{Object.entries(TimeBlocks).map(([block, { label, time, color }]) => (
 										<tr key={block}>
 											<td className={cn('p-2 border font-medium', color)}>
 												<div>{label}</div>
 												<div className="text-xs text-muted-foreground">({time})</div>
 											</td>
-											{DAYS_OF_WEEK.map((_, dayIndex) => {
+											{DaysOfWeek.map((_, dayIndex) => {
 												const blockItems = getScheduleItemsForDayAndBlock(
 													items,
 													dayIndex,
-													block as keyof typeof TIME_BLOCKS
+													block as keyof typeof TimeBlocks
 												);
 												return (
 													<td key={dayIndex} className="p-1 border align-top">
@@ -466,7 +467,7 @@ function ClassSchedulePage() {
 
 						{/* Mobile View - Daily Cards */}
 						<div className="md:hidden space-y-4">
-							{DAYS_OF_WEEK.map((day, dayIndex) => {
+							{DaysOfWeek.map((day, dayIndex) => {
 								const dayItems = getScheduleItemsForDay(items, dayIndex);
 								const hasClasses = dayItems.length > 0;
 
@@ -499,7 +500,7 @@ function ClassSchedulePage() {
 																		: item.PeriodID <= 8
 																			? 'B7_8'
 																			: 'B9_10';
-														const blockInfo = TIME_BLOCKS[blockType];
+														const blockInfo = TimeBlocks[blockType];
 
 														return (
 															<div
@@ -819,32 +820,11 @@ function ClassSchedulePage() {
 	};
 
 	if (isLoading) {
-		return (
-			<div className="flex items-center justify-center min-h-[60vh]">
-				<div className="text-center space-y-4">
-					<Loader2 className="w-12 h-12 animate-spin text-primary mx-auto" />
-					<p className="text-muted-foreground">Đang tải thời khóa biểu...</p>
-				</div>
-			</div>
-		);
+		return <PageLoader label="Đang tải thời khóa biểu..." />;
 	}
 
 	if (error) {
-		return (
-			<div className="flex items-center justify-center min-h-[60vh]">
-				<Card className="max-w-md w-full">
-					<CardContent className="pt-6">
-						<div className="text-center space-y-4">
-							<AlertCircle className="w-12 h-12 text-destructive mx-auto" />
-							<p className="text-destructive">{error}</p>
-							<Button onClick={() => fetchYearAndTerm()} variant="outline">
-								Thử lại
-							</Button>
-						</div>
-					</CardContent>
-				</Card>
-			</div>
-		);
+		return <PageError message={error} onRetry={() => fetchYearAndTerm()} />;
 	}
 
 	const currentWeekData = weeks.find((w) => w.Week === selectedWeek);
@@ -902,7 +882,7 @@ function ClassSchedulePage() {
 
 				{/* View Mode Switcher */}
 				<div className="flex items-center rounded-lg border border-border bg-muted/40 p-0.5 w-full sm:w-auto sm:ml-auto">
-					{VIEW_OPTIONS.map(({ key, label, Icon }) => (
+					{ViewOptions.map(({ key, label, Icon }) => (
 						<button
 							key={key}
 							type="button"

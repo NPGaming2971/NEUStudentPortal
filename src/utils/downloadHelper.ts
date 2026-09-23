@@ -1,6 +1,6 @@
 import axios, { type AxiosResponse } from 'axios';
 import { getToken } from '@/services/authService';
-import { PORTAL_PROXY_URL, PORTAL_API_KEY, PORTAL_CLIENT_ID } from '@/lib/proxyConfig';
+import { PortalProxyUrl, PortalApiKey, PortalClientId } from '@/lib/proxyConfig';
 import { getExamDurationMinutes, getTermLabel } from '@/lib/exportOptions';
 
 const getFileNameFromResponse = (response: AxiosResponse): string | null => {
@@ -32,9 +32,9 @@ const downloadBlobFile = async (options: {
 			responseType: 'blob',
 			headers: {
 				'Content-Type': 'application/json',
-				apikey: PORTAL_API_KEY,
+				apikey: PortalApiKey,
 				Authorization: `Bearer ${token}`,
-				clientid: PORTAL_CLIENT_ID
+				clientid: PortalClientId
 			}
 		});
 
@@ -58,7 +58,7 @@ const downloadBlobFile = async (options: {
 export const downloadTranscript = async (studyProgramId: string | number): Promise<boolean> => {
 	return downloadBlobFile({
 		method: 'GET',
-		url: `${PORTAL_PROXY_URL}/student/PrintMarksGraduation`,
+		url: `${PortalProxyUrl}/student/PrintMarksGraduation`,
 		params: { studyProgramID: studyProgramId },
 		defaultFileName: `BangDiem_${studyProgramId}.pdf`,
 		label: 'transcript'
@@ -68,7 +68,7 @@ export const downloadTranscript = async (studyProgramId: string | number): Promi
 export const downloadGraduationApplication = async (studyProgramId: string | number): Promise<boolean> => {
 	return downloadBlobFile({
 		method: 'POST',
-		url: `${PORTAL_PROXY_URL}/student/PrintDonXetTotNghiep`,
+		url: `${PortalProxyUrl}/student/PrintDonXetTotNghiep`,
 		params: { StudyProgramID: studyProgramId },
 		defaultFileName: 'DonXetTotNghiep.pdf',
 		label: 'graduation application'
@@ -78,7 +78,7 @@ export const downloadGraduationApplication = async (studyProgramId: string | num
 // ---- Schedule (ICS) export ----
 
 // NEU official time table periods
-const PERIOD_TIMES: Record<number, [string, string]> = {
+const PeriodTimes: Record<number, [string, string]> = {
 	1: ['06:45', '08:00'],
 	2: ['08:10', '09:25'],
 	3: ['09:35', '10:50'],
@@ -90,28 +90,28 @@ const PERIOD_TIMES: Record<number, [string, string]> = {
 	9: ['18:40', '19:55']
 };
 
-const PE_TIMES: Record<number, [string, string]> = {
+const PeTimes: Record<number, [string, string]> = {
 	1: ['07:00', '09:00'],
 	3: ['09:30', '11:30'],
 	5: ['13:30', '15:30'],
 	7: ['15:45', '17:45']
 };
 
-export { TERM_LABELS, getTermLabel } from '@/lib/exportOptions';
+export { TermLabels, getTermLabel } from '@/lib/exportOptions';
 
 const parseVNDate = (dateStr: string): Date => {
 	const [d, m, y] = dateStr.trim().split('/');
 	return new Date(parseInt(y), parseInt(m) - 1, parseInt(d));
 };
 
-const DISCUSSION_SUFFIX = /_TL(?:_\d+)?$/i;
+const DiscussionSuffix = /_TL(?:_\d+)?$/i;
 
 const getBiweeklyCodes = (items: SchedulePeriodItem[]): Set<string> => {
 	const allCodes = new Set(items.map((item) => item.MaLHP));
 	const biweekly = new Set<string>();
 	items.forEach((item) => {
-		if (!DISCUSSION_SUFFIX.test(item.MaLHP)) return;
-		const theoryCode = item.MaLHP.replace(DISCUSSION_SUFFIX, '');
+		if (!DiscussionSuffix.test(item.MaLHP)) return;
+		const theoryCode = item.MaLHP.replace(DiscussionSuffix, '');
 		if (theoryCode && allCodes.has(theoryCode)) {
 			biweekly.add(item.MaLHP);
 			biweekly.add(theoryCode);
@@ -215,13 +215,13 @@ export const downloadSchedule = async (
 
 		const response = await axios({
 			method: 'GET',
-			url: `${PORTAL_PROXY_URL}/student/DrawingStudentSchedule_Perior`,
+			url: `${PortalProxyUrl}/student/DrawingStudentSchedule_Perior`,
 			params: { namhoc: yearStudy, hocky: termId },
 			headers: {
 				'Content-Type': 'application/json',
-				apikey: PORTAL_API_KEY,
+				apikey: PortalApiKey,
 				Authorization: `Bearer ${token}`,
-				clientid: PORTAL_CLIENT_ID
+				clientid: PortalClientId
 			}
 		});
 
@@ -261,15 +261,15 @@ export const downloadSchedule = async (
 			let startTimeStr: string;
 			let endTimeStr: string;
 
-			const peTime = PE_TIMES[periodId];
-			const periodTime = PERIOD_TIMES[periodId];
+			const peTime = PeTimes[periodId];
+			const periodTime = PeriodTimes[periodId];
 			if (isPE && peTime) {
 				startTimeStr = peTime[0];
 				endTimeStr = peTime[1];
 			} else if (periodTime) {
 				startTimeStr = periodTime[0];
 				const endPeriodId = periodId + numPeriods - 1;
-				endTimeStr = (PERIOD_TIMES[endPeriodId] ?? periodTime)[1];
+				endTimeStr = (PeriodTimes[endPeriodId] ?? periodTime)[1];
 			} else {
 				return;
 			}

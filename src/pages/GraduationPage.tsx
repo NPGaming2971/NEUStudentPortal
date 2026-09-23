@@ -16,6 +16,7 @@ import { useGlobalNotification } from '@/hooks/useGlobalNotification';
 import { getStudentId } from '@/services/authService';
 import { Loader2, GraduationCap, Download, BookOpen, Calendar, CheckCircle2, XCircle, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { PageLoader } from '@/components/common/PageLoader';
 
 function GraduationPage() {
 	const [studyPrograms, setStudyPrograms] = useState<StudyProgram[]>([]);
@@ -162,14 +163,7 @@ function GraduationPage() {
 	};
 
 	if (isLoading) {
-		return (
-			<div className="flex items-center justify-center min-h-[60vh]">
-				<div className="text-center space-y-4">
-					<Loader2 className="w-12 h-12 animate-spin text-primary mx-auto" />
-					<p className="text-muted-foreground">Đang tải dữ liệu...</p>
-				</div>
-			</div>
-		);
+		return <PageLoader />;
 	}
 
 	return (

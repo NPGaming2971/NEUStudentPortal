@@ -10,7 +10,9 @@ import {
 	type KKTBlock,
 	type StudyProgramCourse
 } from '@/services/programService';
-import { Loader2, AlertCircle, GraduationCap, BookOpen, Library, Check } from 'lucide-react';
+import { Loader2, GraduationCap, BookOpen, Library, Check } from 'lucide-react';
+import { PageLoader } from '@/components/common/PageLoader';
+import { PageError } from '@/components/common/PageError';
 
 const isMandatory = (course: StudyProgramCourse): boolean => course.BatBuoc === 'Bắt Buộc';
 
@@ -71,32 +73,11 @@ function EducationalProgramPage() {
 	const electiveCredits = totalCredits - requiredCredits;
 
 	if (isLoading) {
-		return (
-			<div className="flex items-center justify-center min-h-[60vh]">
-				<div className="text-center space-y-4">
-					<Loader2 className="w-12 h-12 animate-spin text-primary mx-auto" />
-					<p className="text-muted-foreground">Đang tải chương trình đào tạo...</p>
-				</div>
-			</div>
-		);
+		return <PageLoader label="Đang tải chương trình đào tạo..." />;
 	}
 
 	if (error) {
-		return (
-			<div className="flex items-center justify-center min-h-[60vh]">
-				<Card className="max-w-md w-full">
-					<CardContent className="pt-6">
-						<div className="text-center space-y-4">
-							<AlertCircle className="w-12 h-12 text-destructive mx-auto" />
-							<p className="text-destructive">{error}</p>
-							<Button variant="outline" onClick={fetchPrograms}>
-								Thử lại
-							</Button>
-						</div>
-					</CardContent>
-				</Card>
-			</div>
-		);
+		return <PageError message={error} onRetry={fetchPrograms} />;
 	}
 
 	return (

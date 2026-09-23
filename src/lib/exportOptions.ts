@@ -10,14 +10,14 @@ export interface ReminderPreset {
 	trigger: string | null;
 }
 
-export const REMINDER_UNITS: ReminderUnit[] = [
+export const ReminderUnits: ReminderUnit[] = [
 	{ value: 'seconds', label: 'giây', trigger: (value) => `PT${value}S` },
 	{ value: 'minutes', label: 'phút', trigger: (value) => `PT${value}M` },
 	{ value: 'hours', label: 'giờ', trigger: (value) => `PT${value}H` },
 	{ value: 'days', label: 'ngày', trigger: (value) => `P${value}D` }
 ];
 
-export const REMINDER_PRESETS: ReminderPreset[] = [
+export const ReminderPresets: ReminderPreset[] = [
 	{ value: 'none', label: 'Không nhắc nhở', trigger: null },
 	{ value: '0', label: 'Vào lúc bắt đầu', trigger: 'PT0M' },
 	{ value: '5', label: '5 phút trước', trigger: 'PT5M' },
@@ -28,13 +28,13 @@ export const REMINDER_PRESETS: ReminderPreset[] = [
 	{ value: 'custom', label: 'Tùy chỉnh...', trigger: null }
 ];
 
-export const DEFAULT_CUSTOM_REMINDER_VALUE = '60';
-export const DEFAULT_CUSTOM_REMINDER_UNIT = 'minutes';
+export const DefaultCustomReminderValue = '60';
+export const DefaultCustomReminderUnit = 'minutes';
 
-export const DEFAULT_SCHEDULE_REMINDER = '30';
-export const DEFAULT_EXAM_REMINDER = '1440';
+export const DefaultScheduleReminder = '30';
+export const DefaultExamReminder = '1440';
 
-export const DURATION_OPTIONS: { value: string; label: string }[] = [
+export const DurationOptions: { value: string; label: string }[] = [
 	{ value: '60', label: '60 phút' },
 	{ value: '90', label: '90 phút' },
 	{ value: '120', label: '120 phút' },
@@ -42,9 +42,9 @@ export const DURATION_OPTIONS: { value: string; label: string }[] = [
 	{ value: '180', label: '180 phút' }
 ];
 
-export const DEFAULT_EXAM_DURATION = '90';
+export const DefaultExamDuration = '90';
 
-export const EXAM_FORMAT_DURATIONS: { keywords: string[]; minutes: number }[] = [
+export const ExamFormatDurations: { keywords: string[]; minutes: number }[] = [
 	{ keywords: ['trac nghiem'], minutes: 60 },
 	{ keywords: ['tu luan'], minutes: 90 }
 ];
@@ -58,7 +58,7 @@ const normalizeText = (value: string): string =>
 
 export const getExamDurationMinutes = (examFormat: string, fallbackMinutes: number): number => {
 	const normalized = normalizeText(examFormat || '');
-	const match = EXAM_FORMAT_DURATIONS.find((rule) => rule.keywords.some((keyword) => normalized.includes(keyword)));
+	const match = ExamFormatDurations.find((rule) => rule.keywords.some((keyword) => normalized.includes(keyword)));
 	return match ? match.minutes : fallbackMinutes;
 };
 
@@ -70,17 +70,17 @@ export const buildReminderTrigger = (
 	if (value === 'custom') {
 		const num = Number(customValue);
 		if (!Number.isFinite(num) || num < 0) return undefined;
-		const unit = REMINDER_UNITS.find((u) => u.value === customUnit);
+		const unit = ReminderUnits.find((u) => u.value === customUnit);
 		return unit ? unit.trigger(num) : null;
 	}
-	return REMINDER_PRESETS.find((p) => p.value === value)?.trigger ?? null;
+	return ReminderPresets.find((p) => p.value === value)?.trigger ?? null;
 };
 
-export const TERM_LABELS: Record<string, string> = {
+export const TermLabels: Record<string, string> = {
 	PHU: 'Kỳ thi phụ',
 	HK01: 'Học kỳ 1',
 	HK02: 'Học kỳ 2',
 	HK03: 'Học kỳ Hè'
 };
 
-export const getTermLabel = (termId: string): string => TERM_LABELS[termId] ?? termId;
+export const getTermLabel = (termId: string): string => TermLabels[termId] ?? termId;

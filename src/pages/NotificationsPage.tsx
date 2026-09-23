@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Search, Filter, ChevronLeft, ChevronRight, Loader2, Mail, MailOpen, AlertCircle } from 'lucide-react';
+import { Search, Filter, ChevronLeft, ChevronRight, Loader2, Mail, MailOpen } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { PageLoader } from '@/components/common/PageLoader';
+import { PageError } from '@/components/common/PageError';
 import { getStudentNotifications, updateMessageStatus } from '@/services/notificationService';
 import { cn, formatNotificationBody, formatDate, formatTitle } from '@/lib/utils';
 
@@ -129,22 +131,9 @@ export default function NotificationsPage() {
 			</div>
 
 			{loading ? (
-				<div className="flex flex-col items-center gap-4">
-					<Loader2 className="size-10 animate-spin text-primary" />
-					<p className="text-muted-foreground animate-pulse">Đang tải thông báo...</p>
-				</div>
+				<PageLoader label="Đang tải thông báo..." />
 			) : error ? (
-				<Card className="border-destructive/50 shadow-lg">
-					<CardContent className="pt-6">
-						<div className="text-center space-y-4 py-8">
-							<AlertCircle className="size-12 text-destructive mx-auto" />
-							<p className="text-destructive">{error}</p>
-							<Button onClick={handleRetry} variant="outline">
-								Thử lại
-							</Button>
-						</div>
-					</CardContent>
-				</Card>
+				<PageError message={error} onRetry={handleRetry} />
 			) : (
 				<>
 					{/* Controls */}
