@@ -11,6 +11,8 @@ import { initializeRegistrationSession } from '@/services/registrationAuthServic
 import { searchScheduleStudyUnits, type ScheduleStudyUnitSearch } from '@/services/registrationService';
 import { useGlobalNotification } from '@/hooks/useGlobalNotification';
 import { PageLoader } from '@/components/common/PageLoader';
+import { InlineLoader } from '@/components/common/InlineLoader';
+import { EmptyState } from '@/components/common/EmptyState';
 
 function RegistrationSearchPage() {
 	const { showError, showInfo } = useGlobalNotification();
@@ -173,17 +175,12 @@ function RegistrationSearchPage() {
 					</CardHeader>
 					<CardContent>
 						{isSearching ? (
-							<div className="flex items-center justify-center py-12">
-								<Loader2 className="w-8 h-8 animate-spin text-primary" />
-							</div>
+							<InlineLoader />
 						) : searchResults.length === 0 ? (
-							<div className="text-center py-12">
-								<AlertCircle className="w-16 h-16 text-muted-foreground/30 mx-auto mb-4" />
-								<p className="text-muted-foreground">
-									Không tìm thấy lớp học phần nào với {searchType === '0' ? 'mã' : 'tên'} "
-									{searchQuery}"
-								</p>
-							</div>
+							<EmptyState
+								icon={AlertCircle}
+								title={`Không tìm thấy lớp học phần nào với ${searchType === '0' ? 'mã' : 'tên'} "${searchQuery}"`}
+							/>
 						) : (
 							<div className="overflow-x-auto">
 								<Table>

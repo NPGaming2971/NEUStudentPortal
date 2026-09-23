@@ -6,10 +6,12 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { getYearAndTerm, type YearAndTermData } from '@/services/scheduleService';
 import { getStudentExams, getStudentFullExams, type ExamItem } from '@/services/examService';
-import { Loader2, ClipboardList, Calendar, Clock, MapPin, Search, FileText, Download } from 'lucide-react';
+import { ClipboardList, Calendar, Clock, MapPin, Search, FileText, Download } from 'lucide-react';
 import ExamExportDialog from '@/components/common/ExamExportDialog';
 import { PageLoader } from '@/components/common/PageLoader';
 import { PageError } from '@/components/common/PageError';
+import { InlineLoader } from '@/components/common/InlineLoader';
+import { EmptyState } from '@/components/common/EmptyState';
 
 function ExamSchedulePage() {
 	const [yearTermData, setYearTermData] = useState<YearAndTermData | null>(null);
@@ -310,9 +312,7 @@ function ExamSchedulePage() {
 						</div>
 					</div>
 					{isLoadingCurrent ? (
-						<div className="flex items-center justify-center py-12">
-							<Loader2 className="w-8 h-8 animate-spin text-primary" />
-						</div>
+						<InlineLoader />
 					) : currentError ? (
 						<div className="text-center py-8">
 							<p className="text-destructive mb-4">{currentError}</p>
@@ -323,10 +323,12 @@ function ExamSchedulePage() {
 					) : currentExams.length > 0 ? (
 						renderExamTable(currentExams)
 					) : (
-						<div className="text-center py-8 text-muted-foreground">
-							<FileText className="w-12 h-12 mx-auto mb-4 opacity-50" />
-							<p>Không có lịch thi trong học kỳ này</p>
-						</div>
+						<EmptyState
+							icon={FileText}
+							title="Không có lịch thi trong học kỳ này"
+							className="py-8"
+							iconClassName="w-12 h-12 mx-auto mb-4 opacity-50"
+						/>
 					)}
 				</TabsContent>
 
@@ -417,9 +419,7 @@ function ExamSchedulePage() {
 
 					{/* Results */}
 					{isLoadingAll ? (
-						<div className="flex items-center justify-center py-12">
-							<Loader2 className="w-8 h-8 animate-spin text-primary" />
-						</div>
+						<InlineLoader />
 					) : allExamsError ? (
 						<div className="text-center py-8">
 							<p className="text-destructive mb-4">{allExamsError}</p>
@@ -435,10 +435,12 @@ function ExamSchedulePage() {
 							{renderExamTable(filteredExams, true)}
 						</>
 					) : (
-						<div className="text-center py-8 text-muted-foreground">
-							<FileText className="w-12 h-12 mx-auto mb-4 opacity-50" />
-							<p>{searchTerm ? 'Không tìm thấy kết quả phù hợp' : 'Không có lịch thi'}</p>
-						</div>
+						<EmptyState
+							icon={FileText}
+							title={searchTerm ? 'Không tìm thấy kết quả phù hợp' : 'Không có lịch thi'}
+							className="py-8"
+							iconClassName="w-12 h-12 mx-auto mb-4 opacity-50"
+						/>
 					)}
 				</TabsContent>
 			</Tabs>

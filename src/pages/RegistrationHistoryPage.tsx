@@ -5,10 +5,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
 import { getTermLabel } from '@/lib/exportOptions';
-import { Loader2, History, AlertCircle, Calendar, Clock, CheckCircle2, XCircle, RefreshCw } from 'lucide-react';
+import { History, AlertCircle, Calendar, Clock, CheckCircle2, XCircle, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { PageLoader } from '@/components/common/PageLoader';
 import { PageError } from '@/components/common/PageError';
+import { InlineLoader } from '@/components/common/InlineLoader';
+import { EmptyState } from '@/components/common/EmptyState';
 import { initializeRegistrationSession } from '@/services/registrationAuthService';
 import {
 	getAllYearStudyAndTerm,
@@ -216,16 +218,12 @@ function RegistrationHistoryPage() {
 				</CardHeader>
 				<CardContent>
 					{isLoading ? (
-						<div className="flex items-center justify-center py-12">
-							<Loader2 className="w-8 h-8 animate-spin text-primary" />
-						</div>
+						<InlineLoader />
 					) : historyData.length === 0 ? (
-						<div className="text-center py-12">
-							<AlertCircle className="w-16 h-16 text-muted-foreground/30 mx-auto mb-4" />
-							<p className="text-muted-foreground">
-								Không có lịch sử đăng ký trong {getTermLabel(selectedTermId)} năm {selectedYearStudy}
-							</p>
-						</div>
+						<EmptyState
+							icon={AlertCircle}
+							title={`Không có lịch sử đăng ký trong ${getTermLabel(selectedTermId)} năm ${selectedYearStudy}`}
+						/>
 					) : (
 						<div className="overflow-x-auto">
 							<Table>

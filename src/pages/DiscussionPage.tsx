@@ -16,6 +16,8 @@ import { useGlobalNotification } from '@/hooks/useGlobalNotification';
 import { Loader2, MessageSquare, ChevronDown, ChevronUp, Send, BookOpen, Calendar } from 'lucide-react';
 import { cn, formatDate } from '@/lib/utils';
 import { PageLoader } from '@/components/common/PageLoader';
+import { InlineLoader } from '@/components/common/InlineLoader';
+import { EmptyState } from '@/components/common/EmptyState';
 
 function DiscussionPage() {
 	const [yearAndTerm, setYearAndTerm] = useState<YearAndTermData | null>(null);
@@ -146,16 +148,11 @@ function DiscussionPage() {
 			{/* Courses List */}
 			<div className="space-y-4">
 				{isLoading ? (
-					<div className="flex items-center justify-center py-12">
-						<Loader2 className="w-8 h-8 animate-spin text-primary" />
-					</div>
+					<InlineLoader />
 				) : courses.length === 0 ? (
 					<Card className="border-0 shadow-lg">
-						<CardContent className="py-12">
-							<div className="text-center">
-								<MessageSquare className="w-16 h-16 text-muted-foreground/30 mx-auto mb-4" />
-								<p className="text-muted-foreground">Không có môn học nào trong học kỳ này</p>
-							</div>
+						<CardContent className="p-0">
+							<EmptyState icon={MessageSquare} title="Không có môn học nào trong học kỳ này" />
 						</CardContent>
 					</Card>
 				) : (

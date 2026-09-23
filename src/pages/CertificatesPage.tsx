@@ -6,6 +6,7 @@ import { getStudentCertificates, type Certificate } from '@/services/certificate
 import CertificateSubmitForm from '@/components/common/CertificateSubmitForm';
 import { useGlobalNotification } from '@/hooks/useGlobalNotification';
 import { PageLoader } from '@/components/common/PageLoader';
+import { EmptyState } from '@/components/common/EmptyState';
 import { Award, FileCheck, FileX, Calendar, MapPin, Hash, FileText, ChevronDown, ChevronUp, Plus } from 'lucide-react';
 import { cn, formatDate } from '@/lib/utils';
 
@@ -131,11 +132,8 @@ function CertificatesPage() {
 			{/* Certificates List */}
 			{certificates.length === 0 ? (
 				<Card className="border-0 shadow-lg">
-					<CardContent className="py-12">
-						<div className="text-center">
-							<Award className="w-16 h-16 text-muted-foreground/30 mx-auto mb-4" />
-							<p className="text-muted-foreground">Chưa có thông tin chứng chỉ</p>
-						</div>
+					<CardContent className="p-0">
+						<EmptyState icon={Award} title="Chưa có thông tin chứng chỉ" />
 					</CardContent>
 				</Card>
 			) : (

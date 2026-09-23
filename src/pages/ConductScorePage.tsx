@@ -5,6 +5,7 @@ import { AlertCircle, Award, Trophy, Star, TrendingUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { PageLoader } from '@/components/common/PageLoader';
 import { PageError } from '@/components/common/PageError';
+import { EmptyState } from '@/components/common/EmptyState';
 
 function ConductScorePage() {
 	const [conductScores, setConductScores] = useState<ConductScore[]>([]);
@@ -180,10 +181,7 @@ function ConductScorePage() {
 					Lịch sử điểm rèn luyện
 				</h2>
 				{conductScores.length === 0 ? (
-					<div className="text-center py-12">
-						<Award className="w-16 h-16 text-muted-foreground/30 mx-auto mb-4" />
-						<p className="text-muted-foreground">Chưa có dữ liệu điểm rèn luyện</p>
-					</div>
+					<EmptyState icon={Award} title="Chưa có dữ liệu điểm rèn luyện" />
 				) : (
 					<>
 						{/* Desktop Table */}

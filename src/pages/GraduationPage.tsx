@@ -17,6 +17,7 @@ import { getStudentId } from '@/services/authService';
 import { Loader2, GraduationCap, Download, BookOpen, Calendar, CheckCircle2, XCircle, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { PageLoader } from '@/components/common/PageLoader';
+import { EmptyState } from '@/components/common/EmptyState';
 
 function GraduationPage() {
 	const [studyPrograms, setStudyPrograms] = useState<StudyProgram[]>([]);
@@ -198,10 +199,7 @@ function GraduationPage() {
 					Đợt đăng ký xét tốt nghiệp
 				</h2>
 				{!graduationData?.objdata || graduationData.objdata.length === 0 ? (
-					<div className="text-center py-8">
-						<Calendar className="w-16 h-16 text-muted-foreground/30 mx-auto mb-4" />
-						<p className="text-muted-foreground">Chưa có đợt đăng ký xét tốt nghiệp</p>
-					</div>
+					<EmptyState icon={Calendar} title="Chưa có đợt đăng ký xét tốt nghiệp" className="py-8" />
 				) : (
 					<div className="space-y-4">
 						{graduationData.objdata.map((period) => {

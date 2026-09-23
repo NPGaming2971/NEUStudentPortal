@@ -12,6 +12,7 @@ import { getCertificateTypes, submitCertificate, type CertificateType } from '@/
 import { useGlobalNotification } from '@/hooks/useGlobalNotification';
 import { Loader2, Upload, X, ArrowLeft, FileText, CalendarIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { InlineLoader } from '@/components/common/InlineLoader';
 
 interface CertificateSubmitFormProps {
 	onBack: () => void;
@@ -158,14 +159,7 @@ function CertificateSubmitForm({ onBack }: CertificateSubmitFormProps) {
 	const isLanguageCertificate = formData.certificateType === 'CCNN';
 
 	if (isLoadingTypes) {
-		return (
-			<div className="flex items-center justify-center min-h-[40vh]">
-				<div className="text-center space-y-4">
-					<Loader2 className="w-8 h-8 animate-spin text-primary mx-auto" />
-					<p className="text-muted-foreground">Đang tải...</p>
-				</div>
-			</div>
-		);
+		return <InlineLoader label="Đang tải..." className="min-h-[40vh]" />;
 	}
 
 	return (

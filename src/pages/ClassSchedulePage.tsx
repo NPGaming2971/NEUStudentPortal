@@ -21,8 +21,8 @@ import {
 	type ClassScheduleItem
 } from '@/services/scheduleService';
 import { getStudentInfo } from '@/services/studentInfoService';
+import { InlineLoader } from '@/components/common/InlineLoader';
 import {
-	Loader2,
 	Calendar,
 	ChevronLeft,
 	ChevronRight,
@@ -557,11 +557,7 @@ function ClassSchedulePage() {
 
 	const renderPeriodSchedule = () => {
 		if (isLoadingPeriod) {
-			return (
-				<div className="flex items-center justify-center py-12">
-					<Loader2 className="w-8 h-8 animate-spin text-primary" />
-				</div>
-			);
+			return <InlineLoader />;
 		}
 
 		if (periodSchedule.length === 0) {
@@ -749,11 +745,7 @@ function ClassSchedulePage() {
 
 	const renderClassSchedule = () => {
 		if (isLoadingClasses) {
-			return (
-				<div className="flex items-center justify-center py-12">
-					<Loader2 className="w-8 h-8 animate-spin text-primary" />
-				</div>
-			);
+			return <InlineLoader />;
 		}
 
 		if (classError) {
@@ -806,13 +798,7 @@ function ClassSchedulePage() {
 
 				{selectedClass && selectedWeek && (
 					<div className="relative">
-						{isLoadingClassSchedule ? (
-							<div className="flex items-center justify-center py-12">
-								<Loader2 className="w-8 h-8 animate-spin text-primary" />
-							</div>
-						) : (
-							renderGrid(classSchedule, weekLabel)
-						)}
+						{isLoadingClassSchedule ? <InlineLoader /> : renderGrid(classSchedule, weekLabel)}
 					</div>
 				)}
 			</div>
@@ -961,9 +947,7 @@ function ClassSchedulePage() {
 			{viewMode === 'week' && (
 				<>
 					{isLoadingSchedule ? (
-						<div className="flex items-center justify-center py-12">
-							<Loader2 className="w-8 h-8 animate-spin text-primary" />
-						</div>
+						<InlineLoader />
 					) : scheduleError ? (
 						<div className="text-center py-12">
 							<p className="text-destructive mb-4">{scheduleError}</p>

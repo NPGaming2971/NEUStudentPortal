@@ -1,8 +1,10 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { Loader2, BookOpen, ChevronRight, BookMarked, Check, Info } from 'lucide-react';
+import { BookOpen, ChevronRight, BookMarked, Check, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { InlineLoader } from '@/components/common/InlineLoader';
+import { EmptyState } from '@/components/common/EmptyState';
 import type {
 	ClassAllowRegistGroup,
 	ClassStudyUnitItem,
@@ -65,15 +67,15 @@ export default function AvailableCoursesList({
 
 			<div className="space-y-4">
 				{isLoadingClasses || isLoadingQuota ? (
-					<div className="flex items-center justify-center py-12">
-						<Loader2 className="w-8 h-8 animate-spin text-primary" />
-					</div>
+					<InlineLoader />
 				) : allowedClasses.length === 0 ? (
-					<div className="text-center py-12 bg-secondary/20 rounded-lg border border-dashed">
-						<BookMarked className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
-						<p className="text-muted-foreground font-medium">Không có học phần nào</p>
-						<p className="text-sm text-muted-foreground/70 mt-1">Đổi loại đăng ký hoặc kiểm tra lại sau</p>
-					</div>
+					<EmptyState
+						icon={BookMarked}
+						title="Không có học phần nào"
+						description="Đổi loại đăng ký hoặc kiểm tra lại sau"
+						className="py-12 bg-secondary/20 rounded-lg border border-dashed"
+						iconClassName="w-12 h-12 text-muted-foreground/30 mx-auto mb-4"
+					/>
 				) : (
 					<Accordion
 						type="multiple"

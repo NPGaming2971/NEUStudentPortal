@@ -6,19 +6,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { cn } from '@/lib/utils';
 import { getYearAndTerm, type YearAndTermData } from '@/services/scheduleService';
 import { getCourseRegistrationResults, type RegistrationResult } from '@/services/academicService';
-import {
-	Loader2,
-	AlertCircle,
-	BookOpen,
-	Calendar,
-	User,
-	Hash,
-	GraduationCap,
-	ClipboardCheck,
-	BookMarked
-} from 'lucide-react';
+import { AlertCircle, BookOpen, Calendar, User, Hash, GraduationCap, ClipboardCheck, BookMarked } from 'lucide-react';
 import { PageLoader } from '@/components/common/PageLoader';
 import { PageError } from '@/components/common/PageError';
+import { InlineLoader } from '@/components/common/InlineLoader';
+import { EmptyState } from '@/components/common/EmptyState';
 
 function CourseRegistrationResultsPage() {
 	const [yearTermData, setYearTermData] = useState<YearAndTermData | null>(null);
@@ -174,9 +166,7 @@ function CourseRegistrationResultsPage() {
 					Danh sách học phần đã đăng ký
 				</h2>
 				{isLoadingResults ? (
-					<div className="flex items-center justify-center py-12">
-						<Loader2 className="w-8 h-8 animate-spin text-primary" />
-					</div>
+					<InlineLoader />
 				) : resultsError ? (
 					<div className="text-center py-12">
 						<AlertCircle className="w-12 h-12 text-destructive mx-auto mb-4 opacity-80" />
@@ -186,11 +176,11 @@ function CourseRegistrationResultsPage() {
 						</Button>
 					</div>
 				) : registrationResults.length === 0 ? (
-					<div className="text-center py-12">
-						<BookMarked className="w-16 h-16 text-muted-foreground/30 mx-auto mb-4" />
-						<p className="text-muted-foreground">Chưa có học phần nào được đăng ký</p>
-						<p className="text-sm text-muted-foreground mt-1">Vui lòng chọn năm học và học kỳ khác</p>
-					</div>
+					<EmptyState
+						icon={BookMarked}
+						title="Chưa có học phần nào được đăng ký"
+						description="Vui lòng chọn năm học và học kỳ khác"
+					/>
 				) : (
 					<>
 						{/* Desktop Table */}

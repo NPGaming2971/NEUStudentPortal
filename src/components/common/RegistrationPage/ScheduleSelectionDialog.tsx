@@ -12,6 +12,8 @@ import {
 import { Loader2, BookOpen, CalendarClock, BookMarked, Check, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useGlobalNotification } from '@/hooks/useGlobalNotification';
+import { InlineLoader } from '@/components/common/InlineLoader';
+import { EmptyState } from '@/components/common/EmptyState';
 import {
 	getAllScheduleUnitAllowRegist,
 	checkExitsRegist,
@@ -117,15 +119,14 @@ export default function ScheduleSelectionDialog({
 
 				<div className="p-6 bg-secondary/5 flex-1 overflow-y-auto">
 					{isLoading ? (
-						<div className="flex flex-col items-center justify-center py-16 gap-3">
-							<Loader2 className="w-8 h-8 animate-spin text-primary" />
-							<p className="text-muted-foreground text-sm">Đang tải danh sách lịch học...</p>
-						</div>
+						<InlineLoader label="Đang tải danh sách lịch học..." className="py-16" />
 					) : schedules.length === 0 ? (
-						<div className="text-center py-16">
-							<BookMarked className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
-							<p className="text-muted-foreground">Không có lịch học nào cho môn này.</p>
-						</div>
+						<EmptyState
+							icon={BookMarked}
+							title="Không có lịch học nào cho môn này."
+							className="py-16"
+							iconClassName="w-12 h-12 text-muted-foreground/30 mx-auto mb-4"
+						/>
 					) : (
 						<div className="space-y-6">
 							{/* Theory Section */}

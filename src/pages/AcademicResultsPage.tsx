@@ -21,6 +21,8 @@ import {
 } from '@/services/academicService';
 import { PageLoader } from '@/components/common/PageLoader';
 import { PageError } from '@/components/common/PageError';
+import { InlineLoader } from '@/components/common/InlineLoader';
+import { EmptyState } from '@/components/common/EmptyState';
 import {
 	Loader2,
 	BookOpen,
@@ -761,16 +763,11 @@ function AcademicResultsPage() {
 					}}
 				/>
 			) : isLoading ? (
-				<div className="flex items-center justify-center py-12">
-					<Loader2 className="w-8 h-8 animate-spin text-primary" />
-				</div>
+				<InlineLoader />
 			) : yearlyResults.length === 0 ? (
 				<Card className="border-0 shadow-lg">
-					<CardContent className="py-12">
-						<div className="text-center">
-							<BookOpen className="w-16 h-16 text-muted-foreground/30 mx-auto mb-4" />
-							<p className="text-muted-foreground">Chưa có dữ liệu kết quả học tập</p>
-						</div>
+					<CardContent className="p-0">
+						<EmptyState icon={BookOpen} title="Chưa có dữ liệu kết quả học tập" />
 					</CardContent>
 				</Card>
 			) : (

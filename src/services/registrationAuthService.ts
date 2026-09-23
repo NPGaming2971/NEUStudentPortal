@@ -1,24 +1,17 @@
-import { getToken, decodeJwt } from './authService';
+import { getToken, isTokenExpired } from './authService';
 import { PortalProxyUrl, RegistProxyUrl, PortalClientId, PortalApiKey } from '../lib/proxyConfig';
-
-const CONFIG = {
-	portal_api: `${PortalProxyUrl}`,
-	regist_api: `${RegistProxyUrl}`,
-	apiKey: PortalApiKey,
-	clientId: PortalClientId
-};
 
 /**
  * Bước 1: Lấy Refresh Token từ Portal API
  */
 export const getRefreshToken = async (portalToken: string): Promise<string> => {
-	const response = await fetch(`${CONFIG.portal_api}/Authenticate/GetRefreshToken`, {
+	const response = await fetch(`${PortalProxyUrl}/Authenticate/GetRefreshToken`, {
 		method: 'GET',
 		headers: {
 			accept: 'application/json, text/plain, */*',
-			apikey: CONFIG.apiKey,
+			apikey: PortalApiKey,
 			authorization: `Bearer ${portalToken}`,
-			clientid: CONFIG.clientId
+			clientid: PortalClientId
 		}
 	});
 
@@ -31,13 +24,13 @@ export const getRefreshToken = async (portalToken: string): Promise<string> => {
 };
 
 export const authenticatePortal = async (refreshToken: string) => {
-	const response = await fetch(`${CONFIG.regist_api}/Authen/AuthenticatePortal`, {
+	const response = await fetch(`${RegistProxyUrl}/Authen/AuthenticatePortal`, {
 		method: 'POST',
 		headers: {
 			accept: 'application/json, text/plain, */*',
 			'content-type': 'application/json',
-			apikey: CONFIG.apiKey,
-			clientid: CONFIG.clientId
+			apikey: PortalApiKey,
+			clientid: PortalClientId
 		},
 		body: JSON.stringify({ Token: refreshToken })
 	});
@@ -60,13 +53,9 @@ export const initializeRegistrationSession = async () => {
 		const existingRegistToken = localStorage.getItem('registToken');
 		const lastAuthToken = localStorage.getItem('registTokenAuthSource');
 
-		if (existingRegistToken && lastAuthToken === portalToken) {
-			// Kiểm tra token còn hạn không
-			const tokenData = decodeJwt<{ exp?: number }>(existingRegistToken);
+		if (existingRegistToken && lastAuthToken === portalToken && !isTokenExpired(existingRegistToken, 30000)) {
 			// Token còn hạn ít nhất 30 giây
-			if (tokenData && tokenData.exp && tokenData.exp * 1000 > Date.now() + 30000) {
-				return existingRegistToken;
-			}
+			return existingRegistToken;
 		}
 
 		// Bước 1: Lấy Refresh Token

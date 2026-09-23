@@ -20,6 +20,8 @@ import {
 	Clock,
 	ListChecks
 } from 'lucide-react';
+import { InlineLoader } from '@/components/common/InlineLoader';
+import { EmptyState } from '@/components/common/EmptyState';
 import { PageLoader } from '@/components/common/PageLoader';
 import { PageError } from '@/components/common/PageError';
 import { initializeRegistrationSession } from '@/services/registrationAuthService';
@@ -434,15 +436,13 @@ function RegistrationPlanPage() {
 				</CardHeader>
 				<CardContent>
 					{isLoadingClasses || isLoadingQuota ? (
-						<div className="flex items-center justify-center py-12">
-							<Loader2 className="w-8 h-8 animate-spin text-primary" />
-						</div>
+						<InlineLoader />
 					) : allowedClasses.length === 0 ? (
-						<div className="text-center py-12">
-							<BookMarked className="w-16 h-16 text-muted-foreground/30 mx-auto mb-4" />
-							<p className="text-muted-foreground">Không có học phần nào</p>
-							<p className="text-sm text-muted-foreground mt-1">Vui lòng chọn loại đăng ký khác</p>
-						</div>
+						<EmptyState
+							icon={BookMarked}
+							title="Không có học phần nào"
+							description="Vui lòng chọn loại đăng ký khác"
+						/>
 					) : (
 						<Accordion
 							type="multiple"

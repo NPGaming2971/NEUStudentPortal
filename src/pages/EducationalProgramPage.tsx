@@ -10,9 +10,10 @@ import {
 	type KKTBlock,
 	type StudyProgramCourse
 } from '@/services/programService';
-import { Loader2, GraduationCap, BookOpen, Library, Check } from 'lucide-react';
+import { GraduationCap, BookOpen, Library, Check } from 'lucide-react';
 import { PageLoader } from '@/components/common/PageLoader';
 import { PageError } from '@/components/common/PageError';
+import { InlineLoader } from '@/components/common/InlineLoader';
 
 const isMandatory = (course: StudyProgramCourse): boolean => course.BatBuoc === 'Bắt Buộc';
 
@@ -129,9 +130,7 @@ function EducationalProgramPage() {
 
 			{/* Courses by Knowledge Block (KKT) */}
 			{isLoadingDetail ? (
-				<div className="flex items-center justify-center py-12">
-					<Loader2 className="w-8 h-8 animate-spin text-primary" />
-				</div>
+				<InlineLoader />
 			) : detailError ? (
 				<div className="text-center py-8">
 					<p className="text-destructive mb-4">{detailError}</p>

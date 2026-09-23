@@ -42,6 +42,8 @@ import {
 } from 'lucide-react';
 import { cn, formatDate } from '@/lib/utils';
 import { PageLoader } from '@/components/common/PageLoader';
+import { InlineLoader } from '@/components/common/InlineLoader';
+import { EmptyState } from '@/components/common/EmptyState';
 
 interface GroupSection {
 	name: string;
@@ -508,9 +510,7 @@ function ConductAssessmentPage() {
 			</div>
 
 			{isLoading ? (
-				<div className="flex items-center justify-center py-12">
-					<Loader2 className="w-8 h-8 animate-spin text-primary" />
-				</div>
+				<InlineLoader />
 			) : (
 				<>
 					{/* Locked / closed notice */}
@@ -525,13 +525,11 @@ function ConductAssessmentPage() {
 
 					{isEmptyTermData(groupedItems) ? (
 						<Card className="border-0 shadow-lg">
-							<CardContent className="py-12">
-								<div className="text-center">
-									<ClipboardCheck className="w-16 h-16 text-muted-foreground/30 mx-auto mb-4" />
-									<p className="text-muted-foreground">
-										Chưa có dữ liệu đánh giá điểm rèn luyện cho học kỳ này
-									</p>
-								</div>
+							<CardContent className="p-0">
+								<EmptyState
+									icon={ClipboardCheck}
+									title="Chưa có dữ liệu đánh giá điểm rèn luyện cho học kỳ này"
+								/>
 							</CardContent>
 						</Card>
 					) : (

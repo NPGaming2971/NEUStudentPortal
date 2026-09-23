@@ -87,6 +87,13 @@ export const decodeJwt = <T = JwtPayload>(token: string): T | null => {
 	}
 };
 
+export const isTokenExpired = (token: string | null, marginMs = 0): boolean => {
+	if (!token) return true;
+	const payload = decodeJwt<{ exp?: number }>(token);
+	if (!payload || typeof payload.exp !== 'number') return true;
+	return payload.exp * 1000 <= Date.now() + marginMs;
+};
+
 export const getToken = (): string | null => {
 	const raw = localStorage.getItem('authorizationData');
 	if (!raw) return null;
@@ -114,9 +121,7 @@ export const setToken = (token: string, authData?: AuthData): void => {
 };
 
 export const isTokenValid = (): boolean => {
-	const payload = getTokenPayload();
-	if (!payload || typeof payload.exp !== 'number') return false;
-	return payload.exp * 1000 > Date.now();
+	return !isTokenExpired(getToken());
 };
 
 export const getUserFromToken = (): User | null => {

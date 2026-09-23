@@ -5,6 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn, formatCurrency } from '@/lib/utils';
 import { PageLoader } from '@/components/common/PageLoader';
 import { PageError } from '@/components/common/PageError';
+import { EmptyState } from '@/components/common/EmptyState';
 import {
 	getStudentFinance,
 	getStudentScholarshipPolicy,
@@ -272,10 +273,7 @@ function FinancePage() {
 							</Tabs>
 						</div>
 						{filteredFinanceData.length === 0 ? (
-							<div className="text-center py-12">
-								<Wallet className="w-16 h-16 text-muted-foreground/30 mx-auto mb-4" />
-								<p className="text-muted-foreground">Chưa có dữ liệu học phí</p>
-							</div>
+							<EmptyState icon={Wallet} title="Chưa có dữ liệu học phí" />
 						) : viewMode === 'all' ? (
 							<>
 								{/* Desktop Table - All View */}
@@ -596,10 +594,7 @@ function FinancePage() {
 							Chính sách miễn giảm học phí
 						</h2>
 						{normalizedScholarshipData.length === 0 ? (
-							<div className="text-center py-12">
-								<Gift className="w-16 h-16 text-muted-foreground/30 mx-auto mb-4" />
-								<p className="text-muted-foreground">Chưa có dữ liệu miễn giảm</p>
-							</div>
+							<EmptyState icon={Gift} title="Chưa có dữ liệu miễn giảm" />
 						) : (
 							<>
 								{/* Desktop Table */}

@@ -6,9 +6,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { cn } from '@/lib/utils';
 import { getYearAndTerm, type YearAndTermData } from '@/services/scheduleService';
 import { getStudentAttendance, type AttendanceItem } from '@/services/attendanceService';
-import { Loader2, AlertCircle, UserCheck, BookOpen, Clock } from 'lucide-react';
+import { AlertCircle, UserCheck, BookOpen, Clock } from 'lucide-react';
 import { PageLoader } from '@/components/common/PageLoader';
 import { PageError } from '@/components/common/PageError';
+import { InlineLoader } from '@/components/common/InlineLoader';
 
 interface GroupedAttendance {
 	MaLHP: string;
@@ -260,9 +261,7 @@ function AttendancePage() {
 				</CardHeader>
 				<CardContent>
 					{isLoadingData ? (
-						<div className="flex items-center justify-center py-12">
-							<Loader2 className="w-8 h-8 animate-spin text-primary" />
-						</div>
+						<InlineLoader />
 					) : dataError ? (
 						<div className="text-center py-8">
 							<AlertCircle className="w-12 h-12 mx-auto mb-4 opacity-50 text-destructive" />
