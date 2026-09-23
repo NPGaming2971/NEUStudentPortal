@@ -23,19 +23,19 @@
 
 Dự án được phát triển dựa trên các công nghệ và thư viện hiện đại nhất trong hệ sinh thái frontend, đảm bảo hiệu suất cao, dễ bảo trì và mở rộng:
 
-* **Core Framework:** React 19 kết hợp với Vite (Build tool siêu tốc).
-* **Ngôn ngữ:** TypeScript (Kiểm soát kiểu dữ liệu chặt chẽ).
-* **Quản lý State:** Zustand (Gọn nhẹ, hiệu năng cao, thay thế Redux).
-* **Routing:** React Router DOM v7.
-* **Styling & Giao diện:** 
-  * Tailwind CSS v4 (Utility-first CSS framework).
-  * Radix UI Primitives (Headless UI accessibility).
-  * Class Variance Authority (CVA) + clsx + tailwind-merge (Thiết kế hệ thống Component linh hoạt).
-* **Gọi API & Xử lý dữ liệu:** Axios.
-* **Tiện ích khác:**
-  * Xử lý thời gian thi/học: date-fns.
-  * Hiển thị biểu đồ học lực: Recharts.
-  * Lịch (Calendar): react-day-picker.
+- **Core Framework:** React 19 kết hợp với Vite (Build tool siêu tốc).
+- **Ngôn ngữ:** TypeScript (Kiểm soát kiểu dữ liệu chặt chẽ).
+- **Quản lý State:** Zustand (Gọn nhẹ, hiệu năng cao, thay thế Redux).
+- **Routing:** React Router DOM v7.
+- **Styling & Giao diện:**
+    - Tailwind CSS v4 (Utility-first CSS framework).
+    - Radix UI Primitives (Headless UI accessibility).
+    - Class Variance Authority (CVA) + clsx + tailwind-merge (Thiết kế hệ thống Component linh hoạt).
+- **Gọi API & Xử lý dữ liệu:** Axios.
+- **Tiện ích khác:**
+    - Xử lý thời gian thi/học: date-fns.
+    - Hiển thị biểu đồ học lực: Recharts.
+    - Lịch (Calendar): react-day-picker.
 
 ---
 
@@ -44,23 +44,27 @@ Dự án được phát triển dựa trên các công nghệ và thư viện hi
 Ứng dụng đáp ứng toàn diện mọi nhu cầu tra cứu và thao tác của sinh viên, bao gồm các phân hệ (modules) cốt lõi:
 
 ### 1. Phân hệ Học tập
-* **Kết quả học tập:** Theo dõi điểm số, điểm trung bình tích luỹ qua các học kì.
-* **Lịch học và Lịch thi:** Giao diện lịch trực quan, giúp sinh viên tiện theo dõi thời gian và phòng học.
-* **Chương trình đào tạo & Điểm rèn luyện:** Cập nhật tiến độ hoàn thành chương trình học và đánh giá chuyên cần/hành vi cá nhân.
+
+- **Kết quả học tập:** Theo dõi điểm số, điểm trung bình tích luỹ qua các học kì.
+- **Lịch học và Lịch thi:** Giao diện lịch trực quan, giúp sinh viên tiện theo dõi thời gian và phòng học.
+- **Chương trình đào tạo & Điểm rèn luyện:** Cập nhật tiến độ hoàn thành chương trình học và đánh giá chuyên cần/hành vi cá nhân.
 
 ### 2. Phân hệ Đăng ký học phần
-* **Đăng ký mới / Học lại / Cải thiện:** Xử lý quy trình đăng ký môn học và học lại (Retake).
-* **Lịch sử đăng ký & Kết quả đăng ký:** Tra cứu danh sách môn học đã đăng ký thành công.
-* **Kế hoạch đăng ký trực tuyến:** Xem trước các môn học dự kiến mở trong học kì tới.
+
+- **Đăng ký mới / Học lại / Cải thiện:** Xử lý quy trình đăng ký môn học và học lại (Retake).
+- **Lịch sử đăng ký & Kết quả đăng ký:** Tra cứu danh sách môn học đã đăng ký thành công.
+- **Kế hoạch đăng ký trực tuyến:** Xem trước các môn học dự kiến mở trong học kì tới.
 
 ### 3. Phân hệ Tài chính - Học phí
-* Theo dõi công nợ, chi tiết học phí từng kì.
-* Kiểm tra lịch sử thanh toán và tình trạng xử lý biên lai.
-* Theo dõi học bổng hỗ trợ.
+
+- Theo dõi công nợ, chi tiết học phí từng kì.
+- Kiểm tra lịch sử thanh toán và tình trạng xử lý biên lai.
+- Theo dõi học bổng hỗ trợ.
 
 ### 4. Hệ thống Tương tác & Trợ lý ảo (Tiện ích nhúng)
-* **Chatbot sinh viên:** Tích hợp tính năng Chatbot AI (tương tự ChatGPTUI) hỗ trợ sinh viên giải đáp thắc mắc 24/7.
-* **Thông báo & Thảo luận:** Bảng tin nội bộ, trao đổi học thuật, và các thông báo khẩn từ nhà trường.
+
+- **Chatbot sinh viên:** Tích hợp tính năng Chatbot AI (tương tự ChatGPTUI) hỗ trợ sinh viên giải đáp thắc mắc 24/7.
+- **Thông báo & Thảo luận:** Bảng tin nội bộ, trao đổi học thuật, và các thông báo khẩn từ nhà trường.
 
 ---
 
@@ -94,6 +98,7 @@ neu-portal/
 Để cài đặt và chạy ứng dụng trên máy cá nhân, yêu cầu cần có **Node.js (phiên bản từ 18 trở lên)**.
 
 **Bước 1: Tải source code**
+
 ```bash
 git clone <repository_url>
 cd neu-portal
@@ -101,28 +106,35 @@ cd neu-portal
 
 **Bước 2: Cài đặt các gói thư viện (Dependencies)**
 Có thể dùng `npm`, `yarn` hoặc `pnpm`. Mặc định cấu hình dự án đang lưu `package-lock.json`.
+
 ```bash
 npm install
 ```
 
 **Bước 3: Thiết lập biến môi trường**
 Tạo tệp `.env` tại thư mục gốc dự án và khai báo đường dẫn tới Backend API. (Thay đổi giá trị cho phù hợp).
+
 ```env
 VITE_API_BASE_URL=https://api.neu.edu.vn/
 ```
 
 **Bước 4: Chạy dự án (Môi trường Development)**
+
 ```bash
 npm run dev
 ```
+
 Mở trình duyệt truy cập: `http://localhost:5173`
 
 **Bước 5: Chạy dự án (Môi trường Production)**
 Build bộ mã nguồn:
+
 ```bash
 npm run build
 ```
+
 Xem trước tệp tin đã build:
+
 ```bash
 npm run preview
 ```

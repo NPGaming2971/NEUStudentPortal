@@ -1,13 +1,8 @@
-import { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import {
-	Dialog,
-	DialogContent,
-	DialogHeader,
-	DialogTitle,
-} from "@/components/ui/dialog";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
 	getStudyPrograms,
 	getStudyProgramResults,
@@ -22,8 +17,8 @@ import {
 	type DashboardCreditSummary,
 	type DashboardStudentInfo,
 	type DashboardKetQuaHocTap,
-	type MarkDetailItem,
-} from "@/services/academicService";
+	type MarkDetailItem
+} from '@/services/academicService';
 import {
 	Loader2,
 	AlertCircle,
@@ -40,10 +35,11 @@ import {
 	Table,
 	BarChart3,
 	Users,
-	RefreshCw,
-} from "lucide-react";
-import { cn } from "@/lib/utils";
-import GradeStatistics from "@/components/common/GradeStatistics";
+	RefreshCw
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { getTermLabel } from '@/lib/exportOptions';
+import GradeStatistics from '@/components/common/GradeStatistics';
 
 interface GPA {
 	semesterGPA10?: number;
@@ -63,13 +59,11 @@ interface DashboardTermData {
 	courses: Record<string, DashboardCourseAvg>;
 }
 
-const isPassed = (course: CourseGrade): boolean => course.Ispass === "True";
-const isFailed = (course: CourseGrade): boolean =>
-	course.Ispass === "False" || course.Ispass === "0";
+const isPassed = (course: CourseGrade): boolean => course.Ispass === 'True';
+const isFailed = (course: CourseGrade): boolean => course.Ispass === 'False' || course.Ispass === '0';
 
 const isGDTCSubject = (id: string, name: string): boolean =>
-	(id ?? "").toUpperCase().startsWith("GDTC") ||
-	(name ?? "").toLowerCase().includes("giáo dục thể chất");
+	(id ?? '').toUpperCase().startsWith('GDTC') || (name ?? '').toLowerCase().includes('giáo dục thể chất');
 
 const convertToGPA4 = (score10: number): number => {
 	if (score10 >= 8.5) return 4;
@@ -90,48 +84,49 @@ const dedupeMarkDetail = (items: MarkDetailItem[]): MarkDetailItem[] => {
 			seen.add(item.AssignmentID);
 			return true;
 		})
-		.sort(
-			(a, b) =>
-				(b.OrderNumber ?? 0) - (a.OrderNumber ?? 0),
-		);
+		.sort((a, b) => (b.OrderNumber ?? 0) - (a.OrderNumber ?? 0));
 };
 
 const formatMark = (mark: number | null | undefined): string => {
-	if (mark === null || mark === undefined || Number.isNaN(mark)) return "—";
+	if (mark === null || mark === undefined || Number.isNaN(mark)) return '—';
 	return Number(mark.toFixed(2)).toString();
 };
 
-const normalizeMarkName = (name: string): string =>
-	name.toLowerCase().replace(/\s+/g, " ").trim();
+const normalizeMarkName = (name: string): string => name.toLowerCase().replace(/\s+/g, ' ').trim();
 
 const MARK_NAME_MAP: Record<string, string> = {
-	"thi lý thuyết": "Điểm thi kết thúc học phần",
-	"kttx1 lý thuyết": "Điểm kiểm tra thường xuyên 1",
-	"kttx2 lý thuyết": "Điểm kiểm tra thường xuyên 2",
-	"cc lý thuyết": "Điểm chuyên cần",
+	'thi lý thuyết': 'Điểm thi kết thúc học phần',
+	'kttx1 lý thuyết': 'Điểm kiểm tra thường xuyên 1',
+	'kttx2 lý thuyết': 'Điểm kiểm tra thường xuyên 2',
+	'cc lý thuyết': 'Điểm chuyên cần'
 };
 
-const IGNORED_MARK_NAMES = new Set(["điểm qt lý thuyết", "điểm quá trình"]);
+const IGNORED_MARK_NAMES = new Set(['điểm qt lý thuyết', 'điểm quá trình']);
 
 const parseMarkInfo = (info: string | null | undefined): MarkDetailItem[] => {
 	if (!info) return [];
 	const result: MarkDetailItem[] = [];
 	const seen = new Set<string>();
-	for (const part of info.split(";")) {
+	for (const part of info.split(';')) {
 		const trimmed = part.trim();
 		if (!trimmed) continue;
-		const sep = trimmed.indexOf(":");
+		const sep = trimmed.indexOf(':');
 		if (sep <= 0) continue;
 		const key = normalizeMarkName(trimmed.slice(0, sep).trim());
 		if (IGNORED_MARK_NAMES.has(key) || seen.has(key)) continue;
 		seen.add(key);
 		const name = MARK_NAME_MAP[key] ?? trimmed.slice(0, sep).trim();
-		const numeric = Number(trimmed.slice(sep + 1).trim().replace(",", "."));
+		const numeric = Number(
+			trimmed
+				.slice(sep + 1)
+				.trim()
+				.replace(',', '.')
+		);
 		result.push({
 			AssignmentID: `info-${key}`,
 			AssignmentName: name,
 			FirstMark: Number.isNaN(numeric) ? null : numeric,
-			SecondMark: null,
+			SecondMark: null
 		});
 	}
 	return result;
@@ -139,7 +134,7 @@ const parseMarkInfo = (info: string | null | undefined): MarkDetailItem[] => {
 
 const mergeMarkItems = (
 	detail: MarkDetailItem[],
-	info: MarkDetailItem[],
+	info: MarkDetailItem[]
 ): { items: MarkDetailItem[]; filledIds: Set<string> } => {
 	const infoByKey = new Map<string, MarkDetailItem>();
 	for (const item of info) {
@@ -179,15 +174,9 @@ const mergeMarkItems = (
 };
 
 const dashboardCache = new Map<string, DashboardKetQuaHocTap>();
-const dashboardInflight = new Map<
-	string,
-	Promise<DashboardKetQuaHocTap>
->();
+const dashboardInflight = new Map<string, Promise<DashboardKetQuaHocTap>>();
 
-type GlobalSums = Record<
-	string,
-	{ sum: number; count: number; sumSelf: number; credits: number }
->;
+type GlobalSums = Record<string, { sum: number; count: number; sumSelf: number; credits: number }>;
 
 interface ClassAvgCacheEntry {
 	dashboardByTerm: Record<string, DashboardTermData>;
@@ -206,7 +195,7 @@ interface ClassAvgCacheEntry {
 const classAvgCache = new Map<string, ClassAvgCacheEntry>();
 
 const computeClassAvgInfo = (
-	globalSums: GlobalSums,
+	globalSums: GlobalSums
 ): {
 	value10: number;
 	value4: number;
@@ -215,9 +204,7 @@ const computeClassAvgInfo = (
 	credits: number;
 	subjects: number;
 } | null => {
-	const subjectAvgs = Object.entries(globalSums).filter(
-		([, e]) => e.credits > 0,
-	);
+	const subjectAvgs = Object.entries(globalSums).filter(([, e]) => e.credits > 0);
 	if (subjectAvgs.length === 0) return null;
 
 	let totalCredits = 0;
@@ -240,14 +227,14 @@ const computeClassAvgInfo = (
 		selfValue10: selfSum10 / totalCredits,
 		selfValue4: selfSum4 / totalCredits,
 		credits: totalCredits,
-		subjects: subjectAvgs.length,
+		subjects: subjectAvgs.length
 	};
 };
 
 const fetchDashboardCached = async (
 	studyProgramId: string,
 	yearStudy: string,
-	termId: string,
+	termId: string
 ): Promise<DashboardKetQuaHocTap> => {
 	const cacheKey = `${studyProgramId}|${yearStudy}|${termId}`;
 	const cached = dashboardCache.get(cacheKey);
@@ -274,14 +261,9 @@ function AcademicResultsPage() {
 	const [studyPrograms, setStudyPrograms] = useState<StudyProgram[]>([]);
 	const [yearlyResults, setYearlyResults] = useState<GradeYear[]>([]);
 	const [reloadKey, setReloadKey] = useState(0);
-	const [dashboardByTerm, setDashboardByTerm] = useState<
-		Record<string, DashboardTermData>
-	>({});
-	const [studentInfo, setStudentInfo] = useState<DashboardStudentInfo | null>(
-		null,
-	);
-	const [, setDashboardCredits] =
-		useState<DashboardCreditSummary | null>(null);
+	const [dashboardByTerm, setDashboardByTerm] = useState<Record<string, DashboardTermData>>({});
+	const [studentInfo, setStudentInfo] = useState<DashboardStudentInfo | null>(null);
+	const [, setDashboardCredits] = useState<DashboardCreditSummary | null>(null);
 	const [classAvgInfo, setClassAvgInfo] = useState<{
 		value10: number;
 		value4: number;
@@ -290,33 +272,18 @@ function AcademicResultsPage() {
 		credits: number;
 		subjects: number;
 	} | null>(null);
-	const [isRecalculatingClassAvg, setIsRecalculatingClassAvg] =
-		useState(false);
-	const [selectedCourseTermKey, setSelectedCourseTermKey] = useState("");
-	const [expandedSemesters, setExpandedSemesters] = useState<
-		Record<string, boolean>
-	>({});
+	const [isRecalculatingClassAvg, setIsRecalculatingClassAvg] = useState(false);
+	const [selectedCourseTermKey, setSelectedCourseTermKey] = useState('');
+	const [expandedSemesters, setExpandedSemesters] = useState<Record<string, boolean>>({});
 	const [gpa, setGPA] = useState<GPA>({});
-	const [viewMode, setViewMode] = useState<"program" | "curriculum">(
-		"program",
-	);
-	const [selectedCourse, setSelectedCourse] = useState<CourseGrade | null>(
-		null,
-	);
-	const [activeTab, setActiveTab] = useState<"results" | "statistics">(
-		"results",
-	);
-	const [markDetail, setMarkDetail] = useState<MarkDetailItem[] | null>(
-		null,
-	);
+	const [viewMode, setViewMode] = useState<'program' | 'curriculum'>('program');
+	const [selectedCourse, setSelectedCourse] = useState<CourseGrade | null>(null);
+	const [activeTab, setActiveTab] = useState<'results' | 'statistics'>('results');
+	const [markDetail, setMarkDetail] = useState<MarkDetailItem[] | null>(null);
 	const [isLoadingMarkDetail, setIsLoadingMarkDetail] = useState(false);
-	const [markDetailError, setMarkDetailError] = useState<string | null>(
-		null,
-	);
+	const [markDetailError, setMarkDetailError] = useState<string | null>(null);
 	const [markDetailRetry, setMarkDetailRetry] = useState(0);
-	const [markDetailFilledIds, setMarkDetailFilledIds] = useState<Set<string>>(
-		new Set(),
-	);
+	const [markDetailFilledIds, setMarkDetailFilledIds] = useState<Set<string>>(new Set());
 
 	useEffect(() => {
 		const infoItems = parseMarkInfo(selectedCourse?.Info);
@@ -344,14 +311,14 @@ function AcademicResultsPage() {
 				applyMarkDetail(dedupeMarkDetail(items ?? []));
 			})
 			.catch((err) => {
-				console.error("Error fetching mark detail:", err);
+				console.error('Error fetching mark detail:', err);
 				if (cancelled) return;
 				if (infoItems.length > 0) {
 					applyMarkDetail([]);
 				} else {
 					setMarkDetail(null);
 					setMarkDetailFilledIds(new Set());
-					setMarkDetailError("Không thể tải chi tiết điểm");
+					setMarkDetailError('Không thể tải chi tiết điểm');
 					setIsLoadingMarkDetail(false);
 				}
 			})
@@ -371,8 +338,8 @@ function AcademicResultsPage() {
 				const programs = await getStudyPrograms();
 				setStudyPrograms(programs || []);
 			} catch (err) {
-				console.error("Error fetching study programs:", err);
-				setError("Không thể tải dữ liệu. Vui lòng thử lại sau.");
+				console.error('Error fetching study programs:', err);
+				setError('Không thể tải dữ liệu. Vui lòng thử lại sau.');
 			}
 		};
 		fetchInitialData();
@@ -390,13 +357,9 @@ function AcademicResultsPage() {
 
 			try {
 				const data: StudyProgramResults =
-					viewMode === "program" ?
-						await getStudyProgramResults(
-							studyPrograms[0].StudyProgramID,
-						)
-						: await getStudyProgramResultsByCurriculum(
-							studyPrograms[0].StudyProgramID,
-						);
+					viewMode === 'program'
+						? await getStudyProgramResults(studyPrograms[0].StudyProgramID)
+						: await getStudyProgramResultsByCurriculum(studyPrograms[0].StudyProgramID);
 
 				const diem = data?.diem ?? [];
 				if (diem.length > 0) {
@@ -415,23 +378,17 @@ function AcademicResultsPage() {
 					// GPA: cumulative from diemToanKhoa, semester from latest semester's AverageScore
 					const latestYear = diem[diem.length - 1] as GradeYear;
 					const semesters = latestYear?.DanhSachDiem;
-					const latestSemester = semesters?.[semesters.length - 1] as
-						| GradeSemester
-						| undefined;
+					const latestSemester = semesters?.[semesters.length - 1] as GradeSemester | undefined;
 					const latestAvg = latestSemester?.AverageScore;
 					const whole = data?.diemToanKhoa;
 
 					setGPA({
 						semesterGPA10: latestAvg?.AverageScore ?? undefined,
 						semesterGPA4: latestAvg?.AverageScore4 ?? undefined,
-						cumulativeGPA10:
-							whole?.DiemTBTL ?? latestAvg?.DiemTBTL ?? undefined,
-						cumulativeGPA4:
-							whole?.DiemTBTL4 ?? latestAvg?.DiemTBTL4 ?? undefined,
-						creditsEarned:
-							whole?.STCTL ?? latestAvg?.STCTL ?? undefined,
-						totalCreditsRegistered:
-							whole?.TongSTC ?? latestAvg?.TongSTC ?? undefined,
+						cumulativeGPA10: whole?.DiemTBTL ?? latestAvg?.DiemTBTL ?? undefined,
+						cumulativeGPA4: whole?.DiemTBTL4 ?? latestAvg?.DiemTBTL4 ?? undefined,
+						creditsEarned: whole?.STCTL ?? latestAvg?.STCTL ?? undefined,
+						totalCreditsRegistered: whole?.TongSTC ?? latestAvg?.TongSTC ?? undefined
 					});
 
 					// Main results are ready — render the table now. The
@@ -445,12 +402,8 @@ function AcademicResultsPage() {
 					if (cachedClassAvg) {
 						setDashboardByTerm(cachedClassAvg.dashboardByTerm);
 						setClassAvgInfo(cachedClassAvg.classAvgInfo);
-						if (cachedClassAvg.studentInfo)
-							setStudentInfo(cachedClassAvg.studentInfo);
-						if (cachedClassAvg.dashboardCredits)
-							setDashboardCredits(
-								cachedClassAvg.dashboardCredits,
-							);
+						if (cachedClassAvg.studentInfo) setStudentInfo(cachedClassAvg.studentInfo);
+						if (cachedClassAvg.dashboardCredits) setDashboardCredits(cachedClassAvg.dashboardCredits);
 						setIsRecalculatingClassAvg(false);
 					} else {
 						setIsRecalculatingClassAvg(true);
@@ -460,17 +413,14 @@ function AcademicResultsPage() {
 						let dashCredits: DashboardCreditSummary | null = null;
 						for (const year of diem) {
 							for (const semester of year.DanhSachDiem ?? []) {
-								if (!year.NamHoc || !semester.HocKy)
-									continue;
+								if (!year.NamHoc || !semester.HocKy) continue;
 								const key = `${year.NamHoc}-${semester.HocKy}`;
 								try {
-									const dashboard =
-										await fetchDashboardCached(
-											studyPrograms[0]
-												.StudyProgramID,
-											year.NamHoc,
-											semester.HocKy,
-										);
+									const dashboard = await fetchDashboardCached(
+										studyPrograms[0].StudyProgramID,
+										year.NamHoc,
+										semester.HocKy
+									);
 									const termSums: Record<
 										string,
 										{
@@ -480,33 +430,23 @@ function AcademicResultsPage() {
 										}
 									> = {};
 									(dashboard.tb1 ?? []).forEach((c) => {
-										if (
-											c.AVGClass == null ||
-											c.MaxMark10 == null ||
-											c.AVGClass === 0
-										)
-											return;
+										if (c.AVGClass == null || c.MaxMark10 == null || c.AVGClass === 0) return;
 										const id = c.CurriculumID;
 										const entry = termSums[id] ?? {
 											sum: 0,
 											count: 0,
-											max10: c.MaxMark10,
+											max10: c.MaxMark10
 										};
 										entry.sum += c.AVGClass;
 										entry.count += 1;
 										termSums[id] = entry;
 
-										if (
-											!isGDTCSubject(
-												c.CurriculumID,
-												c.CurriculumName,
-											)
-										) {
+										if (!isGDTCSubject(c.CurriculumID, c.CurriculumName)) {
 											const g = globalSums[id] ?? {
 												sum: 0,
 												count: 0,
 												sumSelf: 0,
-												credits: c.Credits,
+												credits: c.Credits
 											};
 											g.sum += c.AVGClass;
 											g.sumSelf += c.MaxMark10;
@@ -514,21 +454,13 @@ function AcademicResultsPage() {
 											globalSums[id] = g;
 										}
 									});
-									const courses: Record<
-										string,
-										DashboardCourseAvg
-									> = {};
-									Object.entries(termSums).forEach(
-										([id, e]) => {
-											courses[id] = {
-												MaxMark10: e.max10,
-												AVGClass:
-													e.count > 0 ?
-														e.sum / e.count
-														: null,
-											};
-										},
-									);
+									const courses: Record<string, DashboardCourseAvg> = {};
+									Object.entries(termSums).forEach(([id, e]) => {
+										courses[id] = {
+											MaxMark10: e.max10,
+											AVGClass: e.count > 0 ? e.sum / e.count : null
+										};
+									});
 
 									// Populate each semester's class
 									// averages as soon as its dashboard
@@ -536,20 +468,13 @@ function AcademicResultsPage() {
 									dashMap[key] = { courses };
 									setDashboardByTerm((prev) => ({
 										...prev,
-										[key]: { courses },
+										[key]: { courses }
 									}));
 
-									dashInfo =
-										dashInfo ??
-										(dashboard.info?.[0] ?? null);
-									dashCredits =
-										dashCredits ??
-										(dashboard.tb2?.[0] ?? null);
+									dashInfo = dashInfo ?? dashboard.info?.[0] ?? null;
+									dashCredits = dashCredits ?? dashboard.tb2?.[0] ?? null;
 								} catch (err) {
-									console.error(
-										`Error fetching class average for ${key}:`,
-										err,
-									);
+									console.error(`Error fetching class average for ${key}:`, err);
 								}
 							}
 						}
@@ -564,7 +489,7 @@ function AcademicResultsPage() {
 							dashboardByTerm: dashMap,
 							classAvgInfo,
 							studentInfo: dashInfo,
-							dashboardCredits: dashCredits,
+							dashboardCredits: dashCredits
 						});
 					}
 				} else {
@@ -572,8 +497,8 @@ function AcademicResultsPage() {
 					setIsRecalculatingClassAvg(false);
 				}
 			} catch (err) {
-				console.error("Error:", err);
-				setError("Không thể tải kết quả học tập.");
+				console.error('Error:', err);
+				setError('Không thể tải kết quả học tập.');
 			} finally {
 				setIsLoading(false);
 				setIsRecalculatingClassAvg(false);
@@ -586,57 +511,38 @@ function AcademicResultsPage() {
 	const toggleSemester = (key: string) => {
 		setExpandedSemesters((prev) => ({
 			...prev,
-			[key]: !prev[key],
+			[key]: !prev[key]
 		}));
 	};
 
 	const getGradeColor = (grade: string | null | undefined) => {
-		if (!grade) return "text-muted-foreground";
+		if (!grade) return 'text-muted-foreground';
 		const g = grade.toUpperCase();
-		if (g === "A" || g === "A+")
-			return "text-green-600 dark:text-green-400 bg-green-500/10";
-		if (g === "B" || g === "B+")
-			return "text-blue-600 dark:text-blue-400 bg-blue-500/10";
-		if (g === "C" || g === "C+")
-			return "text-cyan-600 dark:text-cyan-400 bg-cyan-500/10";
-		if (g === "D" || g === "D+")
-			return "text-orange-600 dark:text-orange-400 bg-orange-500/10";
-		if (g.startsWith("F"))
-			return "text-red-600 dark:text-red-400 bg-red-500/10";
-		return "text-muted-foreground bg-muted";
+		if (g === 'A' || g === 'A+') return 'text-green-600 dark:text-green-400 bg-green-500/10';
+		if (g === 'B' || g === 'B+') return 'text-blue-600 dark:text-blue-400 bg-blue-500/10';
+		if (g === 'C' || g === 'C+') return 'text-cyan-600 dark:text-cyan-400 bg-cyan-500/10';
+		if (g === 'D' || g === 'D+') return 'text-orange-600 dark:text-orange-400 bg-orange-500/10';
+		if (g.startsWith('F')) return 'text-red-600 dark:text-red-400 bg-red-500/10';
+		return 'text-muted-foreground bg-muted';
 	};
 
 	const getSemesterLabel = (semester: GradeSemester) => {
 		const name = semester.DanhSachDiemHK?.[0]?.SemesterName;
 		if (name) return name;
-		switch (semester.HocKy) {
-			case "HK01":
-				return "Học kỳ 1";
-			case "HK02":
-				return "Học kỳ 2";
-			case "HK03":
-				return "Học kỳ Hè";
-			default:
-				return semester.HocKy;
-		}
+		return getTermLabel(semester.HocKy);
 	};
 
 	const cleanCourseName = (name: string) => {
 		// Remove HTML tags from course names
-		return name.replace(/<[^>]*>/g, "").trim();
+		return name.replace(/<[^>]*>/g, '').trim();
 	};
 
-	const formatNumber = (
-		value: number | null | undefined,
-		digits = 1,
-	): string => {
-		if (value === null || value === undefined || Number.isNaN(value))
-			return "—";
+	const formatNumber = (value: number | null | undefined, digits = 1): string => {
+		if (value === null || value === undefined || Number.isNaN(value)) return '—';
 		return value.toFixed(digits);
 	};
 
-	const getDashCourse = (key: string, curriculumId: string) =>
-		dashboardByTerm[key]?.courses[curriculumId];
+	const getDashCourse = (key: string, curriculumId: string) => dashboardByTerm[key]?.courses[curriculumId];
 
 	const handleRetry = () => {
 		setReloadKey((key) => key + 1);
@@ -644,12 +550,10 @@ function AcademicResultsPage() {
 
 	if (isLoading && studyPrograms.length === 0) {
 		return (
-			<div className='flex items-center justify-center min-h-[60vh]'>
-				<div className='text-center space-y-4'>
-					<Loader2 className='w-12 h-12 animate-spin text-primary mx-auto' />
-					<p className='text-muted-foreground'>
-						Đang tải kết quả học tập...
-					</p>
+			<div className="flex items-center justify-center min-h-[60vh]">
+				<div className="text-center space-y-4">
+					<Loader2 className="w-12 h-12 animate-spin text-primary mx-auto" />
+					<p className="text-muted-foreground">Đang tải kết quả học tập...</p>
 				</div>
 			</div>
 		);
@@ -657,13 +561,13 @@ function AcademicResultsPage() {
 
 	if (error) {
 		return (
-			<div className='flex items-center justify-center min-h-[60vh]'>
-				<Card className='max-w-md w-full border-destructive/50'>
-					<CardContent className='pt-6'>
-						<div className='text-center space-y-4'>
-							<AlertCircle className='w-12 h-12 text-destructive mx-auto' />
-							<p className='text-destructive'>{error}</p>
-							<Button onClick={handleRetry} variant='outline'>
+			<div className="flex items-center justify-center min-h-[60vh]">
+				<Card className="max-w-md w-full border-destructive/50">
+					<CardContent className="pt-6">
+						<div className="text-center space-y-4">
+							<AlertCircle className="w-12 h-12 text-destructive mx-auto" />
+							<p className="text-destructive">{error}</p>
+							<Button onClick={handleRetry} variant="outline">
 								Thử lại
 							</Button>
 						</div>
@@ -674,953 +578,731 @@ function AcademicResultsPage() {
 	}
 
 	return (
-		<div className='space-y-6'>
+		<div className="space-y-6">
 			{/* Header */}
-			<div className='space-y-4'>
+			<div className="space-y-4">
 				<div>
-					<h1 className='text-2xl md:text-3xl font-bold text-foreground'>
-						Kết quả học tập
-					</h1>
-					<p className='text-sm text-muted-foreground'>
-						Xem điểm và kết quả học tập qua các học kỳ
-					</p>
+					<h1 className="text-2xl md:text-3xl font-bold text-foreground">Kết quả học tập</h1>
+					<p className="text-sm text-muted-foreground">Xem điểm và kết quả học tập qua các học kỳ</p>
 				</div>
 				{/* Controls */}
-				<div className='flex flex-col sm:flex-row gap-3'>
+				<div className="flex flex-col sm:flex-row gap-3">
 					{/* View Mode Tabs */}
-					<Tabs value={viewMode} onValueChange={(v) => setViewMode(v as "program" | "curriculum")} className="w-full sm:w-auto">
+					<Tabs
+						value={viewMode}
+						onValueChange={(v) => setViewMode(v as 'program' | 'curriculum')}
+						className="w-full sm:w-auto"
+					>
 						<TabsList className="grid w-full grid-cols-2 sm:flex sm:w-auto">
 							<TabsTrigger value="program" disabled={isLoading}>
-								<List className='w-4 h-4' />
+								<List className="w-4 h-4" />
 								<span>Theo lộ trình</span>
 							</TabsTrigger>
 							<TabsTrigger value="curriculum" disabled={isLoading}>
-								<Table className='w-4 h-4' />
+								<Table className="w-4 h-4" />
 								<span>Theo CT</span>
 							</TabsTrigger>
 						</TabsList>
 					</Tabs>
 					{/* Statistics Toggle Button */}
 					<Button
-						variant={
-							activeTab === "statistics" ? "default" : "outline"
-						}
-						size='sm'
-						onClick={() =>
-							setActiveTab(
-								activeTab === "statistics" ? "results" : (
-									"statistics"
-								),
-							)
-						}
+						variant={activeTab === 'statistics' ? 'default' : 'outline'}
+						size="sm"
+						onClick={() => setActiveTab(activeTab === 'statistics' ? 'results' : 'statistics')}
 						disabled={isLoading || yearlyResults.length === 0}
-						className='gap-2 h-9'
+						className="gap-2 h-9"
 					>
-						<BarChart3 className='w-4 h-4' />
-						<span>
-							{activeTab === "statistics" ?
-								"Xem kết quả"
-								: "Thống kê"}
-						</span>
+						<BarChart3 className="w-4 h-4" />
+						<span>{activeTab === 'statistics' ? 'Xem kết quả' : 'Thống kê'}</span>
 					</Button>
 				</div>
 				{/* Student Info */}
 				{studentInfo && (
-					<div className='flex flex-wrap items-center gap-x-5 gap-y-1'>
-						<span className='text-sm text-muted-foreground'>
-							Lớp:{" "}
-							<strong className='text-foreground'>
-								{studentInfo.ClassStudentName}
-							</strong>
+					<div className="flex flex-wrap items-center gap-x-5 gap-y-1">
+						<span className="text-sm text-muted-foreground">
+							Lớp: <strong className="text-foreground">{studentInfo.ClassStudentName}</strong>
 						</span>
-						<span className='text-sm text-muted-foreground'>
-							Khóa:{" "}
-							<strong className='text-foreground'>
-								{studentInfo.CourseName}
-							</strong>
+						<span className="text-sm text-muted-foreground">
+							Khóa: <strong className="text-foreground">{studentInfo.CourseName}</strong>
 						</span>
-						<span className='text-sm text-muted-foreground'>
-							Hệ:{" "}
-							<strong className='text-foreground'>
-								{studentInfo.StudyTypeName}
-							</strong>
+						<span className="text-sm text-muted-foreground">
+							Hệ: <strong className="text-foreground">{studentInfo.StudyTypeName}</strong>
 						</span>
 					</div>
 				)}
 			</div>
 
 			{/* Summary Cards */}
-			<div className='grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4'>
-				<Card className='border-0 shadow-lg bg-gradient-to-br from-primary to-primary/80 text-primary-foreground'>
-					<CardContent className='p-3 sm:p-5'>
-						<div className='flex items-start justify-between'>
+			<div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+				<Card className="border-0 shadow-lg bg-gradient-to-br from-primary to-primary/80 text-primary-foreground">
+					<CardContent className="p-3 sm:p-5">
+						<div className="flex items-start justify-between">
 							<div>
-								<p className='text-primary-foreground/70 text-[10px] sm:text-xs'>
-									GPA Tích lũy
-								</p>
-								<div className='flex items-baseline gap-1 sm:gap-2 mt-1'>
-									<p className='text-2xl sm:text-3xl font-bold'>
-										{gpa.cumulativeGPA4?.toFixed(2) || "—"}
+								<p className="text-primary-foreground/70 text-[10px] sm:text-xs">GPA Tích lũy</p>
+								<div className="flex items-baseline gap-1 sm:gap-2 mt-1">
+									<p className="text-2xl sm:text-3xl font-bold">
+										{gpa.cumulativeGPA4?.toFixed(2) || '—'}
 									</p>
-									<span className='text-xs sm:text-sm text-primary-foreground/80'>
-										/4.0
-									</span>
+									<span className="text-xs sm:text-sm text-primary-foreground/80">/4.0</span>
 								</div>
-								<p className='text-primary-foreground/70 text-[10px] sm:text-xs mt-1'>
-									({gpa.cumulativeGPA10?.toFixed(2) || "—"}
+								<p className="text-primary-foreground/70 text-[10px] sm:text-xs mt-1">
+									({gpa.cumulativeGPA10?.toFixed(2) || '—'}
 									/10)
 								</p>
 							</div>
-							<div className='p-2 sm:p-3 bg-white/20 rounded-full'>
-								<GraduationCap className='w-5 h-5 sm:w-6 sm:h-6' />
+							<div className="p-2 sm:p-3 bg-white/20 rounded-full">
+								<GraduationCap className="w-5 h-5 sm:w-6 sm:h-6" />
 							</div>
 						</div>
 					</CardContent>
 				</Card>
 
-				<Card className='border shadow-lg'>
-					<CardContent className='p-3 sm:p-5'>
-						<div className='flex items-start justify-between'>
+				<Card className="border shadow-lg">
+					<CardContent className="p-3 sm:p-5">
+						<div className="flex items-start justify-between">
 							<div>
-								<p className='text-muted-foreground text-[10px] sm:text-xs'>
-									GPA Học kỳ
-								</p>
-								<div className='flex items-baseline gap-1 sm:gap-2 mt-1'>
-									<p className='text-2xl sm:text-3xl font-bold text-foreground'>
-										{gpa.semesterGPA4?.toFixed(2) || "—"}
+								<p className="text-muted-foreground text-[10px] sm:text-xs">GPA Học kỳ</p>
+								<div className="flex items-baseline gap-1 sm:gap-2 mt-1">
+									<p className="text-2xl sm:text-3xl font-bold text-foreground">
+										{gpa.semesterGPA4?.toFixed(2) || '—'}
 									</p>
-									<span className='text-xs sm:text-sm text-muted-foreground'>
-										/4.0
-									</span>
+									<span className="text-xs sm:text-sm text-muted-foreground">/4.0</span>
 								</div>
-								<p className='text-muted-foreground text-[10px] sm:text-xs mt-1'>
-									({gpa.semesterGPA10?.toFixed(2) || "—"}/10)
+								<p className="text-muted-foreground text-[10px] sm:text-xs mt-1">
+									({gpa.semesterGPA10?.toFixed(2) || '—'}/10)
 								</p>
 							</div>
-							<div className='p-2 sm:p-3 bg-muted rounded-full'>
-								<TrendingUp className='w-5 h-5 sm:w-6 sm:h-6 text-muted-foreground' />
-							</div>
-						</div>
-					</CardContent>
-				</Card>
-
-				<Card className='border shadow-lg'>
-					<CardContent className='p-3 sm:p-5'>
-						<div className='flex items-start justify-between'>
-							<div>
-								<p className='text-muted-foreground text-[10px] sm:text-xs'>
-									Tín chỉ tích lũy
-								</p>
-								<p className='text-2xl sm:text-3xl font-bold mt-1 text-foreground'>
-									{gpa.creditsEarned || "—"}
-								</p>
-								<p className='text-muted-foreground text-[10px] sm:text-xs mt-1'>
-									Đã đạt
-								</p>
-							</div>
-							<div className='p-2 sm:p-3 bg-muted rounded-full'>
-								<Award className='w-5 h-5 sm:w-6 sm:h-6 text-muted-foreground' />
+							<div className="p-2 sm:p-3 bg-muted rounded-full">
+								<TrendingUp className="w-5 h-5 sm:w-6 sm:h-6 text-muted-foreground" />
 							</div>
 						</div>
 					</CardContent>
 				</Card>
 
-				<Card className='border shadow-lg'>
-					<CardContent className='p-3 sm:p-5'>
-						<div className='flex items-start justify-between'>
+				<Card className="border shadow-lg">
+					<CardContent className="p-3 sm:p-5">
+						<div className="flex items-start justify-between">
 							<div>
-								<p className='text-muted-foreground text-[10px] sm:text-xs'>
-									Tổng số năm học
+								<p className="text-muted-foreground text-[10px] sm:text-xs">Tín chỉ tích lũy</p>
+								<p className="text-2xl sm:text-3xl font-bold mt-1 text-foreground">
+									{gpa.creditsEarned || '—'}
 								</p>
-								<p className='text-2xl sm:text-3xl font-bold mt-1 text-foreground'>
-									{yearlyResults.length || "—"}
-								</p>
-								<p className='text-muted-foreground text-[10px] sm:text-xs mt-1'>
-									Năm học
-								</p>
+								<p className="text-muted-foreground text-[10px] sm:text-xs mt-1">Đã đạt</p>
 							</div>
-							<div className='p-2 sm:p-3 bg-muted rounded-full'>
-								<BookOpen className='w-5 h-5 sm:w-6 sm:h-6 text-muted-foreground' />
+							<div className="p-2 sm:p-3 bg-muted rounded-full">
+								<Award className="w-5 h-5 sm:w-6 sm:h-6 text-muted-foreground" />
+							</div>
+						</div>
+					</CardContent>
+				</Card>
+
+				<Card className="border shadow-lg">
+					<CardContent className="p-3 sm:p-5">
+						<div className="flex items-start justify-between">
+							<div>
+								<p className="text-muted-foreground text-[10px] sm:text-xs">Tổng số năm học</p>
+								<p className="text-2xl sm:text-3xl font-bold mt-1 text-foreground">
+									{yearlyResults.length || '—'}
+								</p>
+								<p className="text-muted-foreground text-[10px] sm:text-xs mt-1">Năm học</p>
+							</div>
+							<div className="p-2 sm:p-3 bg-muted rounded-full">
+								<BookOpen className="w-5 h-5 sm:w-6 sm:h-6 text-muted-foreground" />
 							</div>
 						</div>
 					</CardContent>
 				</Card>
 			</div>
 
-{/* Class Average GPA */}
-			<Card className='border shadow-lg'>
-					<CardContent className='p-3 sm:p-5'>
-						<div className='flex flex-col sm:flex-row sm:items-center justify-between gap-3'>
-							<div className='flex items-center gap-3'>
-								<div className='p-2 sm:p-3 bg-muted rounded-full'>
-									<Users className='w-5 h-5 sm:w-6 sm:h-6 text-muted-foreground' />
+			{/* Class Average GPA */}
+			<Card className="border shadow-lg">
+				<CardContent className="p-3 sm:p-5">
+					<div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+						<div className="flex items-center gap-3">
+							<div className="p-2 sm:p-3 bg-muted rounded-full">
+								<Users className="w-5 h-5 sm:w-6 sm:h-6 text-muted-foreground" />
+							</div>
+							<div className="grid grid-cols-2 gap-x-8 gap-y-1">
+								<div>
+									<p className="text-muted-foreground text-[10px] sm:text-xs">GPA của bạn</p>
+									<div className="flex items-baseline gap-1 sm:gap-2 mt-1">
+										<p className="text-2xl sm:text-3xl font-bold text-primary">
+											{classAvgInfo ? classAvgInfo.selfValue4.toFixed(2) : '—'}
+										</p>
+										<span className="text-xs sm:text-sm text-muted-foreground">/4.0</span>
+									</div>
+									<p className="text-muted-foreground text-[10px] sm:text-xs mt-1">
+										({classAvgInfo ? classAvgInfo.selfValue10.toFixed(2) : '—'}
+										/10)
+									</p>
 								</div>
-								<div className='grid grid-cols-2 gap-x-8 gap-y-1'>
-									<div>
-										<p className='text-muted-foreground text-[10px] sm:text-xs'>
-											GPA của bạn
+								<div>
+									<p className="text-muted-foreground text-[10px] sm:text-xs">Điểm TB lớp</p>
+									<div className="flex items-baseline gap-1 sm:gap-2 mt-1">
+										<p className="text-2xl sm:text-3xl font-bold text-foreground">
+											{classAvgInfo ? classAvgInfo.value4.toFixed(2) : '—'}
 										</p>
-										<div className='flex items-baseline gap-1 sm:gap-2 mt-1'>
-											<p className='text-2xl sm:text-3xl font-bold text-primary'>
-												{classAvgInfo ? classAvgInfo.selfValue4.toFixed(2) : "—"}
-											</p>
-											<span className='text-xs sm:text-sm text-muted-foreground'>
-												/4.0
-											</span>
-										</div>
-										<p className='text-muted-foreground text-[10px] sm:text-xs mt-1'>
-											(
-											{classAvgInfo ? classAvgInfo.selfValue10.toFixed(2) : "—"}
-											/10)
-										</p>
+										<span className="text-xs sm:text-sm text-muted-foreground">/4.0</span>
 									</div>
-									<div>
-										<p className='text-muted-foreground text-[10px] sm:text-xs'>
-											Điểm TB lớp
-										</p>
-										<div className='flex items-baseline gap-1 sm:gap-2 mt-1'>
-											<p className='text-2xl sm:text-3xl font-bold text-foreground'>
-												{classAvgInfo ? classAvgInfo.value4.toFixed(2) : "—"}
-											</p>
-											<span className='text-xs sm:text-sm text-muted-foreground'>
-												/4.0
-											</span>
-										</div>
-										<p className='text-muted-foreground text-[10px] sm:text-xs mt-1'>
-											({classAvgInfo ? classAvgInfo.value10.toFixed(2) : "—"}
-											/10)
-										</p>
-									</div>
+									<p className="text-muted-foreground text-[10px] sm:text-xs mt-1">
+										({classAvgInfo ? classAvgInfo.value10.toFixed(2) : '—'}
+										/10)
+									</p>
 								</div>
 							</div>
-							<p className='text-xs text-muted-foreground sm:text-right sm:max-w-md'>
-								{isRecalculatingClassAvg ? (
-									<span className='inline-flex items-center gap-1.5'>
-										<RefreshCw className='w-3 h-3 animate-spin' />
-										Đang tính toán lại...
-									</span>
-								) : classAvgInfo ? (
-									<>
-										Tính theo điểm trung bình của các lớp bạn đã học. Tính từ{" "}
-										{classAvgInfo.subjects} môn,{" "}
-										{classAvgInfo.credits} TC.
-									</>
-								) : (
-									"Không có dữ liệu lớp."
-								)}
-							</p>
 						</div>
-					</CardContent>
-				</Card>
+						<p className="text-xs text-muted-foreground sm:text-right sm:max-w-md">
+							{isRecalculatingClassAvg ? (
+								<span className="inline-flex items-center gap-1.5">
+									<RefreshCw className="w-3 h-3 animate-spin" />
+									Đang tính toán lại...
+								</span>
+							) : classAvgInfo ? (
+								<>
+									Tính theo điểm trung bình của các lớp bạn đã học. Tính từ {classAvgInfo.subjects}{' '}
+									môn, {classAvgInfo.credits} TC.
+								</>
+							) : (
+								'Không có dữ liệu lớp.'
+							)}
+						</p>
+					</div>
+				</CardContent>
+			</Card>
 
 			{/* Results by Year or Statistics */}
-			{activeTab === "statistics" ?
+			{activeTab === 'statistics' ? (
 				<GradeStatistics
 					yearlyResults={yearlyResults}
 					gpa={{
 						cumulativeGPA10: gpa.cumulativeGPA10,
 						cumulativeGPA4: gpa.cumulativeGPA4,
-						creditsEarned: gpa.creditsEarned,
+						creditsEarned: gpa.creditsEarned
 					}}
 				/>
-				: isLoading ?
-					<div className='flex items-center justify-center py-12'>
-						<Loader2 className='w-8 h-8 animate-spin text-primary' />
-					</div>
-					: yearlyResults.length === 0 ?
-						<Card className='border-0 shadow-lg'>
-							<CardContent className='py-12'>
-								<div className='text-center'>
-									<BookOpen className='w-16 h-16 text-muted-foreground/30 mx-auto mb-4' />
-									<p className='text-muted-foreground'>
-										Chưa có dữ liệu kết quả học tập
-									</p>
-								</div>
-							</CardContent>
-						</Card>
-						: <div className='space-y-6'>
-							{[...yearlyResults]
-								.reverse()
-								.map((year) => (
-								<Card
-									key={year.NamHoc}
-									className='border-0 shadow-lg overflow-hidden p-0'
-								>
-									<CardHeader className='bg-gradient-to-r from-primary to-primary/80 text-primary-foreground py-3 px-4'>
-										<CardTitle className='flex items-center gap-2 text-lg'>
-											<GraduationCap className='h-5 w-5' />
-											Năm học {year.NamHoc}
-										</CardTitle>
-									</CardHeader>
-									<CardContent className='p-0'>
-										<div className='divide-y divide-border'>
-											{[...(year.DanhSachDiem ?? [])]
-												.reverse()
-												.map((semester) => {
-											const key = `${year.NamHoc}-${semester.HocKy}`;
-											const isExpanded =
-												expandedSemesters[key];
-											const passedCourses =
-												semester.DanhSachDiemHK?.filter(
-													(c) => isPassed(c),
-												).length || 0;
-											const totalCourses =
-												semester.DanhSachDiemHK?.length ||
-												0;
+			) : isLoading ? (
+				<div className="flex items-center justify-center py-12">
+					<Loader2 className="w-8 h-8 animate-spin text-primary" />
+				</div>
+			) : yearlyResults.length === 0 ? (
+				<Card className="border-0 shadow-lg">
+					<CardContent className="py-12">
+						<div className="text-center">
+							<BookOpen className="w-16 h-16 text-muted-foreground/30 mx-auto mb-4" />
+							<p className="text-muted-foreground">Chưa có dữ liệu kết quả học tập</p>
+						</div>
+					</CardContent>
+				</Card>
+			) : (
+				<div className="space-y-6">
+					{[...yearlyResults].reverse().map((year) => (
+						<Card key={year.NamHoc} className="border-0 shadow-lg overflow-hidden p-0">
+							<CardHeader className="bg-gradient-to-r from-primary to-primary/80 text-primary-foreground py-3 px-4">
+								<CardTitle className="flex items-center gap-2 text-lg">
+									<GraduationCap className="h-5 w-5" />
+									Năm học {year.NamHoc}
+								</CardTitle>
+							</CardHeader>
+							<CardContent className="p-0">
+								<div className="divide-y divide-border">
+									{[...(year.DanhSachDiem ?? [])].reverse().map((semester) => {
+										const key = `${year.NamHoc}-${semester.HocKy}`;
+										const isExpanded = expandedSemesters[key];
+										const passedCourses =
+											semester.DanhSachDiemHK?.filter((c) => isPassed(c)).length || 0;
+										const totalCourses = semester.DanhSachDiemHK?.length || 0;
 
-												return (
-													<div key={key}>
-														<button
-															onClick={() =>
-																toggleSemester(key)
-															}
-															className='w-full flex items-center justify-between p-4 hover:bg-muted/50 transition-colors'
-														>
-															<div className='flex items-center gap-3'>
-																<div className='p-2 bg-primary/10 rounded-lg'>
-																	<BookOpen className='w-4 h-4 text-primary' />
-																</div>
-																<div className='text-left'>
-																	<p className='font-semibold text-foreground'>
-																		{getSemesterLabel(
-																			semester,
-																		)}
-																	</p>
-																	<p className='text-xs text-muted-foreground'>
-																		{passedCourses}/
-																		{totalCourses}{" "}
-																		môn đạt
-																	</p>
-																</div>
-															</div>
-															{isExpanded ?
-																<ChevronUp className='w-5 h-5 text-muted-foreground' />
-																: <ChevronDown className='w-5 h-5 text-muted-foreground' />
-															}
-														</button>
-
-														{isExpanded && (
-															<div className='px-4 pb-4'>
-																{/* Desktop Table */}
-																<div className='hidden md:block overflow-x-auto rounded-lg border'>
-																	<table className='w-full'>
-																		<thead>
-																			<tr className='bg-muted/50'>
-																				<th className='text-left py-2.5 px-3 text-xs font-semibold text-muted-foreground'>
-																					Mã
-																					môn
-																				</th>
-																				<th className='text-left py-2.5 px-3 text-xs font-semibold text-muted-foreground'>
-																					Tên
-																					môn
-																					học
-																				</th>
-																				<th className='text-center py-2.5 px-3 text-xs font-semibold text-muted-foreground'>
-																					TC
-																				</th>
-																				<th className='text-center py-2.5 px-3 text-xs font-semibold text-muted-foreground'>
-																					Điểm
-																					10
-																				</th>
-																				<th className='text-center py-2.5 px-3 text-xs font-semibold text-muted-foreground'>
-																					Điểm
-																					4
-																				</th>
-																				<th className='text-center py-2.5 px-3 text-xs font-semibold text-muted-foreground'>
-																					Điểm
-																					chữ
-																				</th>
-<th className='text-center py-2.5 px-3 text-xs font-semibold text-muted-foreground'>
-													Đạt
-												</th>
-																				<th className='text-center py-2.5 px-3 text-xs font-semibold text-muted-foreground'>
-													TB lớp
-												</th>
-																			</tr>
-																		</thead>
-																		<tbody className='divide-y divide-border'>
-																			{semester.DanhSachDiemHK?.map(
-																				(
-																					course,
-																					idx,
-																				) => (
-																					<tr
-																						key={`${course.CurriculumID}-${idx}`}
-onClick={() => {
-																							setSelectedCourse(
-																								course,
-																							);
-																							setSelectedCourseTermKey(
-																								key,
-																							);
-																						}}
-className={cn(
-														"hover:bg-muted/30 transition-colors cursor-pointer",
-														isFailed(
-															course,
-														) &&
-														"bg-red-500/5",
+										return (
+											<div key={key}>
+												<button
+													onClick={() => toggleSemester(key)}
+													className="w-full flex items-center justify-between p-4 hover:bg-muted/50 transition-colors"
+												>
+													<div className="flex items-center gap-3">
+														<div className="p-2 bg-primary/10 rounded-lg">
+															<BookOpen className="w-4 h-4 text-primary" />
+														</div>
+														<div className="text-left">
+															<p className="font-semibold text-foreground">
+																{getSemesterLabel(semester)}
+															</p>
+															<p className="text-xs text-muted-foreground">
+																{passedCourses}/{totalCourses} môn đạt
+															</p>
+														</div>
+													</div>
+													{isExpanded ? (
+														<ChevronUp className="w-5 h-5 text-muted-foreground" />
+													) : (
+														<ChevronDown className="w-5 h-5 text-muted-foreground" />
 													)}
-																					>
-																						<td className='py-2.5 px-3 text-sm font-medium text-foreground'>
-																							{
-																								course.CurriculumID
-																							}
-																						</td>
-																						<td className='py-2.5 px-3 text-sm text-foreground'>
-																							<div>
-																								{cleanCourseName(
-																									course.CurriculumName,
-																								)}
-																								{course.NotComputeAverageScore && (
-																									<span className='ml-1 text-xs text-muted-foreground'>
-																										*
-																									</span>
-																								)}
-																							</div>
-																							{course.Note && (
-																								<p className='text-xs text-muted-foreground'>
-																									{
-																										course.Note
-																									}
-																								</p>
-																							)}
-																						</td>
-																						<td className='py-2.5 px-3 text-sm text-center text-muted-foreground'>
-																							{
-																								course.Credits
-																							}
-																						</td>
-																						<td className='py-2.5 px-3 text-sm text-center font-medium text-foreground'>
-																							{
-																								course.DiemTK_10
-																							}
-																						</td>
-																						<td className='py-2.5 px-3 text-sm text-center text-foreground'>
-																							{
-																								course.DiemTK_4
-																							}
-																						</td>
-																						<td className='py-2.5 px-3 text-center'>
-																							<span
-																								className={cn(
-																									"inline-block px-2 py-0.5 rounded text-xs font-bold",
-																									getGradeColor(
-																										course.DiemTK_Chu,
-																									),
-																								)}
-																							>
-																								{course.DiemTK_Chu ||
-																									"—"}
-																							</span>
-																						</td>
-<td className='py-2.5 px-3 text-center'>
-														{isPassed(
-															course,
-														) ?
-															<Check className='w-4 h-4 text-green-600 dark:text-green-400 mx-auto' />
-: isFailed(course) ?
-																<X className='w-4 h-4 text-red-600 dark:text-red-400 mx-auto' />
-																: <Minus className='w-4 h-4 text-muted-foreground mx-auto' />
-														}
-													</td>
-													<td className='py-2.5 px-3 text-center'>
-														<span className='text-sm font-medium text-foreground'>
-															{formatNumber(
-																getDashCourse(
-																	key,
-																	course.CurriculumID,
-																)?.AVGClass,
-															)}
-														</span>
-													</td>
-																					</tr>
-																				),
+												</button>
+
+												{isExpanded && (
+													<div className="px-4 pb-4">
+														{/* Desktop Table */}
+														<div className="hidden md:block overflow-x-auto rounded-lg border">
+															<table className="w-full">
+																<thead>
+																	<tr className="bg-muted/50">
+																		<th className="text-left py-2.5 px-3 text-xs font-semibold text-muted-foreground">
+																			Mã môn
+																		</th>
+																		<th className="text-left py-2.5 px-3 text-xs font-semibold text-muted-foreground">
+																			Tên môn học
+																		</th>
+																		<th className="text-center py-2.5 px-3 text-xs font-semibold text-muted-foreground">
+																			TC
+																		</th>
+																		<th className="text-center py-2.5 px-3 text-xs font-semibold text-muted-foreground">
+																			Điểm 10
+																		</th>
+																		<th className="text-center py-2.5 px-3 text-xs font-semibold text-muted-foreground">
+																			Điểm 4
+																		</th>
+																		<th className="text-center py-2.5 px-3 text-xs font-semibold text-muted-foreground">
+																			Điểm chữ
+																		</th>
+																		<th className="text-center py-2.5 px-3 text-xs font-semibold text-muted-foreground">
+																			Đạt
+																		</th>
+																		<th className="text-center py-2.5 px-3 text-xs font-semibold text-muted-foreground">
+																			TB lớp
+																		</th>
+																	</tr>
+																</thead>
+																<tbody className="divide-y divide-border">
+																	{semester.DanhSachDiemHK?.map((course, idx) => (
+																		<tr
+																			key={`${course.CurriculumID}-${idx}`}
+																			onClick={() => {
+																				setSelectedCourse(course);
+																				setSelectedCourseTermKey(key);
+																			}}
+																			className={cn(
+																				'hover:bg-muted/30 transition-colors cursor-pointer',
+																				isFailed(course) && 'bg-red-500/5'
 																			)}
-																		</tbody>
-																	</table>
-																</div>
+																		>
+																			<td className="py-2.5 px-3 text-sm font-medium text-foreground">
+																				{course.CurriculumID}
+																			</td>
+																			<td className="py-2.5 px-3 text-sm text-foreground">
+																				<div>
+																					{cleanCourseName(
+																						course.CurriculumName
+																					)}
+																					{course.NotComputeAverageScore && (
+																						<span className="ml-1 text-xs text-muted-foreground">
+																							*
+																						</span>
+																					)}
+																				</div>
+																				{course.Note && (
+																					<p className="text-xs text-muted-foreground">
+																						{course.Note}
+																					</p>
+																				)}
+																			</td>
+																			<td className="py-2.5 px-3 text-sm text-center text-muted-foreground">
+																				{course.Credits}
+																			</td>
+																			<td className="py-2.5 px-3 text-sm text-center font-medium text-foreground">
+																				{course.DiemTK_10}
+																			</td>
+																			<td className="py-2.5 px-3 text-sm text-center text-foreground">
+																				{course.DiemTK_4}
+																			</td>
+																			<td className="py-2.5 px-3 text-center">
+																				<span
+																					className={cn(
+																						'inline-block px-2 py-0.5 rounded text-xs font-bold',
+																						getGradeColor(course.DiemTK_Chu)
+																					)}
+																				>
+																					{course.DiemTK_Chu || '—'}
+																				</span>
+																			</td>
+																			<td className="py-2.5 px-3 text-center">
+																				{isPassed(course) ? (
+																					<Check className="w-4 h-4 text-green-600 dark:text-green-400 mx-auto" />
+																				) : isFailed(course) ? (
+																					<X className="w-4 h-4 text-red-600 dark:text-red-400 mx-auto" />
+																				) : (
+																					<Minus className="w-4 h-4 text-muted-foreground mx-auto" />
+																				)}
+																			</td>
+																			<td className="py-2.5 px-3 text-center">
+																				<span className="text-sm font-medium text-foreground">
+																					{formatNumber(
+																						getDashCourse(
+																							key,
+																							course.CurriculumID
+																						)?.AVGClass
+																					)}
+																				</span>
+																			</td>
+																		</tr>
+																	))}
+																</tbody>
+															</table>
+														</div>
 
-																{/* Mobile Cards */}
-																<div className='md:hidden space-y-2'>
-																	{semester.DanhSachDiemHK?.map(
-																		(
-																			course,
-																			idx,
-																		) => (
-																			<div
-																				key={`${course.CurriculumID}-${idx}`}
-onClick={() => {
-																		setSelectedCourse(
-																			course,
-																		);
-																		setSelectedCourseTermKey(
-																			key,
-																		);
+														{/* Mobile Cards */}
+														<div className="md:hidden space-y-2">
+															{semester.DanhSachDiemHK?.map((course, idx) => (
+																<div
+																	key={`${course.CurriculumID}-${idx}`}
+																	onClick={() => {
+																		setSelectedCourse(course);
+																		setSelectedCourseTermKey(key);
 																	}}
-className={cn(
-													"p-3 rounded-lg border bg-card cursor-pointer hover:bg-muted/50 transition-colors",
-													isFailed(
-														course,
-													) &&
-													"border-red-500/50 bg-red-500/5",
-												)}
-																			>
-																				<div className='flex items-start justify-between gap-3 mb-2'>
-																					<div className='flex-1 min-w-0'>
-																						<p className='font-medium text-foreground text-sm leading-tight'>
-																							{cleanCourseName(
-																								course.CurriculumName,
-																							)}
-																						</p>
-																						<p className='text-xs text-muted-foreground mt-0.5'>
-																							{
-																								course.CurriculumID
-																							}{" "}
-																							•{" "}
-																							{
-																								course.Credits
-																							}{" "}
-																							TC
-																						</p>
-																					</div>
-																					<div className='flex flex-col items-end gap-1 flex-shrink-0'>
-																						<span
-																							className={cn(
-																								"px-2 py-0.5 rounded text-xs font-bold",
-																								getGradeColor(
-																									course.DiemTK_Chu,
-																								),
-																							)}
-																						>
-																							{course.DiemTK_Chu ||
-																								"—"}
-																						</span>
-{(
-														course.Ispass === "True"
-													) ?
-														<span className='text-xs text-green-600 dark:text-green-400'>
-															Đạt
-														</span>
-														: isFailed(course) ?
-															<span className='text-xs text-red-600 dark:text-red-400'>
-																Không
-																đạt
-															</span>
-															: <span className='text-xs text-muted-foreground'>
-																Chưa
-																có
-																điểm
-															</span>
-													}
-																					</div>
-																				</div>
-																				<div className='flex items-center gap-4 text-xs text-muted-foreground pt-2 border-t border-border/50'>
-																					<div className='flex items-center gap-1'>
-																						<span className='text-muted-foreground'>
-																							Điểm
-																							10:
-																						</span>
-																						<span className='font-semibold text-foreground'>
-																							{
-																								course.DiemTK_10
-																							}
-																						</span>
-																					</div>
-<div className='flex items-center gap-1'>
-														<span className='text-muted-foreground'>
-															Điểm
-															4:
-														</span>
-														<span className='font-semibold text-foreground'>
-															{
-																course.DiemTK_4
-															}
-														</span>
-													</div>
-													<div className='flex items-center gap-1'>
-														<span className='text-muted-foreground'>
-															Lớp:
-														</span>
-														<span className='font-semibold text-foreground'>
-															{formatNumber(
-																getDashCourse(
-																	key,
-																	course.CurriculumID,
-																)?.AVGClass,
-															)}
-														</span>
-													</div>
-																</div>
-																			</div>
-																		),
+																	className={cn(
+																		'p-3 rounded-lg border bg-card cursor-pointer hover:bg-muted/50 transition-colors',
+																		isFailed(course) &&
+																			'border-red-500/50 bg-red-500/5'
 																	)}
-																</div>
-
-																{/* Semester Summary */}
-																{semester
-																	.AverageScore && (
-																		<div className='mt-3 p-3 rounded-lg bg-muted/50'>
-																			<div className='grid grid-cols-2 sm:flex sm:flex-wrap gap-3 sm:gap-4 text-sm'>
-																				<div>
-																					<span className='text-muted-foreground text-xs block sm:inline'>
-																						GPA
-																						HK{" "}
-																					</span>
-																					<span className='font-semibold'>
-																						{semester
-																							.AverageScore
-																							.AverageScore4
-																							?.toFixed(2) ||
-																							"—"}
-																						/4.0
-																					</span>
-																					<span className='text-muted-foreground text-xs ml-1 hidden sm:inline'>
-																						(
-																						{semester
-																							.AverageScore
-																							.AverageScore
-																							?.toFixed(2) ||
-																							"—"}
-																						/10)
-																					</span>
-																				</div>
-																				<div>
-																					<span className='text-muted-foreground text-xs block sm:inline'>
-																						GPA
-																						TL{" "}
-																					</span>
-																					<span className='font-semibold'>
-																						{semester
-																							.AverageScore
-																							.DiemTBTL4
-																							?.toFixed(2) ||
-																							"—"}
-																						/4.0
-																					</span>
-																					<span className='text-muted-foreground text-xs ml-1 hidden sm:inline'>
-																						(
-																						{semester
-																							.AverageScore
-																							.DiemTBTL
-																							?.toFixed(2) ||
-																							"—"}
-																						/10)
-																					</span>
-																				</div>
-																				<div className='col-span-2 sm:col-span-1'>
-																					<span className='text-muted-foreground text-xs block sm:inline'>
-																						TC
-																						đã
-																						đạt{" "}
-																					</span>
-																					<span className='font-semibold'>
-																						{
-																							semester
-																								.AverageScore
-																								.STCTL
-																						}
-																					</span>
-																				</div>
-																			</div>
+																>
+																	<div className="flex items-start justify-between gap-3 mb-2">
+																		<div className="flex-1 min-w-0">
+																			<p className="font-medium text-foreground text-sm leading-tight">
+																				{cleanCourseName(course.CurriculumName)}
+																			</p>
+																			<p className="text-xs text-muted-foreground mt-0.5">
+																				{course.CurriculumID} • {course.Credits}{' '}
+																				TC
+																			</p>
 																		</div>
-																	)}
+																		<div className="flex flex-col items-end gap-1 flex-shrink-0">
+																			<span
+																				className={cn(
+																					'px-2 py-0.5 rounded text-xs font-bold',
+																					getGradeColor(course.DiemTK_Chu)
+																				)}
+																			>
+																				{course.DiemTK_Chu || '—'}
+																			</span>
+																			{course.Ispass === 'True' ? (
+																				<span className="text-xs text-green-600 dark:text-green-400">
+																					Đạt
+																				</span>
+																			) : isFailed(course) ? (
+																				<span className="text-xs text-red-600 dark:text-red-400">
+																					Không đạt
+																				</span>
+																			) : (
+																				<span className="text-xs text-muted-foreground">
+																					Chưa có điểm
+																				</span>
+																			)}
+																		</div>
+																	</div>
+																	<div className="flex items-center gap-4 text-xs text-muted-foreground pt-2 border-t border-border/50">
+																		<div className="flex items-center gap-1">
+																			<span className="text-muted-foreground">
+																				Điểm 10:
+																			</span>
+																			<span className="font-semibold text-foreground">
+																				{course.DiemTK_10}
+																			</span>
+																		</div>
+																		<div className="flex items-center gap-1">
+																			<span className="text-muted-foreground">
+																				Điểm 4:
+																			</span>
+																			<span className="font-semibold text-foreground">
+																				{course.DiemTK_4}
+																			</span>
+																		</div>
+																		<div className="flex items-center gap-1">
+																			<span className="text-muted-foreground">
+																				Lớp:
+																			</span>
+																			<span className="font-semibold text-foreground">
+																				{formatNumber(
+																					getDashCourse(
+																						key,
+																						course.CurriculumID
+																					)?.AVGClass
+																				)}
+																			</span>
+																		</div>
+																	</div>
+																</div>
+															))}
+														</div>
+
+														{/* Semester Summary */}
+														{semester.AverageScore && (
+															<div className="mt-3 p-3 rounded-lg bg-muted/50">
+																<div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-3 sm:gap-4 text-sm">
+																	<div>
+																		<span className="text-muted-foreground text-xs block sm:inline">
+																			GPA HK{' '}
+																		</span>
+																		<span className="font-semibold">
+																			{semester.AverageScore.AverageScore4?.toFixed(
+																				2
+																			) || '—'}
+																			/4.0
+																		</span>
+																		<span className="text-muted-foreground text-xs ml-1 hidden sm:inline">
+																			(
+																			{semester.AverageScore.AverageScore?.toFixed(
+																				2
+																			) || '—'}
+																			/10)
+																		</span>
+																	</div>
+																	<div>
+																		<span className="text-muted-foreground text-xs block sm:inline">
+																			GPA TL{' '}
+																		</span>
+																		<span className="font-semibold">
+																			{semester.AverageScore.DiemTBTL4?.toFixed(
+																				2
+																			) || '—'}
+																			/4.0
+																		</span>
+																		<span className="text-muted-foreground text-xs ml-1 hidden sm:inline">
+																			(
+																			{semester.AverageScore.DiemTBTL?.toFixed(
+																				2
+																			) || '—'}
+																			/10)
+																		</span>
+																	</div>
+																	<div className="col-span-2 sm:col-span-1">
+																		<span className="text-muted-foreground text-xs block sm:inline">
+																			TC đã đạt{' '}
+																		</span>
+																		<span className="font-semibold">
+																			{semester.AverageScore.STCTL}
+																		</span>
+																	</div>
+																</div>
 															</div>
 														)}
 													</div>
-												);
-											})}
-										</div>
-									</CardContent>
-								</Card>
-							))}
-						</div>
-			}
+												)}
+											</div>
+										);
+									})}
+								</div>
+							</CardContent>
+						</Card>
+					))}
+				</div>
+			)}
 
 			{/* Course Detail Dialog */}
-			<Dialog
-				open={!!selectedCourse}
-				onOpenChange={(open) => !open && setSelectedCourse(null)}
-			>
-				<DialogContent className='max-w-md p-4 sm:p-6 max-h-[85vh] overflow-y-auto'>
+			<Dialog open={!!selectedCourse} onOpenChange={(open) => !open && setSelectedCourse(null)}>
+				<DialogContent className="max-w-md p-4 sm:p-6 max-h-[85vh] overflow-y-auto">
 					<DialogHeader>
-						<DialogTitle className='text-lg font-semibold text-foreground'>
-							Chi tiết môn học
-						</DialogTitle>
+						<DialogTitle className="text-lg font-semibold text-foreground">Chi tiết môn học</DialogTitle>
 					</DialogHeader>
 					{selectedCourse && (
-						<div className='space-y-4'>
+						<div className="space-y-4">
 							{/* Course Name */}
-							<div className='p-3 rounded-lg bg-muted/50'>
-								<p className='text-xs text-muted-foreground mb-1'>
-									Tên môn học
-								</p>
-								<p className='font-semibold text-foreground'>
-									{cleanCourseName(
-										selectedCourse.CurriculumName,
-									)}
+							<div className="p-3 rounded-lg bg-muted/50">
+								<p className="text-xs text-muted-foreground mb-1">Tên môn học</p>
+								<p className="font-semibold text-foreground">
+									{cleanCourseName(selectedCourse.CurriculumName)}
 								</p>
 								{selectedCourse.EnglishCurriculumName && (
-									<p className='text-sm text-muted-foreground italic mt-1'>
+									<p className="text-sm text-muted-foreground italic mt-1">
 										{selectedCourse.EnglishCurriculumName}
 									</p>
 								)}
-								{(selectedCourse.ScheduleStudyUnitID ||
-									selectedCourse.ListOfProfessorName) && (
-									<p className='text-xs text-muted-foreground mt-2 pt-2 border-t border-muted-foreground/15 truncate'>
+								{(selectedCourse.ScheduleStudyUnitID || selectedCourse.ListOfProfessorName) && (
+									<p className="text-xs text-muted-foreground mt-2 pt-2 border-t border-muted-foreground/15 truncate">
 										{selectedCourse.ScheduleStudyUnitID && (
-											<span className='font-medium text-foreground'>
-												{
-													selectedCourse.ScheduleStudyUnitID
-												}
+											<span className="font-medium text-foreground">
+												{selectedCourse.ScheduleStudyUnitID}
 											</span>
 										)}
 										{selectedCourse.ScheduleStudyUnitID &&
 											selectedCourse.ListOfProfessorName &&
-											"  •  "}
+											'  •  '}
 										{selectedCourse.ListOfProfessorName}
 									</p>
 								)}
 							</div>
 
 							{/* Course Info Grid */}
-							<div className='grid grid-cols-2 gap-2'>
-								<div className='px-2.5 py-2 rounded-lg border bg-card'>
-									<p className='text-xs text-muted-foreground'>
-										Mã môn
-									</p>
-									<p className='text-sm font-medium text-foreground'>
-										{selectedCourse.CurriculumID}
-									</p>
+							<div className="grid grid-cols-2 gap-2">
+								<div className="px-2.5 py-2 rounded-lg border bg-card">
+									<p className="text-xs text-muted-foreground">Mã môn</p>
+									<p className="text-sm font-medium text-foreground">{selectedCourse.CurriculumID}</p>
 								</div>
-								<div className='px-2.5 py-2 rounded-lg border bg-card'>
-									<p className='text-xs text-muted-foreground'>
-										Số tín chỉ
-									</p>
-									<p className='text-sm font-medium text-foreground'>
-										{selectedCourse.Credits} TC
-									</p>
+								<div className="px-2.5 py-2 rounded-lg border bg-card">
+									<p className="text-xs text-muted-foreground">Số tín chỉ</p>
+									<p className="text-sm font-medium text-foreground">{selectedCourse.Credits} TC</p>
 								</div>
 							</div>
 
 							{/* Mark Detail (component scores) */}
-							<div className='space-y-2'>
-								<p className='text-sm font-medium text-foreground'>
+							<div className="space-y-2">
+								<p className="text-sm font-medium text-foreground">
 									Điểm thành phần
 									{markDetailFilledIds.size > 0 && (
-										<span className='ml-1.5 text-xs font-normal text-muted-foreground'>
-											(*)
-										</span>
+										<span className="ml-1.5 text-xs font-normal text-muted-foreground">(*)</span>
 									)}
 								</p>
 								{markDetailFilledIds.size > 0 && (
-									<p className='text-xs text-muted-foreground'>
-										* Bổ sung từ thông tin môn học
-									</p>
+									<p className="text-xs text-muted-foreground">* Bổ sung từ thông tin môn học</p>
 								)}
-								{isLoadingMarkDetail ?
-									<div className='flex items-center justify-center gap-2 py-6 text-muted-foreground'>
-										<Loader2 className='w-5 h-5 animate-spin' />
-										<span className='text-sm'>
-											Đang tải chi tiết điểm...
-										</span>
+								{isLoadingMarkDetail ? (
+									<div className="flex items-center justify-center gap-2 py-6 text-muted-foreground">
+										<Loader2 className="w-5 h-5 animate-spin" />
+										<span className="text-sm">Đang tải chi tiết điểm...</span>
 									</div>
-									: markDetailError ?
-										<div className='flex flex-col items-center gap-2 py-4 text-center'>
-											<p className='text-sm text-destructive'>
-												{markDetailError}
-											</p>
-											<Button
-												variant='outline'
-												size='sm'
-												onClick={() =>
-													setMarkDetailRetry(
-														(key) => key + 1,
-													)
-												}
+								) : markDetailError ? (
+									<div className="flex flex-col items-center gap-2 py-4 text-center">
+										<p className="text-sm text-destructive">{markDetailError}</p>
+										<Button
+											variant="outline"
+											size="sm"
+											onClick={() => setMarkDetailRetry((key) => key + 1)}
+										>
+											Thử lại
+										</Button>
+									</div>
+								) : markDetail && markDetail.length > 0 ? (
+									<div className="rounded-lg border divide-y divide-border overflow-hidden">
+										{markDetail.map((item) => (
+											<div
+												key={item.AssignmentID}
+												className="flex items-center justify-between gap-3 px-3 py-1.5 bg-card"
 											>
-												Thử lại
-											</Button>
-										</div>
-										: markDetail && markDetail.length > 0 ?
-											<div className='rounded-lg border divide-y divide-border overflow-hidden'>
-												{markDetail.map((item) => (
-													<div
-														key={item.AssignmentID}
-														className='flex items-center justify-between gap-3 px-3 py-1.5 bg-card'
-													>
-														<div className='flex-1 min-w-0'>
-<p className='text-sm font-medium text-foreground truncate'>
-															{item.AssignmentName}
-															{markDetailFilledIds.has(
-																String(
-																	item
-																		.AssignmentID,
-																),
-															) && (
-																<span className='ml-1 text-xs text-muted-foreground'>
-																	(*)
-																</span>
-															)}
-															{item.Assignmentdetail && (
-																	<span className='ml-1.5 text-xs text-muted-foreground'>
-																		(
-																		{
-																			item.Assignmentdetail
-																		}
-																		)
-																	</span>
-																)}
-															</p>
-														</div>
-														<div className='flex items-center gap-1 flex-shrink-0'>
-															<span className='text-xs text-muted-foreground'>
-																L1
+												<div className="flex-1 min-w-0">
+													<p className="text-sm font-medium text-foreground truncate">
+														{item.AssignmentName}
+														{markDetailFilledIds.has(String(item.AssignmentID)) && (
+															<span className="ml-1 text-xs text-muted-foreground">
+																(*)
 															</span>
-															<span className='text-sm font-semibold text-foreground'>
-																{formatMark(
-																	item.FirstMark,
-																)}
+														)}
+														{item.Assignmentdetail && (
+															<span className="ml-1.5 text-xs text-muted-foreground">
+																({item.Assignmentdetail})
 															</span>
-															<span className='text-xs text-muted-foreground ml-1'>
-																L2
-															</span>
-															<span className='text-sm font-semibold text-foreground'>
-																{formatMark(
-																	item.SecondMark,
-																)}
-															</span>
-														</div>
-													</div>
-												))}
+														)}
+													</p>
+												</div>
+												<div className="flex items-center gap-1 flex-shrink-0">
+													<span className="text-xs text-muted-foreground">L1</span>
+													<span className="text-sm font-semibold text-foreground">
+														{formatMark(item.FirstMark)}
+													</span>
+													<span className="text-xs text-muted-foreground ml-1">L2</span>
+													<span className="text-sm font-semibold text-foreground">
+														{formatMark(item.SecondMark)}
+													</span>
+												</div>
 											</div>
-											: markDetail && (
-												<p className='text-sm text-muted-foreground text-center py-4'>
-													Không có dữ liệu điểm thành
-													phần
-												</p>
-											)
-								}
+										))}
+									</div>
+								) : (
+									markDetail && (
+										<p className="text-sm text-muted-foreground text-center py-4">
+											Không có dữ liệu điểm thành phần
+										</p>
+									)
+								)}
 							</div>
 
 							{/* Scores Section */}
-							<div className='space-y-2'>
-								<p className='text-sm font-medium text-foreground'>
-									Điểm số
-								</p>
-								<div className='grid grid-cols-2 sm:grid-cols-4 gap-2'>
-									<div className='p-3 rounded-lg bg-gradient-to-br from-blue-500/10 to-blue-600/10 border border-blue-500/20 text-center'>
-										<p className='text-xs text-muted-foreground'>
-											Điểm 10
-										</p>
-										<p className='text-xl font-bold text-blue-600 dark:text-blue-400'>
-											{selectedCourse.DiemTK_10 || "—"}
+							<div className="space-y-2">
+								<p className="text-sm font-medium text-foreground">Điểm số</p>
+								<div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+									<div className="p-3 rounded-lg bg-gradient-to-br from-blue-500/10 to-blue-600/10 border border-blue-500/20 text-center">
+										<p className="text-xs text-muted-foreground">Điểm 10</p>
+										<p className="text-xl font-bold text-blue-600 dark:text-blue-400">
+											{selectedCourse.DiemTK_10 || '—'}
 										</p>
 									</div>
-									<div className='p-3 rounded-lg bg-gradient-to-br from-emerald-500/10 to-emerald-600/10 border border-emerald-500/20 text-center'>
-										<p className='text-xs text-muted-foreground'>
-											TB lớp
-										</p>
-										<p className='text-xl font-bold text-emerald-600 dark:text-emerald-400'>
+									<div className="p-3 rounded-lg bg-gradient-to-br from-emerald-500/10 to-emerald-600/10 border border-emerald-500/20 text-center">
+										<p className="text-xs text-muted-foreground">TB lớp</p>
+										<p className="text-xl font-bold text-emerald-600 dark:text-emerald-400">
 											{formatNumber(
-												getDashCourse(
-													selectedCourseTermKey,
-													selectedCourse.CurriculumID,
-												)?.AVGClass,
+												getDashCourse(selectedCourseTermKey, selectedCourse.CurriculumID)
+													?.AVGClass
 											)}
 										</p>
 									</div>
-									<div className='p-3 rounded-lg bg-gradient-to-br from-purple-500/10 to-purple-600/10 border border-purple-500/20 text-center'>
-										<p className='text-xs text-muted-foreground'>
-											Điểm 4
-										</p>
-										<p className='text-xl font-bold text-purple-600 dark:text-purple-400'>
-											{selectedCourse.DiemTK_4 || "—"}
+									<div className="p-3 rounded-lg bg-gradient-to-br from-purple-500/10 to-purple-600/10 border border-purple-500/20 text-center">
+										<p className="text-xs text-muted-foreground">Điểm 4</p>
+										<p className="text-xl font-bold text-purple-600 dark:text-purple-400">
+											{selectedCourse.DiemTK_4 || '—'}
 										</p>
 									</div>
-<div
-									className={cn(
-										"p-3 rounded-lg text-center border",
-										isPassed(
-											selectedCourse,
-										) ?
-											"bg-gradient-to-br from-green-500/10 to-green-600/10 border-green-500/20"
-											: isFailed(selectedCourse) ?
-												"bg-gradient-to-br from-red-500/10 to-red-600/10 border-red-500/20"
-												: "bg-muted/50 border-border",
-									)}
-								>
-									<p className='text-xs text-muted-foreground'>
-										Điểm chữ
-									</p>
-									<p
+									<div
 										className={cn(
-											"text-xl font-bold",
-											isPassed(
-												selectedCourse,
-											) ?
-												"text-green-600 dark:text-green-400"
-												: isFailed(selectedCourse) ?
-													"text-red-600 dark:text-red-400"
-													: "text-muted-foreground",
+											'p-3 rounded-lg text-center border',
+											isPassed(selectedCourse)
+												? 'bg-gradient-to-br from-green-500/10 to-green-600/10 border-green-500/20'
+												: isFailed(selectedCourse)
+													? 'bg-gradient-to-br from-red-500/10 to-red-600/10 border-red-500/20'
+													: 'bg-muted/50 border-border'
 										)}
 									>
-										{selectedCourse.DiemTK_Chu || "—"}
-									</p>
-								</div>
+										<p className="text-xs text-muted-foreground">Điểm chữ</p>
+										<p
+											className={cn(
+												'text-xl font-bold',
+												isPassed(selectedCourse)
+													? 'text-green-600 dark:text-green-400'
+													: isFailed(selectedCourse)
+														? 'text-red-600 dark:text-red-400'
+														: 'text-muted-foreground'
+											)}
+										>
+											{selectedCourse.DiemTK_Chu || '—'}
+										</p>
+									</div>
 								</div>
 							</div>
 
 							{/* Status */}
 							<div
 								className={cn(
-									"flex items-center justify-center gap-2 p-3 rounded-lg",
-									isPassed(
-										selectedCourse,
-									) ?
-										"bg-green-500/10 text-green-600 dark:text-green-400"
-										: isFailed(selectedCourse) ?
-											"bg-red-500/10 text-red-600 dark:text-red-400"
-											: "bg-muted text-muted-foreground",
+									'flex items-center justify-center gap-2 p-3 rounded-lg',
+									isPassed(selectedCourse)
+										? 'bg-green-500/10 text-green-600 dark:text-green-400'
+										: isFailed(selectedCourse)
+											? 'bg-red-500/10 text-red-600 dark:text-red-400'
+											: 'bg-muted text-muted-foreground'
 								)}
 							>
-								{isPassed(selectedCourse) ?
+								{isPassed(selectedCourse) ? (
 									<>
-										<Check className='w-5 h-5' />
-										<span className='font-semibold'>
-											Đạt
-										</span>
+										<Check className="w-5 h-5" />
+										<span className="font-semibold">Đạt</span>
 									</>
-									: isFailed(selectedCourse) ?
-										<>
-											<X className='w-5 h-5' />
-											<span className='font-semibold'>
-												Chưa đạt
-											</span>
-										</>
-										: <>
-											<Minus className='w-5 h-5' />
-											<span className='font-semibold'>
-												Chưa có điểm
-											</span>
-										</>
-								}
+								) : isFailed(selectedCourse) ? (
+									<>
+										<X className="w-5 h-5" />
+										<span className="font-semibold">Chưa đạt</span>
+									</>
+								) : (
+									<>
+										<Minus className="w-5 h-5" />
+										<span className="font-semibold">Chưa có điểm</span>
+									</>
+								)}
 							</div>
 
 							{/* Additional Info */}
 							{selectedCourse.Note && (
-								<div className='pt-2 border-t'>
-									<p className='text-xs text-muted-foreground'>
-										Ghi chú
-									</p>
-									<p className='text-sm text-foreground'>
-										{selectedCourse.Note}
-									</p>
+								<div className="pt-2 border-t">
+									<p className="text-xs text-muted-foreground">Ghi chú</p>
+									<p className="text-sm text-foreground">{selectedCourse.Note}</p>
 								</div>
 							)}
 
 							{selectedCourse.NotComputeAverageScore && (
-								<p className='text-xs text-muted-foreground text-center italic'>
+								<p className="text-xs text-muted-foreground text-center italic">
 									* Môn học này không tính vào điểm trung bình
 								</p>
 							)}

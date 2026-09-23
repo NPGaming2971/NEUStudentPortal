@@ -1,9 +1,9 @@
-import { useState, useEffect, useCallback } from "react";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { getStudentConductScore, type ConductScore } from "@/services/conductService";
-import { Loader2, AlertCircle, Award, Trophy, Star, TrendingUp } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { useState, useEffect, useCallback } from 'react';
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { getStudentConductScore, type ConductScore } from '@/services/conductService';
+import { Loader2, AlertCircle, Award, Trophy, Star, TrendingUp } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 function ConductScorePage() {
 	const [conductScores, setConductScores] = useState<ConductScore[]>([]);
@@ -17,8 +17,8 @@ function ConductScorePage() {
 			const data = await getStudentConductScore();
 			setConductScores(data);
 		} catch (err) {
-			console.error("Error:", err);
-			setError("Không thể tải điểm rèn luyện. Vui lòng thử lại sau.");
+			console.error('Error:', err);
+			setError('Không thể tải điểm rèn luyện. Vui lòng thử lại sau.');
 		} finally {
 			setIsLoading(false);
 		}
@@ -30,54 +30,54 @@ function ConductScorePage() {
 
 	const getRankConfig = (rank: string | null | undefined) => {
 		switch (rank?.toLowerCase()) {
-			case "xuất sắc":
+			case 'xuất sắc':
 				return {
-					color: "bg-gradient-to-r from-yellow-500 to-amber-500 text-white",
-					bgColor: "bg-yellow-500/10 border-yellow-500/30",
+					color: 'bg-gradient-to-r from-yellow-500 to-amber-500 text-white',
+					bgColor: 'bg-yellow-500/10 border-yellow-500/30',
 					icon: Trophy,
-					textColor: "text-yellow-600 dark:text-yellow-400",
+					textColor: 'text-yellow-600 dark:text-yellow-400'
 				};
-			case "tốt":
+			case 'tốt':
 				return {
-					color: "bg-gradient-to-r from-green-500 to-emerald-500 text-white",
-					bgColor: "bg-green-500/10 border-green-500/30",
+					color: 'bg-gradient-to-r from-green-500 to-emerald-500 text-white',
+					bgColor: 'bg-green-500/10 border-green-500/30',
 					icon: Star,
-					textColor: "text-green-600 dark:text-green-400",
+					textColor: 'text-green-600 dark:text-green-400'
 				};
-			case "khá":
+			case 'khá':
 				return {
-					color: "bg-gradient-to-r from-blue-500 to-cyan-500 text-white",
-					bgColor: "bg-blue-500/10 border-blue-500/30",
+					color: 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white',
+					bgColor: 'bg-blue-500/10 border-blue-500/30',
 					icon: TrendingUp,
-					textColor: "text-blue-600 dark:text-blue-400",
+					textColor: 'text-blue-600 dark:text-blue-400'
 				};
-			case "trung bình":
+			case 'trung bình':
 				return {
-					color: "bg-gradient-to-r from-orange-500 to-amber-500 text-white",
-					bgColor: "bg-orange-500/10 border-orange-500/30",
+					color: 'bg-gradient-to-r from-orange-500 to-amber-500 text-white',
+					bgColor: 'bg-orange-500/10 border-orange-500/30',
 					icon: Award,
-					textColor: "text-orange-600 dark:text-orange-400",
+					textColor: 'text-orange-600 dark:text-orange-400'
 				};
-			case "yếu":
+			case 'yếu':
 				return {
-					color: "bg-gradient-to-r from-red-500 to-rose-500 text-white",
-					bgColor: "bg-red-500/10 border-red-500/30",
+					color: 'bg-gradient-to-r from-red-500 to-rose-500 text-white',
+					bgColor: 'bg-red-500/10 border-red-500/30',
 					icon: AlertCircle,
-					textColor: "text-red-600 dark:text-red-400",
+					textColor: 'text-red-600 dark:text-red-400'
 				};
-			case "kém":
+			case 'kém':
 				return {
-					color: "bg-gradient-to-r from-red-500 to-rose-500 text-white",
-					bgColor: "bg-red-500/10 border-red-500/30",
+					color: 'bg-gradient-to-r from-red-500 to-rose-500 text-white',
+					bgColor: 'bg-red-500/10 border-red-500/30',
 					icon: AlertCircle,
-					textColor: "text-red-600 dark:text-red-400",
+					textColor: 'text-red-600 dark:text-red-400'
 				};
 			default:
 				return {
-					color: "bg-gradient-to-r from-gray-500 to-slate-500 text-white",
-					bgColor: "bg-gray-500/10 border-gray-500/30",
+					color: 'bg-gradient-to-r from-gray-500 to-slate-500 text-white',
+					bgColor: 'bg-gray-500/10 border-gray-500/30',
 					icon: Award,
-					textColor: "text-gray-600 dark:text-gray-400",
+					textColor: 'text-gray-600 dark:text-gray-400'
 				};
 		}
 	};
@@ -101,10 +101,7 @@ function ConductScorePage() {
 						<div className="text-center space-y-4">
 							<AlertCircle className="w-12 h-12 text-destructive mx-auto" />
 							<p className="text-destructive">{error}</p>
-							<Button
-								onClick={() => fetchConductScores()}
-								variant="outline"
-							>
+							<Button onClick={() => fetchConductScores()} variant="outline">
 								Thử lại
 							</Button>
 						</div>
@@ -118,9 +115,7 @@ function ConductScorePage() {
 	const latestScore = conductScores[conductScores.length - 1];
 	const averageScore =
 		conductScores.length > 0
-			? Math.round(
-					conductScores.reduce((sum, s) => sum + (s.TongDiem || 0), 0) / conductScores.length,
-				)
+			? Math.round(conductScores.reduce((sum, s) => sum + (s.TongDiem || 0), 0) / conductScores.length)
 			: 0;
 
 	return (
@@ -140,7 +135,7 @@ function ConductScorePage() {
 							<div className="flex items-center justify-between">
 								<div>
 									<p className="text-primary-foreground/70 text-sm">Điểm gần nhất</p>
-									<p className="text-4xl font-bold mt-1">{latestScore?.TongDiem || "—"}</p>
+									<p className="text-4xl font-bold mt-1">{latestScore?.TongDiem || '—'}</p>
 									<p className="text-primary-foreground/80 text-sm mt-1">
 										{latestScore?.YearStudy} - HK{latestScore?.TermID}
 									</p>
@@ -153,24 +148,24 @@ function ConductScorePage() {
 					</Card>
 
 					{/* Latest Rank */}
-					<Card className={cn("border shadow-lg", getRankConfig(latestScore?.XepLoai).bgColor)}>
+					<Card className={cn('border shadow-lg', getRankConfig(latestScore?.XepLoai).bgColor)}>
 						<CardContent className="p-6">
 							<div className="flex items-center justify-between">
 								<div>
 									<p className="text-muted-foreground text-sm">Xếp loại gần nhất</p>
 									<p
 										className={cn(
-											"text-2xl font-bold mt-1",
-											getRankConfig(latestScore?.XepLoai).textColor,
+											'text-2xl font-bold mt-1',
+											getRankConfig(latestScore?.XepLoai).textColor
 										)}
 									>
-										{latestScore?.XepLoai || "—"}
+										{latestScore?.XepLoai || '—'}
 									</p>
 									<p className="text-muted-foreground text-sm mt-1">
 										{latestScore?.ClassStudentName}
 									</p>
 								</div>
-								<div className={cn("p-4 rounded-full", getRankConfig(latestScore?.XepLoai).color)}>
+								<div className={cn('p-4 rounded-full', getRankConfig(latestScore?.XepLoai).color)}>
 									{(() => {
 										const Icon = getRankConfig(latestScore?.XepLoai).icon;
 										return <Icon className="w-8 h-8" />;
@@ -187,9 +182,7 @@ function ConductScorePage() {
 								<div>
 									<p className="text-muted-foreground text-sm">Điểm trung bình</p>
 									<p className="text-4xl font-bold mt-1 text-foreground">{averageScore}</p>
-									<p className="text-muted-foreground text-sm mt-1">
-										{conductScores.length} học kỳ
-									</p>
+									<p className="text-muted-foreground text-sm mt-1">{conductScores.length} học kỳ</p>
 								</div>
 								<div className="p-4 bg-muted rounded-full">
 									<TrendingUp className="w-8 h-8 text-muted-foreground" />
@@ -242,28 +235,30 @@ function ConductScorePage() {
 											<tr
 												key={`${score.YearStudy}-${score.TermID}`}
 												className={cn(
-													"border-b border-border/50 transition-colors hover:bg-muted/50",
-													index === conductScores.length - 1 && "bg-primary/5",
+													'border-b border-border/50 transition-colors hover:bg-muted/50',
+													index === conductScores.length - 1 && 'bg-primary/5'
 												)}
 											>
 												<td className="py-4 px-4 text-sm font-medium text-foreground">
 													{score.YearStudy}
 												</td>
-												<td className="py-4 px-4 text-sm text-foreground">Học kỳ {score.TermID}</td>
+												<td className="py-4 px-4 text-sm text-foreground">
+													Học kỳ {score.TermID}
+												</td>
 												<td className="py-4 px-4 text-sm text-muted-foreground">
 													{score.ClassStudentName}
 												</td>
 												<td className="py-4 px-4 text-center">
 													<span className="text-lg font-bold text-foreground">
-														{score.TongDiem || "—"}
+														{score.TongDiem || '—'}
 													</span>
 												</td>
 												<td className="py-4 px-4 text-center">
 													{score.XepLoai ? (
 														<span
 															className={cn(
-																"inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium",
-																rankConfig.color,
+																'inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium',
+																rankConfig.color
 															)}
 														>
 															{(() => {
@@ -292,10 +287,10 @@ function ConductScorePage() {
 									<div
 										key={`${score.YearStudy}-${score.TermID}`}
 										className={cn(
-											"p-4 rounded-xl border transition-all",
+											'p-4 rounded-xl border transition-all',
 											index === conductScores.length - 1
-												? "border-primary/30 bg-primary/5"
-												: "border-border bg-card",
+												? 'border-primary/30 bg-primary/5'
+												: 'border-border bg-card'
 										)}
 									>
 										<div className="flex items-start justify-between mb-3">
@@ -305,7 +300,7 @@ function ConductScorePage() {
 											</div>
 											<div className="text-right">
 												<p className="text-2xl font-bold text-foreground">
-													{score.TongDiem || "—"}
+													{score.TongDiem || '—'}
 												</p>
 												<p className="text-xs text-muted-foreground">điểm</p>
 											</div>
@@ -317,8 +312,8 @@ function ConductScorePage() {
 											{score.XepLoai ? (
 												<span
 													className={cn(
-														"inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium",
-														rankConfig.color,
+														'inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium',
+														rankConfig.color
 													)}
 												>
 													<Icon className="w-4 h-4" />

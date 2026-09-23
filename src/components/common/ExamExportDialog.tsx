@@ -1,22 +1,22 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { Calendar } from "lucide-react";
-import { Input } from "@/components/ui/input";
-import { getStudentExams, type ExamItem } from "@/services/examService";
-import type { YearAndTermItem } from "@/services/scheduleService";
-import { downloadExamSchedule, type ExamExportOptions } from "@/utils/downloadHelper";
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Calendar } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { getStudentExams, type ExamItem } from '@/services/examService';
+import type { YearAndTermItem } from '@/services/scheduleService';
+import { downloadExamSchedule, type ExamExportOptions } from '@/utils/downloadHelper';
 import {
 	DEFAULT_EXAM_DURATION,
 	DEFAULT_EXAM_REMINDER,
 	getExamDurationMinutes,
-	getTermLabel,
-} from "@/lib/exportOptions";
-import { useGlobalNotification } from "@/hooks/useGlobalNotification";
+	getTermLabel
+} from '@/lib/exportOptions';
+import { useGlobalNotification } from '@/hooks/useGlobalNotification';
 import IcsExportDialog, {
 	type IcsExportDownloadPayload,
 	type IcsExportIncludeField,
 	type IcsExportItem,
-	type IcsExportPanelBuilders,
-} from "@/components/common/IcsExportDialog";
+	type IcsExportPanelBuilders
+} from '@/components/common/IcsExportDialog';
 
 interface ExamExportDialogProps {
 	open: boolean;
@@ -27,11 +27,11 @@ interface ExamExportDialogProps {
 }
 
 const INCLUDE_FIELDS: IcsExportIncludeField[] = [
-	{ key: "includeExamCode", label: "Mã học phần" },
-	{ key: "includeExamFormat", label: "Hình thức thi" },
-	{ key: "includeAttempt", label: "Lần thi" },
-	{ key: "includeCredits", label: "Số tín chỉ" },
-	{ key: "includeStatus", label: "Trạng thái" },
+	{ key: 'includeExamCode', label: 'Mã học phần' },
+	{ key: 'includeExamFormat', label: 'Hình thức thi' },
+	{ key: 'includeAttempt', label: 'Lần thi' },
+	{ key: 'includeCredits', label: 'Số tín chỉ' },
+	{ key: 'includeStatus', label: 'Trạng thái' }
 ];
 
 const INCLUDE_DEFAULTS: Record<string, boolean> = {
@@ -39,16 +39,10 @@ const INCLUDE_DEFAULTS: Record<string, boolean> = {
 	includeExamFormat: true,
 	includeAttempt: true,
 	includeCredits: false,
-	includeStatus: true,
+	includeStatus: true
 };
 
-function ExamExportDialog({
-	open,
-	onOpenChange,
-	yearItems,
-	currentYear,
-	currentTerm,
-}: ExamExportDialogProps) {
+function ExamExportDialog({ open, onOpenChange, yearItems, currentYear, currentTerm }: ExamExportDialogProps) {
 	const { showError, showSuccess } = useGlobalNotification();
 
 	const [dialogYear, setDialogYear] = useState(currentYear);
@@ -83,18 +77,12 @@ function ExamExportDialog({
 			const list = await getStudentExams(dialogYear, dialogTerm);
 			setExamItems(
 				list.map((exam) => {
-					const idParts = [
-						exam.CurriculumID,
-						exam.NgayThi,
-						exam.GioThi,
-						exam.PhongThi,
-						exam.LanThi,
-					];
+					const idParts = [exam.CurriculumID, exam.NgayThi, exam.GioThi, exam.PhongThi, exam.LanThi];
 					const id = idParts
-						.join("_")
-						.replace(/\s+/g, "-")
-						.replace(/[^\w\-/:-]/g, "");
-					const displayDate = (exam.NgayThi || "").split(" ")[0];
+						.join('_')
+						.replace(/\s+/g, '-')
+						.replace(/[^\w\-/:-]/g, '');
+					const displayDate = (exam.NgayThi || '').split(' ')[0];
 					return {
 						id,
 						title: exam.CurriculumName.trim() || exam.CurriculumID,
@@ -103,19 +91,19 @@ function ExamExportDialog({
 							exam.HinhThucThi,
 							displayDate,
 							exam.GioThi,
-							exam.PhongThi ? `Phòng ${exam.PhongThi}` : "",
+							exam.PhongThi ? `Phòng ${exam.PhongThi}` : ''
 						]
 							.filter(Boolean)
-							.join(" • "),
+							.join(' • '),
 						minutes: getExamDurationMinutes(exam.HinhThucThi, Number(DEFAULT_EXAM_DURATION)),
-						payload: exam,
+						payload: exam
 					};
-				}),
+				})
 			);
 			setDurationOverrides({});
 		} catch (err) {
-			console.error("Error fetching exams for export:", err);
-			setExamsError("Không thể tải lịch thi cho học kỳ này.");
+			console.error('Error fetching exams for export:', err);
+			setExamsError('Không thể tải lịch thi cho học kỳ này.');
 			setExamItems([]);
 			setDurationOverrides({});
 		} finally {
@@ -136,16 +124,16 @@ function ExamExportDialog({
 		summary: () =>
 			examTypes.length > 0 ? (
 				<p className="text-xs text-muted-foreground">
-					Thời lượng mặc định:{" "}
+					Thời lượng mặc định:{' '}
 					{examTypes
 						.map((type) => `${type} ${typeDefaults[type] ?? Number(DEFAULT_EXAM_DURATION)} phút`)
-						.join(" · ")}
+						.join(' · ')}
 				</p>
 			) : null,
-		empty: "Không có lịch thi trong học kỳ này.",
-		itemLabel: "môn thi",
-		itemsLabel: "môn thi",
-		itemSingular: "môn thi",
+		empty: 'Không có lịch thi trong học kỳ này.',
+		itemLabel: 'môn thi',
+		itemsLabel: 'môn thi',
+		itemSingular: 'môn thi',
 		loading: isLoadingExams,
 		extraFields: (item) => (
 			<div className="flex shrink-0 items-center gap-1">
@@ -153,18 +141,13 @@ function ExamExportDialog({
 					type="number"
 					min={15}
 					step={5}
-					value={
-						durationOverrides[item.id] ??
-						String(item.minutes ?? Number(DEFAULT_EXAM_DURATION))
-					}
-					onChange={(e) =>
-						setDurationOverrides((prev) => ({ ...prev, [item.id]: e.target.value }))
-					}
+					value={durationOverrides[item.id] ?? String(item.minutes ?? Number(DEFAULT_EXAM_DURATION))}
+					onChange={(e) => setDurationOverrides((prev) => ({ ...prev, [item.id]: e.target.value }))}
 					className="h-7 w-16 px-2 text-xs"
 				/>
 				<span className="text-xs text-muted-foreground">phút</span>
 			</div>
-		),
+		)
 	};
 
 	const handleDownload = async ({
@@ -172,7 +155,7 @@ function ExamExportDialog({
 		term,
 		reminderTrigger,
 		include,
-		selectedItems,
+		selectedItems
 	}: IcsExportDownloadPayload<ExamItem>) => {
 		const selected = selectedItems
 			.filter(({ selected }) => selected)
@@ -181,31 +164,28 @@ function ExamExportDialog({
 				return {
 					...item.payload,
 					DurationMinutes:
-						Number.isFinite(parsed) && parsed > 0
-							? parsed
-							: item.minutes ?? Number(DEFAULT_EXAM_DURATION),
+						Number.isFinite(parsed) && parsed > 0 ? parsed : (item.minutes ?? Number(DEFAULT_EXAM_DURATION))
 				};
 			});
 		if (selected.length === 0) {
-			showError("Vui lòng chọn ít nhất một môn thi để xuất.");
+			showError('Vui lòng chọn ít nhất một môn thi để xuất.');
 			return;
 		}
 		const semesterItem = yearItems.find((i) => i.YearStudy === year);
-		const termName =
-			semesterItem?.Terms.find((t) => t.TermID === term)?.TermName ?? getTermLabel(term);
+		const termName = semesterItem?.Terms.find((t) => t.TermID === term)?.TermName ?? getTermLabel(term);
 		const options: ExamExportOptions = {
 			calendarName: `Lịch thi ${termName} ${year}`,
 			fileName: `LichThi_${term}_${year}.ics`,
 			reminderTrigger,
-			...include,
+			...include
 		};
 		try {
 			await downloadExamSchedule(selected, options);
-			showSuccess("Đã tải file lịch thi (.ics)");
+			showSuccess('Đã tải file lịch thi (.ics)');
 			onOpenChange(false);
 		} catch (err) {
-			console.error("Error downloading exam schedule:", err);
-			showError("Không thể tải lịch thi. Vui lòng thử lại sau.");
+			console.error('Error downloading exam schedule:', err);
+			showError('Không thể tải lịch thi. Vui lòng thử lại sau.');
 		}
 	};
 

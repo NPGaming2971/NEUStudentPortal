@@ -1,32 +1,17 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import {
-	BookOpen,
-	Calendar,
-	Repeat,
-	GraduationCap,
-} from "lucide-react";
-import { Label } from "@/components/ui/label";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "@/components/ui/select";
-import { getPeriorSchedules, type YearAndTermItem } from "@/services/scheduleService";
-import {
-	downloadSchedule,
-	type ScheduleExportOptions,
-	type ScheduleTitleStyle,
-} from "@/utils/downloadHelper";
-import { DEFAULT_SCHEDULE_REMINDER } from "@/lib/exportOptions";
-import { useGlobalNotification } from "@/hooks/useGlobalNotification";
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { BookOpen, Calendar, Repeat, GraduationCap } from 'lucide-react';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { getPeriorSchedules, type YearAndTermItem } from '@/services/scheduleService';
+import { downloadSchedule, type ScheduleExportOptions, type ScheduleTitleStyle } from '@/utils/downloadHelper';
+import { DEFAULT_SCHEDULE_REMINDER } from '@/lib/exportOptions';
+import { useGlobalNotification } from '@/hooks/useGlobalNotification';
 import IcsExportDialog, {
 	type IcsExportDownloadPayload,
 	type IcsExportIncludeField,
 	type IcsExportItem,
-	type IcsExportPanelBuilders,
-} from "@/components/common/IcsExportDialog";
+	type IcsExportPanelBuilders
+} from '@/components/common/IcsExportDialog';
 
 interface ScheduleExportDialogProps {
 	open: boolean;
@@ -44,19 +29,23 @@ interface CoursePayload {
 }
 
 const TITLE_STYLE_OPTIONS: { value: ScheduleTitleStyle; label: string; example: string }[] = [
-	{ value: "subject", label: "Tên môn học", example: "Kinh tế quốc tế 2" },
-	{ value: "subjectType", label: "Tên môn học (Loại)", example: "Kinh tế quốc tế 2 (Thảo luận)" },
-	{ value: "codeSubject", label: "Mã LHP - Tên môn", example: "TMKQ1111(126)_01 - Kinh tế quốc tế 2" },
-	{ value: "subjectRoom", label: "Tên môn - Phòng", example: "Kinh tế quốc tế 2 - B-204" },
+	{ value: 'subject', label: 'Tên môn học', example: 'Kinh tế quốc tế 2' },
+	{ value: 'subjectType', label: 'Tên môn học (Loại)', example: 'Kinh tế quốc tế 2 (Thảo luận)' },
+	{
+		value: 'codeSubject',
+		label: 'Mã LHP - Tên môn',
+		example: 'TMKQ1111(126)_01 - Kinh tế quốc tế 2'
+	},
+	{ value: 'subjectRoom', label: 'Tên môn - Phòng', example: 'Kinh tế quốc tế 2 - B-204' }
 ];
 
 const INCLUDE_FIELDS: IcsExportIncludeField[] = [
-	{ key: "includeCourseCode", label: "Mã lớp học phần" },
-	{ key: "includeLoaiHp", label: "Loại học phần" },
-	{ key: "includeCredits", label: "Số tín chỉ" },
-	{ key: "includeClass", label: "Lớp" },
-	{ key: "includeTeacher", label: "Giảng viên" },
-	{ key: "includeCampus", label: "Cơ sở học" },
+	{ key: 'includeCourseCode', label: 'Mã lớp học phần' },
+	{ key: 'includeLoaiHp', label: 'Loại học phần' },
+	{ key: 'includeCredits', label: 'Số tín chỉ' },
+	{ key: 'includeClass', label: 'Lớp' },
+	{ key: 'includeTeacher', label: 'Giảng viên' },
+	{ key: 'includeCampus', label: 'Cơ sở học' }
 ];
 
 const INCLUDE_DEFAULTS: Record<string, boolean> = {
@@ -65,21 +54,15 @@ const INCLUDE_DEFAULTS: Record<string, boolean> = {
 	includeCredits: false,
 	includeClass: true,
 	includeTeacher: true,
-	includeCampus: false,
+	includeCampus: false
 };
 
-function ScheduleExportDialog({
-	open,
-	onOpenChange,
-	currentYear,
-	currentTerm,
-	yearItems,
-}: ScheduleExportDialogProps) {
+function ScheduleExportDialog({ open, onOpenChange, currentYear, currentTerm, yearItems }: ScheduleExportDialogProps) {
 	const { showError, showSuccess } = useGlobalNotification();
 
 	const [dialogYear, setDialogYear] = useState(currentYear);
 	const [dialogTerm, setDialogTerm] = useState(currentTerm);
-	const [titleStyle, setTitleStyle] = useState<ScheduleTitleStyle>("subjectType");
+	const [titleStyle, setTitleStyle] = useState<ScheduleTitleStyle>('subjectType');
 	const [courses, setCourses] = useState<IcsExportItem<CoursePayload>[]>([]);
 	const [isSummaryLoading, setIsSummaryLoading] = useState(false);
 	const [summaryError, setSummaryError] = useState<string | null>(null);
@@ -108,7 +91,7 @@ function ScheduleExportDialog({
 						MaLHP: raw.MaLHP,
 						TenHP: raw.TenHP,
 						SoTC: raw.SoTC ?? 0,
-						sessions: 1,
+						sessions: 1
 					});
 				}
 			});
@@ -117,12 +100,12 @@ function ScheduleExportDialog({
 					id: course.MaLHP,
 					title: course.TenHP,
 					subtitle: `${course.MaLHP} • ${course.SoTC} tín • ${course.sessions} buổi`,
-					payload: course,
-				})),
+					payload: course
+				}))
 			);
 		} catch (err) {
-			console.error("Error fetching schedule summary:", err);
-			setSummaryError("Không thể tải tóm tắt lịch học cho học kỳ này.");
+			console.error('Error fetching schedule summary:', err);
+			setSummaryError('Không thể tải tóm tắt lịch học cho học kỳ này.');
 			setCourses([]);
 		} finally {
 			setIsSummaryLoading(false);
@@ -134,14 +117,11 @@ function ScheduleExportDialog({
 		fetchSummary();
 	}, [open, dialogYear, dialogTerm, fetchSummary]);
 
-	const totalCredits = useMemo(
-		() => courses.reduce((sum, course) => sum + (course.payload.SoTC || 0), 0),
-		[courses],
-	);
+	const totalCredits = useMemo(() => courses.reduce((sum, course) => sum + (course.payload.SoTC || 0), 0), [courses]);
 
 	const totalSessions = useMemo(
 		() => courses.reduce((sum, course) => sum + (course.payload.sessions || 0), 0),
-		[courses],
+		[courses]
 	);
 
 	const panel: IcsExportPanelBuilders<CoursePayload> = {
@@ -166,11 +146,11 @@ function ScheduleExportDialog({
 				</span>
 			</div>
 		),
-		empty: "Không có lịch học trong học kỳ này.",
-		itemLabel: "lớp học phần",
-		itemsLabel: "lớp học phần",
-		itemSingular: "lớp học phần",
-		loading: isSummaryLoading,
+		empty: 'Không có lịch học trong học kỳ này.',
+		itemLabel: 'lớp học phần',
+		itemsLabel: 'lớp học phần',
+		itemSingular: 'lớp học phần',
+		loading: isSummaryLoading
 	};
 
 	const handleDownload = async ({
@@ -178,29 +158,27 @@ function ScheduleExportDialog({
 		term,
 		reminderTrigger,
 		include,
-		selectedItems,
+		selectedItems
 	}: IcsExportDownloadPayload<CoursePayload>) => {
 		const allSelected = selectedItems.every(({ selected }) => selected);
 		if (selectedItems.filter(({ selected }) => selected).length === 0) {
-			showError("Vui lòng chọn ít nhất một lớp học phần để xuất.");
+			showError('Vui lòng chọn ít nhất một lớp học phần để xuất.');
 			return;
 		}
-		const codes = selectedItems
-			.filter(({ selected }) => selected)
-			.map(({ item }) => item.payload.MaLHP);
+		const codes = selectedItems.filter(({ selected }) => selected).map(({ item }) => item.payload.MaLHP);
 		const options: ScheduleExportOptions = {
 			reminderTrigger,
 			titleStyle,
 			courseCodes: allSelected ? null : codes,
-			...include,
+			...include
 		};
 		try {
 			await downloadSchedule(year, term, options);
-			showSuccess("Đã tải file lịch học (.ics)");
+			showSuccess('Đã tải file lịch học (.ics)');
 			onOpenChange(false);
 		} catch (err) {
-			console.error("Error downloading schedule:", err);
-			showError("Không thể tải lịch học. Vui lòng thử lại sau.");
+			console.error('Error downloading schedule:', err);
+			showError('Không thể tải lịch học. Vui lòng thử lại sau.');
 		}
 	};
 
@@ -220,18 +198,13 @@ function ScheduleExportDialog({
 			includeFields={INCLUDE_FIELDS}
 			includeDefaults={INCLUDE_DEFAULTS}
 			items={courses}
-			downloadDisabled={
-				isSummaryLoading || summaryError !== null || courses.length === 0
-			}
+			downloadDisabled={isSummaryLoading || summaryError !== null || courses.length === 0}
 			panel={panel}
 			onDownload={handleDownload}
 		>
 			<div className="space-y-1.5">
 				<Label>Kiểu tiêu đề sự kiện</Label>
-				<Select
-					value={titleStyle}
-					onValueChange={(v) => setTitleStyle(v as ScheduleTitleStyle)}
-				>
+				<Select value={titleStyle} onValueChange={(v) => setTitleStyle(v as ScheduleTitleStyle)}>
 					<SelectTrigger>
 						<SelectValue />
 					</SelectTrigger>

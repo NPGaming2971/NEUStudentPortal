@@ -1,16 +1,11 @@
-import { getToken, decodeJwt } from "./authService";
-import {
-	PORTAL_PROXY_URL,
-	REGIST_PROXY_URL,
-	PORTAL_CLIENT_ID,
-	PORTAL_API_KEY,
-} from "../lib/proxyConfig";
+import { getToken, decodeJwt } from './authService';
+import { PORTAL_PROXY_URL, REGIST_PROXY_URL, PORTAL_CLIENT_ID, PORTAL_API_KEY } from '../lib/proxyConfig';
 
 const CONFIG = {
 	portal_api: `${PORTAL_PROXY_URL}`,
 	regist_api: `${REGIST_PROXY_URL}`,
 	apiKey: PORTAL_API_KEY,
-	clientId: PORTAL_CLIENT_ID,
+	clientId: PORTAL_CLIENT_ID
 };
 
 /**
@@ -18,13 +13,13 @@ const CONFIG = {
  */
 export const getRefreshToken = async (portalToken: string): Promise<string> => {
 	const response = await fetch(`${CONFIG.portal_api}/Authenticate/GetRefreshToken`, {
-		method: "GET",
+		method: 'GET',
 		headers: {
-			accept: "application/json, text/plain, */*",
+			accept: 'application/json, text/plain, */*',
 			apikey: CONFIG.apiKey,
 			authorization: `Bearer ${portalToken}`,
-			clientid: CONFIG.clientId,
-		},
+			clientid: CONFIG.clientId
+		}
 	});
 
 	if (!response.ok) {
@@ -32,19 +27,19 @@ export const getRefreshToken = async (portalToken: string): Promise<string> => {
 	}
 
 	const refreshToken = await response.text();
-	return refreshToken.replace(/"/g, "");
+	return refreshToken.replace(/"/g, '');
 };
 
 export const authenticatePortal = async (refreshToken: string) => {
 	const response = await fetch(`${CONFIG.regist_api}/Authen/AuthenticatePortal`, {
-		method: "POST",
+		method: 'POST',
 		headers: {
-			accept: "application/json, text/plain, */*",
-			"content-type": "application/json",
+			accept: 'application/json, text/plain, */*',
+			'content-type': 'application/json',
 			apikey: CONFIG.apiKey,
-			clientid: CONFIG.clientId,
+			clientid: CONFIG.clientId
 		},
-		body: JSON.stringify({ Token: refreshToken }),
+		body: JSON.stringify({ Token: refreshToken })
 	});
 
 	if (!response.ok) {
@@ -59,11 +54,11 @@ export const initializeRegistrationSession = async () => {
 	try {
 		const portalToken = getToken();
 		if (!portalToken) {
-			throw new Error("Không tìm thấy token portal");
+			throw new Error('Không tìm thấy token portal');
 		}
 
-		const existingRegistToken = localStorage.getItem("registToken");
-		const lastAuthToken = localStorage.getItem("registTokenAuthSource");
+		const existingRegistToken = localStorage.getItem('registToken');
+		const lastAuthToken = localStorage.getItem('registTokenAuthSource');
 
 		if (existingRegistToken && lastAuthToken === portalToken) {
 			// Kiểm tra token còn hạn không
@@ -82,16 +77,16 @@ export const initializeRegistrationSession = async () => {
 
 		if (authData?.Token) {
 			// Lưu token đăng ký vào localStorage
-			localStorage.setItem("registToken", authData.Token);
+			localStorage.setItem('registToken', authData.Token);
 			// Lưu token portal gốc để theo dõi thay đổi
-			localStorage.setItem("registTokenAuthSource", portalToken);
+			localStorage.setItem('registTokenAuthSource', portalToken);
 			return authData.Token;
 		}
 
-		throw new Error("Không nhận được token từ hệ thống đăng ký");
+		throw new Error('Không nhận được token từ hệ thống đăng ký');
 	} catch (error) {
-		const message = error instanceof Error ? error.message : "Unknown error";
-		console.error("❌ Lỗi flow đăng ký:", message);
+		const message = error instanceof Error ? error.message : 'Unknown error';
+		console.error('❌ Lỗi flow đăng ký:', message);
 		throw error;
 	}
 };

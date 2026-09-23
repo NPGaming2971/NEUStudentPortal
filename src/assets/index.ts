@@ -1,12 +1,12 @@
 // Logo
-import imageLogo from "./image_logo.png";
+import imageLogo from './image_logo.png';
 
 // Background
-import loginBackground from "./login_background.png";
+import loginBackground from './login_background.png';
 
 const assets = {
 	imageLogo,
-	loginBackground,
+	loginBackground
 };
 
 export default assets;

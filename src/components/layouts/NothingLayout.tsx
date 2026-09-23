@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 
 interface NothingLayoutProps {
-    children: ReactNode;
+	children: ReactNode;
 }
 
 /**
@@ -9,11 +9,7 @@ interface NothingLayoutProps {
  * Used for public pages like Home, Login, and landing pages.
  */
 function NothingLayout({ children }: NothingLayoutProps) {
-    return (
-        <div className="min-h-screen w-full">
-            {children}
-        </div>
-    );
+	return <div className="min-h-screen w-full">{children}</div>;
 }
 
 export default NothingLayout;

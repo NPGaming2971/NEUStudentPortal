@@ -1,34 +1,28 @@
-import { type ReactNode, useEffect, useMemo, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useState } from 'react';
 import {
 	Dialog,
 	DialogContent,
 	DialogDescription,
 	DialogFooter,
 	DialogHeader,
-	DialogTitle,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "@/components/ui/select";
-import { Download, Loader2, SlidersHorizontal, type LucideIcon } from "lucide-react";
+	DialogTitle
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Download, Loader2, SlidersHorizontal, type LucideIcon } from 'lucide-react';
 import {
 	buildReminderTrigger,
 	DEFAULT_CUSTOM_REMINDER_UNIT,
 	DEFAULT_CUSTOM_REMINDER_VALUE,
 	getTermLabel,
 	REMINDER_PRESETS,
-	REMINDER_UNITS,
-} from "@/lib/exportOptions";
-import type { YearAndTermItem } from "@/services/scheduleService";
-import { useGlobalNotification } from "@/hooks/useGlobalNotification";
+	REMINDER_UNITS
+} from '@/lib/exportOptions';
+import type { YearAndTermItem } from '@/services/scheduleService';
+import { useGlobalNotification } from '@/hooks/useGlobalNotification';
 
 export interface IcsExportItem<T = unknown> {
 	id: string;
@@ -115,7 +109,7 @@ function IcsExportDialog<T>({
 	downloadDisabled,
 	panel,
 	children,
-	onDownload,
+	onDownload
 }: IcsExportDialogProps<T>) {
 	const { showError } = useGlobalNotification();
 
@@ -133,23 +127,20 @@ function IcsExportDialog<T>({
 	const customTerms = yearItems.find((i) => i.YearStudy === customYear)?.Terms ?? [];
 	const resolvedCustomTerm = customTerms.some((t) => t.TermID === customTerm)
 		? customTerm
-		: customTerms.find((t) => t.CurrentTerm)?.TermID ?? customTerms[0]?.TermID ?? "";
+		: (customTerms.find((t) => t.CurrentTerm)?.TermID ?? customTerms[0]?.TermID ?? '');
 
 	const effectiveYear = useCurrentSemester ? currentYear : customYear;
 	const effectiveTerm = useCurrentSemester ? currentTerm : resolvedCustomTerm;
 
 	const effectiveTermName = useMemo(() => {
 		const item = yearItems.find((i) => i.YearStudy === effectiveYear);
-		return (
-			item?.Terms.find((t) => t.TermID === effectiveTerm)?.TermName ??
-			getTermLabel(effectiveTerm)
-		);
+		return item?.Terms.find((t) => t.TermID === effectiveTerm)?.TermName ?? getTermLabel(effectiveTerm);
 	}, [yearItems, effectiveYear, effectiveTerm]);
 
 	const semesterState: IcsExportSemesterState = {
 		year: effectiveYear,
 		term: effectiveTerm,
-		label: `${effectiveTermName} • Năm ${effectiveYear}`,
+		label: `${effectiveTermName} • Năm ${effectiveYear}`
 	};
 
 	useEffect(() => {
@@ -172,9 +163,7 @@ function IcsExportDialog<T>({
 	const allSelected = items.length > 0 && selectedCount === items.length;
 
 	const handleToggle = (id: string, checked: boolean) => {
-		setSelectedIds((prev) =>
-			checked ? [...new Set([...prev, id])] : prev.filter((i) => i !== id),
-		);
+		setSelectedIds((prev) => (checked ? [...new Set([...prev, id])] : prev.filter((i) => i !== id)));
 	};
 
 	const toggleAll = (checked: boolean) => {
@@ -183,20 +172,16 @@ function IcsExportDialog<T>({
 
 	const handleDownload = async () => {
 		if (!effectiveYear || !effectiveTerm) {
-			showError("Vui lòng chọn năm học và học kỳ");
+			showError('Vui lòng chọn năm học và học kỳ');
 			return;
 		}
-		const reminderTrigger = buildReminderTrigger(
-			reminderValue,
-			customReminderValue,
-			customReminderUnit,
-		);
+		const reminderTrigger = buildReminderTrigger(reminderValue, customReminderValue, customReminderUnit);
 		if (reminderTrigger === undefined) {
-			showError("Vui lòng nhập thời gian nhắc nhở hợp lệ (lớn hơn hoặc bằng 0).");
+			showError('Vui lòng nhập thời gian nhắc nhở hợp lệ (lớn hơn hoặc bằng 0).');
 			return;
 		}
 		if (selectedCount === 0) {
-			showError(`Vui lòng chọn ít nhất một ${panel?.itemSingular ?? "mục"} để xuất.`);
+			showError(`Vui lòng chọn ít nhất một ${panel?.itemSingular ?? 'mục'} để xuất.`);
 			return;
 		}
 		setIsDownloading(true);
@@ -208,13 +193,13 @@ function IcsExportDialog<T>({
 				include,
 				selectedItems: items.map((item) => ({
 					item,
-					selected: selectedIds.includes(item.id),
+					selected: selectedIds.includes(item.id)
 				})),
-				selectedCount,
+				selectedCount
 			});
 		} catch (err) {
-			console.error("Error exporting calendar:", err);
-			showError("Không thể tải file lịch. Vui lòng thử lại sau.");
+			console.error('Error exporting calendar:', err);
+			showError('Không thể tải file lịch. Vui lòng thử lại sau.');
 		} finally {
 			setIsDownloading(false);
 		}
@@ -391,11 +376,7 @@ function IcsExportDialog<T>({
 											})}
 										</ul>
 										<div className="flex justify-end">
-											<Button
-												variant="ghost"
-												size="sm"
-												onClick={() => setOpenCustomize(false)}
-											>
+											<Button variant="ghost" size="sm" onClick={() => setOpenCustomize(false)}>
 												Ẩn tùy chỉnh
 											</Button>
 										</div>
@@ -422,7 +403,7 @@ function IcsExportDialog<T>({
 									))}
 								</SelectContent>
 							</Select>
-							{reminderValue === "custom" && (
+							{reminderValue === 'custom' && (
 								<div className="flex items-center gap-2 pt-1">
 									<Input
 										type="number"
@@ -431,10 +412,7 @@ function IcsExportDialog<T>({
 										onChange={(e) => setCustomReminderValue(e.target.value)}
 										className="w-24"
 									/>
-									<Select
-										value={customReminderUnit}
-										onValueChange={setCustomReminderUnit}
-									>
+									<Select value={customReminderUnit} onValueChange={setCustomReminderUnit}>
 										<SelectTrigger className="w-28">
 											<SelectValue />
 										</SelectTrigger>
@@ -457,14 +435,14 @@ function IcsExportDialog<T>({
 							<Label>Dữ liệu ghi vào sự kiện</Label>
 							<div className="grid grid-cols-2 gap-x-4 gap-y-2 rounded-lg border border-border bg-muted/40 p-3 text-sm">
 								{includeFieldsProp.map((field) => (
-									<label
-										key={field.key}
-										className="flex items-center gap-2 cursor-pointer"
-									>
+									<label key={field.key} className="flex items-center gap-2 cursor-pointer">
 										<Checkbox
 											checked={include[field.key] ?? false}
 											onCheckedChange={(c) =>
-												setInclude((prev) => ({ ...prev, [field.key]: !!c }))
+												setInclude((prev) => ({
+													...prev,
+													[field.key]: !!c
+												}))
 											}
 										/>
 										{field.label}
@@ -476,18 +454,10 @@ function IcsExportDialog<T>({
 				</div>
 
 				<DialogFooter>
-					<Button
-						variant="outline"
-						onClick={() => onOpenChange(false)}
-						disabled={isDownloading}
-					>
+					<Button variant="outline" onClick={() => onOpenChange(false)} disabled={isDownloading}>
 						Hủy
 					</Button>
-					<Button
-						onClick={handleDownload}
-						disabled={isDownloading || downloadDisabled}
-						className="gap-2"
-					>
+					<Button onClick={handleDownload} disabled={isDownloading || downloadDisabled} className="gap-2">
 						{isDownloading ? (
 							<Loader2 className="w-4 h-4 animate-spin" />
 						) : (

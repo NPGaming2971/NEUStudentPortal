@@ -9,18 +9,16 @@ import { GlobalNotificationProvider } from './hooks/useGlobalNotification';
 import GlobalNotification from './components/common/GlobalNotification';
 
 createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <AuthProvider>
-      <ThemeProvider defaultTheme="light" storageKey="neuPortalTheme">
-        <GlobalNotificationProvider>
-          <Router>
-            <Routes>
-              {renderRoutes()}
-            </Routes>
-          </Router>
-          <GlobalNotification />
-        </GlobalNotificationProvider>
-      </ThemeProvider>
-    </AuthProvider>
-  </StrictMode>
+	<StrictMode>
+		<AuthProvider>
+			<ThemeProvider defaultTheme="light" storageKey="neuPortalTheme">
+				<GlobalNotificationProvider>
+					<Router>
+						<Routes>{renderRoutes()}</Routes>
+					</Router>
+					<GlobalNotification />
+				</GlobalNotificationProvider>
+			</ThemeProvider>
+		</AuthProvider>
+	</StrictMode>
 );

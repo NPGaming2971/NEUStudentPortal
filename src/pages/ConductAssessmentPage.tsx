@@ -1,15 +1,9 @@
-import { useState, useEffect, useRef, Fragment } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "@/components/ui/select";
+import { useState, useEffect, useRef, Fragment } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
 	getYearAndTermScore,
 	getBehaviorScore,
@@ -23,18 +17,12 @@ import {
 	type YearTermScoreData,
 	type BehaviorData,
 	type BehaviorDetailItem,
-	type BehaviorDiscussion,
-} from "@/services/conductService";
-import { getStudentId } from "@/services/authService";
-import { useGlobalNotification } from "@/hooks/useGlobalNotification";
-import { Input } from "@/components/ui/input";
-import {
-	Dialog,
-	DialogContent,
-	DialogHeader,
-	DialogTitle,
-	DialogDescription,
-} from "@/components/ui/dialog";
+	type BehaviorDiscussion
+} from '@/services/conductService';
+import { getStudentId } from '@/services/authService';
+import { useGlobalNotification } from '@/hooks/useGlobalNotification';
+import { Input } from '@/components/ui/input';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import {
 	Loader2,
 	ClipboardCheck,
@@ -50,9 +38,9 @@ import {
 	Paperclip,
 	MessageSquare,
 	Send,
-	AlertCircle,
-} from "lucide-react";
-import { cn } from "@/lib/utils";
+	AlertCircle
+} from 'lucide-react';
+import { cn, formatDate } from '@/lib/utils';
 
 interface GroupSection {
 	name: string;
@@ -68,16 +56,15 @@ interface BehaviorGroup {
 }
 
 const isRadioItem = (item: BehaviorDetailItem): boolean =>
-	Boolean(item.GroupRadiobutton) && item.GroupRadiobutton !== "0" && item.GroupRadiobutton !== "00";
+	Boolean(item.GroupRadiobutton) && item.GroupRadiobutton !== '0' && item.GroupRadiobutton !== '00';
 
-const isCheckItem = (item: BehaviorDetailItem): boolean =>
-	item.UseCheck === true;
+const isCheckItem = (item: BehaviorDetailItem): boolean => item.UseCheck === true;
 
 const deriveRadioSelection = (items: BehaviorDetailItem[]): Record<string, string | null> => {
 	const selection: Record<string, string | null> = {};
 	for (const item of items) {
 		if (!isRadioItem(item)) continue;
-		const group = item.GroupRadiobutton ?? "";
+		const group = item.GroupRadiobutton ?? '';
 		if (group && Number(item.IndividualScore) === Number(item.MaxScore) && Number(item.MaxScore) !== 0) {
 			selection[group] = item.BehaviorDetailID;
 		} else if (!(group in selection)) {
@@ -88,23 +75,22 @@ const deriveRadioSelection = (items: BehaviorDetailItem[]): Record<string, strin
 };
 
 const renderHtml = (content: string): { __html: string } => ({
-	__html: content || "",
+	__html: content || ''
 });
 
 const isEmptyTermData = (items: BehaviorDetailItem[]): boolean =>
 	!items || items.length === 0 || items.every((item) => item.BehaviorGroupID === null);
 
 function getConductRankFromScore(score: number): string {
-	if (score >= 90) return "Xuất sắc";
-	if (score >= 80) return "Tốt";
-	if (score >= 65) return "Khá";
-	if (score >= 50) return "Trung bình";
-	if (score >= 35) return "Kém";
-	return "Yếu";
+	if (score >= 90) return 'Xuất sắc';
+	if (score >= 80) return 'Tốt';
+	if (score >= 65) return 'Khá';
+	if (score >= 50) return 'Trung bình';
+	if (score >= 35) return 'Kém';
+	return 'Yếu';
 }
 
-const clampScore = (value: number, max: number): number =>
-	Math.max(0, Math.min(value, Math.max(0, max)));
+const clampScore = (value: number, max: number): number => Math.max(0, Math.min(value, Math.max(0, max)));
 
 function ConductAssessmentPage() {
 	const [yearTermData, setYearTermData] = useState<YearTermScoreData | null>(null);
@@ -113,8 +99,8 @@ function ConductAssessmentPage() {
 	const [radioSelected, setRadioSelected] = useState<Record<string, string | null>>({});
 	const [isLoading, setIsLoading] = useState(true);
 	const [isSaving, setIsSaving] = useState(false);
-	const [selectedYear, setSelectedYear] = useState("");
-	const [selectedTerm, setSelectedTerm] = useState("");
+	const [selectedYear, setSelectedYear] = useState('');
+	const [selectedTerm, setSelectedTerm] = useState('');
 	const { showError, showSuccess } = useGlobalNotification();
 	const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
@@ -127,8 +113,8 @@ function ConductAssessmentPage() {
 				setSelectedYear(data.CurrentYear);
 				setSelectedTerm(data.CurrentTerm);
 			} catch (err) {
-				console.error("Error:", err);
-				showError("Không thể tải dữ liệu năm học");
+				console.error('Error:', err);
+				showError('Không thể tải dữ liệu năm học');
 			}
 		};
 		fetchYearTermData();
@@ -147,13 +133,13 @@ function ConductAssessmentPage() {
 				const items = data.ResultDataBangDanhGia ?? [];
 				items.forEach((item) => {
 					nextScores[item.BehaviorDetailID] =
-						typeof item.IndividualScore === "number" ? item.IndividualScore : 0;
+						typeof item.IndividualScore === 'number' ? item.IndividualScore : 0;
 				});
 				setScores(nextScores);
 				setRadioSelected(deriveRadioSelection(items));
 			} catch (err) {
-				console.error("Error:", err);
-				showError("Không thể tải dữ liệu đánh giá điểm rèn luyện");
+				console.error('Error:', err);
+				showError('Không thể tải dữ liệu đánh giá điểm rèn luyện');
 			} finally {
 				setIsLoading(false);
 			}
@@ -176,7 +162,7 @@ function ConductAssessmentPage() {
 					order: Number(item.BehaviorGroupOrder) || 0,
 					name: item.BehaviorGroupName,
 					maxScore: Number(item.MaxScoreGroup) || 0,
-					sections: [],
+					sections: []
 				};
 				byGroup.set(item.BehaviorGroupID, group);
 				groups.push(group);
@@ -206,49 +192,41 @@ function ConductAssessmentPage() {
 	const finalResult = behaviorData?.KetQuaDanhGia?.[0];
 	const showSavedResult = !editable && Boolean(finalResult);
 	const liveTotal = clampScore(
-		groupedItems.reduce(
-			(sum, item) => sum + Number(scores[item.BehaviorDetailID] ?? 0),
-			0,
-		),
-		100,
+		groupedItems.reduce((sum, item) => sum + Number(scores[item.BehaviorDetailID] ?? 0), 0),
+		100
 	);
-	const displayTotal = clampScore(
-		showSavedResult ? Number(finalResult?.Scores) || 0 : liveTotal,
-		100,
-	);
+	const displayTotal = clampScore(showSavedResult ? Number(finalResult?.Scores) || 0 : liveTotal, 100);
 	const displayRank =
-		showSavedResult && finalResult
-			? finalResult.BehaviorScoreRank
-			: getConductRankFromScore(displayTotal);
+		showSavedResult && finalResult ? finalResult.BehaviorScoreRank : getConductRankFromScore(displayTotal);
 
 	const scrollToSection = (groupId: string) => {
 		sectionRefs.current[groupId]?.scrollIntoView({
-			behavior: "smooth",
-			block: "start",
+			behavior: 'smooth',
+			block: 'start'
 		});
 	};
 
 	const getRankColor = (rank: string) => {
 		switch (rank) {
-			case "Xuất sắc":
-				return "bg-gradient-to-r from-yellow-400 to-amber-500 text-white";
-			case "Tốt":
-				return "bg-gradient-to-r from-green-400 to-emerald-500 text-white";
-			case "Khá":
-				return "bg-gradient-to-r from-blue-400 to-cyan-500 text-white";
-			case "Trung bình":
-				return "bg-gradient-to-r from-gray-400 to-slate-500 text-white";
-			case "Yếu":
-				return "bg-gradient-to-r from-orange-400 to-red-500 text-white";
-			case "Kém":
-				return "bg-gradient-to-r from-orange-400 to-red-500 text-white";
+			case 'Xuất sắc':
+				return 'bg-gradient-to-r from-yellow-400 to-amber-500 text-white';
+			case 'Tốt':
+				return 'bg-gradient-to-r from-green-400 to-emerald-500 text-white';
+			case 'Khá':
+				return 'bg-gradient-to-r from-blue-400 to-cyan-500 text-white';
+			case 'Trung bình':
+				return 'bg-gradient-to-r from-gray-400 to-slate-500 text-white';
+			case 'Yếu':
+				return 'bg-gradient-to-r from-orange-400 to-red-500 text-white';
+			case 'Kém':
+				return 'bg-gradient-to-r from-orange-400 to-red-500 text-white';
 			default:
-				return "bg-muted text-muted-foreground";
+				return 'bg-muted text-muted-foreground';
 		}
 	};
 
 	const updateScore = (id: string, raw: string) => {
-		const value = raw === "" || raw === "-" ? 0 : Number(raw);
+		const value = raw === '' || raw === '-' ? 0 : Number(raw);
 		setScores((prev) => ({ ...prev, [id]: Number.isFinite(value) ? value : 0 }));
 	};
 
@@ -256,8 +234,7 @@ function ConductAssessmentPage() {
 		setScores((prev) => {
 			const next = { ...prev };
 			items.forEach((item) => {
-				next[item.BehaviorDetailID] =
-					item.BehaviorDetailID === selectedId ? Number(item.MaxScore) || 0 : 0;
+				next[item.BehaviorDetailID] = item.BehaviorDetailID === selectedId ? Number(item.MaxScore) || 0 : 0;
 			});
 			return next;
 		});
@@ -270,7 +247,7 @@ function ConductAssessmentPage() {
 	const updateCheckScore = (id: string, checked: boolean, item: BehaviorDetailItem) => {
 		setScores((prev) => ({
 			...prev,
-			[id]: checked ? Number(item.MaxScore) || 0 : 0,
+			[id]: checked ? Number(item.MaxScore) || 0 : 0
 		}));
 	};
 
@@ -281,29 +258,26 @@ function ConductAssessmentPage() {
 			const behaviors = groupedItems
 				.filter((item) => !item.BehaviorDetailIDParent)
 				.map((item) => {
-					const isEditable = item.ReadOnly !== "1";
+					const isEditable = item.ReadOnly !== '1';
 					return {
 						...item,
-						IndividualScore: isEditable
-							? Number(scores[item.BehaviorDetailID] ?? 0)
-							: item.IndividualScore,
+						IndividualScore: isEditable ? Number(scores[item.BehaviorDetailID] ?? 0) : item.IndividualScore
 					};
 				});
 			await saveBehaviorScore(selectedYear, selectedTerm, behaviors);
-			showSuccess("Đã lưu đánh giá điểm rèn luyện thành công");
+			showSuccess('Đã lưu đánh giá điểm rèn luyện thành công');
 			const data = await getBehaviorScore(selectedYear, selectedTerm);
 			setBehaviorData(data);
 			const nextScores: Record<string, number> = {};
 			const savedItems = data.ResultDataBangDanhGia ?? [];
 			savedItems.forEach((i) => {
-				nextScores[i.BehaviorDetailID] =
-					typeof i.IndividualScore === "number" ? i.IndividualScore : 0;
+				nextScores[i.BehaviorDetailID] = typeof i.IndividualScore === 'number' ? i.IndividualScore : 0;
 			});
 			setScores(nextScores);
 			setRadioSelected(deriveRadioSelection(savedItems));
 		} catch (err) {
-			console.error("Save error:", err);
-			showError("Không thể lưu đánh giá điểm rèn luyện. Vui lòng thử lại.");
+			console.error('Save error:', err);
+			showError('Không thể lưu đánh giá điểm rèn luyện. Vui lòng thử lại.');
 		} finally {
 			setIsSaving(false);
 		}
@@ -317,15 +291,14 @@ function ConductAssessmentPage() {
 			const nextScores: Record<string, number> = {};
 			const items = data.ResultDataBangDanhGia ?? [];
 			items.forEach((i) => {
-				nextScores[i.BehaviorDetailID] =
-					typeof i.IndividualScore === "number" ? i.IndividualScore : 0;
+				nextScores[i.BehaviorDetailID] = typeof i.IndividualScore === 'number' ? i.IndividualScore : 0;
 			});
 			setScores(nextScores);
 			setRadioSelected(deriveRadioSelection(items));
 			return true;
 		} catch (err) {
-			console.error("Reload error:", err);
-			showError("Không thể tải lại dữ liệu. Vui lòng tải lại trang.");
+			console.error('Reload error:', err);
+			showError('Không thể tải lại dữ liệu. Vui lòng tải lại trang.');
 			return false;
 		}
 	};
@@ -347,15 +320,17 @@ function ConductAssessmentPage() {
 					images[child.BehaviorDetailID] = data.HinhAnh;
 				}
 			} catch (err) {
-				console.error("Evidence image error:", err);
+				console.error('Evidence image error:', err);
 				failed += 1;
 			}
 		}
 		setEvidenceImages((prev) => ({ ...prev, ...images }));
 		if (failed > 0) {
-			showError(failed === children.length
-				? "Không thể tải hình ảnh minh chứng. Vui lòng thử lại."
-				: `Không tải được ${failed} hình ảnh minh chứng.`);
+			showError(
+				failed === children.length
+					? 'Không thể tải hình ảnh minh chứng. Vui lòng thử lại.'
+					: `Không tải được ${failed} hình ảnh minh chứng.`
+			);
 		}
 	};
 
@@ -369,18 +344,18 @@ function ConductAssessmentPage() {
 	const handleAttachEvidence = async (parentId: string) => {
 		if (!selectedYear || !selectedTerm) return;
 		const file = pendingEvidence[parentId];
-		const note = (evidenceNote[parentId] ?? "").trim();
+		const note = (evidenceNote[parentId] ?? '').trim();
 		if (!file) {
-			showError("Vui lòng chọn ảnh minh chứng trước khi đính kèm.");
+			showError('Vui lòng chọn ảnh minh chứng trước khi đính kèm.');
 			return;
 		}
 		if (!note) {
-			showError("Vui lòng nhập nội dung minh chứng.");
+			showError('Vui lòng nhập nội dung minh chứng.');
 			return;
 		}
-		const allowedTypes = ["image/png", "image/jpeg"];
+		const allowedTypes = ['image/png', 'image/jpeg'];
 		if (!allowedTypes.includes(file.type) && !/\.(png|jpe?g)$/i.test(file.name)) {
-			showError("Chỉ được đính kèm ảnh định dạng PNG hoặc JPG.");
+			showError('Chỉ được đính kèm ảnh định dạng PNG hoặc JPG.');
 			return;
 		}
 		setEvidenceBusy((prev) => ({ ...prev, [parentId]: true }));
@@ -388,12 +363,12 @@ function ConductAssessmentPage() {
 			const imageUrl = await resourceUpload(file);
 			await insertBehaviorDetail(parentId, note, imageUrl, selectedYear, selectedTerm);
 			setPendingEvidence((prev) => ({ ...prev, [parentId]: null }));
-			setEvidenceNote((prev) => ({ ...prev, [parentId]: "" }));
-			showSuccess("Đã đính kèm minh chứng thành công");
+			setEvidenceNote((prev) => ({ ...prev, [parentId]: '' }));
+			showSuccess('Đã đính kèm minh chứng thành công');
 			await reloadBehaviorData();
 		} catch (err) {
-			console.error("Attach error:", err);
-			showError("Không thể đính kèm minh chứng. Vui lòng thử lại.");
+			console.error('Attach error:', err);
+			showError('Không thể đính kèm minh chứng. Vui lòng thử lại.');
 		} finally {
 			setEvidenceBusy((prev) => ({ ...prev, [parentId]: false }));
 		}
@@ -404,11 +379,11 @@ function ConductAssessmentPage() {
 		setEvidenceBusy((prev) => ({ ...prev, [`del-${childId}`]: true }));
 		try {
 			await deleteBehaviorDetail(childId, selectedYear, selectedTerm);
-			showSuccess("Đã xóa minh chứng thành công");
+			showSuccess('Đã xóa minh chứng thành công');
 			await reloadBehaviorData();
 		} catch (err) {
-			console.error("Remove error:", err);
-			showError("Không thể xóa minh chứng. Vui lòng thử lại.");
+			console.error('Remove error:', err);
+			showError('Không thể xóa minh chứng. Vui lòng thử lại.');
 		} finally {
 			setEvidenceBusy((prev) => ({ ...prev, [`del-${childId}`]: false }));
 		}
@@ -416,13 +391,13 @@ function ConductAssessmentPage() {
 
 	const [discussionsByItem, setDiscussionsByItem] = useState<Record<string, BehaviorDiscussion[]>>({});
 	const [discussionItemId, setDiscussionItemId] = useState<string | null>(null);
-	const [discussionDraft, setDiscussionDraft] = useState<string>("");
+	const [discussionDraft, setDiscussionDraft] = useState<string>('');
 	const [discussionLoading, setDiscussionLoading] = useState(false);
 	const [discussionError, setDiscussionError] = useState<string | null>(null);
 
 	const openDiscussion = async (itemId: string) => {
 		setDiscussionItemId(itemId);
-		setDiscussionDraft("");
+		setDiscussionDraft('');
 		setDiscussionError(null);
 		if (!discussionsByItem[itemId] && selectedYear && selectedTerm) {
 			setDiscussionLoading(true);
@@ -430,8 +405,8 @@ function ConductAssessmentPage() {
 				const data = await showBehaviorDiscussion(itemId, selectedYear, selectedTerm);
 				setDiscussionsByItem((prev) => ({ ...prev, [itemId]: data }));
 			} catch (err) {
-				console.error("Discussion load error:", err);
-				setDiscussionError("Không thể tải thảo luận. Vui lòng thử lại.");
+				console.error('Discussion load error:', err);
+				setDiscussionError('Không thể tải thảo luận. Vui lòng thử lại.');
 			} finally {
 				setDiscussionLoading(false);
 			}
@@ -443,29 +418,29 @@ function ConductAssessmentPage() {
 		if (!selectedYear || !selectedTerm || !content) return;
 		const studentId = getStudentId();
 		if (!studentId) {
-			showError("Không xác định được mã sinh viên.");
+			showError('Không xác định được mã sinh viên.');
 			return;
 		}
 		setDiscussionLoading(true);
 		setDiscussionError(null);
 		try {
 			await insertBehaviorDiscussion(itemId, content, selectedYear, selectedTerm, studentId);
-			setDiscussionDraft("");
+			setDiscussionDraft('');
 			const data = await showBehaviorDiscussion(itemId, selectedYear, selectedTerm);
 			setDiscussionsByItem((prev) => ({ ...prev, [itemId]: data }));
 			await reloadBehaviorData();
-			showSuccess("Bình luận thành công");
+			showSuccess('Bình luận thành công');
 		} catch (err) {
-			console.error("Discussion error:", err);
-			setDiscussionError("Không thể gửi bình luận. Vui lòng thử lại.");
-			showError("Không thể gửi bình luận. Vui lòng thử lại.");
+			console.error('Discussion error:', err);
+			setDiscussionError('Không thể gửi bình luận. Vui lòng thử lại.');
+			showError('Không thể gửi bình luận. Vui lòng thử lại.');
 		} finally {
 			setDiscussionLoading(false);
 		}
 	};
 
 	const activeDiscussionItem = discussionItemId
-		? groupedItems.find((i) => i.BehaviorDetailID === discussionItemId) ?? null
+		? (groupedItems.find((i) => i.BehaviorDetailID === discussionItemId) ?? null)
 		: null;
 
 	if (!yearTermData) {
@@ -490,9 +465,7 @@ function ConductAssessmentPage() {
 			{/* Filters */}
 			<div className="flex flex-wrap gap-4">
 				<div className="flex items-center gap-2">
-					<label className="text-sm font-medium text-muted-foreground whitespace-nowrap">
-						Năm học
-					</label>
+					<label className="text-sm font-medium text-muted-foreground whitespace-nowrap">Năm học</label>
 					<Select value={selectedYear} onValueChange={setSelectedYear}>
 						<SelectTrigger className="w-[180px]">
 							<SelectValue placeholder="Chọn năm học" />
@@ -507,9 +480,7 @@ function ConductAssessmentPage() {
 					</Select>
 				</div>
 				<div className="flex items-center gap-2">
-					<label className="text-sm font-medium text-muted-foreground whitespace-nowrap">
-						Học kỳ
-					</label>
+					<label className="text-sm font-medium text-muted-foreground whitespace-nowrap">Học kỳ</label>
 					<Select value={selectedTerm} onValueChange={setSelectedTerm}>
 						<SelectTrigger className="w-[180px]">
 							<SelectValue placeholder="Chọn học kỳ" />
@@ -586,8 +557,11 @@ function ConductAssessmentPage() {
 											const groupTotal = clampScore(
 												group.sections
 													.flatMap((s) => s.items)
-													.reduce((sum, item) => sum + Number(scores[item.BehaviorDetailID] ?? 0), 0),
-												group.maxScore,
+													.reduce(
+														(sum, item) => sum + Number(scores[item.BehaviorDetailID] ?? 0),
+														0
+													),
+												group.maxScore
 											);
 											return (
 												<button
@@ -596,17 +570,17 @@ function ConductAssessmentPage() {
 													className="p-3 rounded-lg bg-background/80 hover:bg-background transition-colors text-left group"
 												>
 													<p className="text-xs text-muted-foreground truncate mb-1 group-hover:text-primary transition-colors">
-															<span dangerouslySetInnerHTML={renderHtml(group.name)} />
-														</p>
+														<span dangerouslySetInnerHTML={renderHtml(group.name)} />
+													</p>
 													<div className="flex items-center justify-between">
 														<span
 															className={cn(
-																"font-bold text-lg",
+																'font-bold text-lg',
 																groupTotal > 0
-																	? "text-green-600"
+																	? 'text-green-600'
 																	: groupTotal < 0
-																		? "text-red-600"
-																		: "text-foreground",
+																		? 'text-red-600'
+																		: 'text-foreground'
 															)}
 														>
 															{groupTotal}/{group.maxScore}
@@ -624,9 +598,9 @@ function ConductAssessmentPage() {
 											<Star className="w-8 h-8 text-primary" />
 											<div>
 												<p className="text-sm text-muted-foreground">
-													{showSavedResult ? "Tổng điểm rèn luyện" : "Tổng điểm tự đánh giá"}
+													{showSavedResult ? 'Tổng điểm rèn luyện' : 'Tổng điểm tự đánh giá'}
 												</p>
-												<Badge className={cn("mt-1", getRankColor(displayRank))}>
+												<Badge className={cn('mt-1', getRankColor(displayRank))}>
 													{displayRank}
 												</Badge>
 											</div>
@@ -642,9 +616,9 @@ function ConductAssessmentPage() {
 								const groupTotal = clampScore(
 									groupItems.reduce(
 										(sum, item) => sum + Number(scores[item.BehaviorDetailID] ?? 0),
-										0,
+										0
 									),
-									group.maxScore,
+									group.maxScore
 								);
 								return (
 									<Card
@@ -665,12 +639,12 @@ function ConductAssessmentPage() {
 													<Badge
 														variant="outline"
 														className={cn(
-															"font-mono font-bold",
+															'font-mono font-bold',
 															groupTotal > 0
-																? "text-green-600 border-green-600/50"
+																? 'text-green-600 border-green-600/50'
 																: groupTotal < 0
-																	? "text-red-600 border-red-600/50"
-																	: "text-foreground",
+																	? 'text-red-600 border-red-600/50'
+																	: 'text-foreground'
 														)}
 													>
 														{groupTotal}/{group.maxScore}
@@ -680,10 +654,16 @@ function ConductAssessmentPage() {
 										</CardHeader>
 										<CardContent className="space-y-4">
 											{group.sections.map((section) => {
-												const sectionItems = section.items.filter((i) => !i.BehaviorDetailIDParent);
+												const sectionItems = section.items.filter(
+													(i) => !i.BehaviorDetailIDParent
+												);
 												const radioItems = sectionItems.filter(isRadioItem);
-												const checkItems = sectionItems.filter((i) => !isRadioItem(i) && isCheckItem(i));
-												const normalItems = sectionItems.filter((i) => !isRadioItem(i) && !isCheckItem(i));
+												const checkItems = sectionItems.filter(
+													(i) => !isRadioItem(i) && isCheckItem(i)
+												);
+												const normalItems = sectionItems.filter(
+													(i) => !isRadioItem(i) && !isCheckItem(i)
+												);
 												const showTitle =
 													section.items.length > 1 ||
 													(section.items.length === 1 &&
@@ -712,304 +692,483 @@ function ConductAssessmentPage() {
 																</colgroup>
 																<tbody>
 																	{normalItems.map((item, index) => {
-																		const rowDisabled = !editable || item.ReadOnly === "1";
+																		const rowDisabled =
+																			!editable || item.ReadOnly === '1';
 																		const cellBg =
-																			!editable || item.ReadOnly === "1"
-																				? "bg-blue-50 dark:bg-blue-950/30"
-																				: "bg-white dark:bg-transparent";
-																		const childEvidence = item.IsAdd === true
-																			? groupedItems.filter((i) => i.BehaviorDetailIDParent === item.BehaviorDetailID)
-																			: [];
+																			!editable || item.ReadOnly === '1'
+																				? 'bg-blue-50 dark:bg-blue-950/30'
+																				: 'bg-white dark:bg-transparent';
+																		const childEvidence =
+																			item.IsAdd === true
+																				? groupedItems.filter(
+																						(i) =>
+																							i.BehaviorDetailIDParent ===
+																							item.BehaviorDetailID
+																					)
+																				: [];
 																		return (
 																			<Fragment key={item.BehaviorDetailID}>
 																				<tr
 																					key={item.BehaviorDetailID}
 																					className={cn(
-																						"border-b border-border/50",
-																						index === normalItems.length - 1 && "border-b-0",
-																						"hover:bg-muted/30",
-																						cellBg,
+																						'border-b border-border/50',
+																						index ===
+																							normalItems.length - 1 &&
+																							'border-b-0',
+																						'hover:bg-muted/30',
+																						cellBg
 																					)}
 																				>
-																				<td className="py-2 px-3 text-foreground">
-																					<div className="flex items-center justify-between gap-2">
-																						<span className="inline-flex min-w-0 items-center gap-1.5">
-																							{rowDisabled && <Lock className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />}
-																							<span className="min-w-0" dangerouslySetInnerHTML={renderHtml(item.BehaviorDetailName)} />
-																						</span>
-																						<button
-																							type="button"
-																							onClick={() => openDiscussion(item.BehaviorDetailID)}
-																							className="inline-flex shrink-0 items-center gap-1 rounded-full p-1.5 text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary"
-																							title="Xem thảo luận của điều kiện"
-																						>
-																							<MessageSquare className="h-4 w-4" />
-																							{item.TotalBehaviorDiscussion ? (
-																								<span className="text-xs font-semibold">
-																									{Number(item.TotalBehaviorDiscussion)}
-																								</span>
-																							) : null}
-																						</button>
-																					</div>
-																				</td>
-																				<td className="py-2 px-3 text-center text-muted-foreground">
-																					{item.MaxScore}
-																				</td>
-																				<td className="py-2 px-3 text-center">
-																					<div
-																						className={cn(
-																							"inline-flex items-center rounded-lg border border-border bg-background",
-																							rowDisabled && "opacity-60",
-																						)}
-																					>
-																						<button
-																							type="button"
-																							disabled={rowDisabled}
-																							onClick={() =>
-																								updateScore(
-																									item.BehaviorDetailID,
-																									String(
-																										Math.max(
-																											Math.min(item.MaxScore, 0),
-																											Number(scores[item.BehaviorDetailID] ?? 0) - 1,
-																										),
-																									),
-																								)
-																							}
-																							title="Giảm điểm"
-																							className="flex h-9 w-9 items-center justify-center text-muted-foreground transition-colors hover:text-primary disabled:cursor-not-allowed disabled:opacity-50"
-																						>
-																							<Minus className="h-4 w-4" />
-																						</button>
-																						<span className="min-w-10 px-1 text-center font-mono font-bold">
-																							{scores[item.BehaviorDetailID] ?? 0}
-																						</span>
-																						<button
-																							type="button"
-																							disabled={rowDisabled}
-																							onClick={() =>
-																								updateScore(
-																									item.BehaviorDetailID,
-																									String(
-																										Math.min(
-																											Math.max(item.MaxScore, 0),
-																											Number(scores[item.BehaviorDetailID] ?? 0) + 1,
-																										),
-																									),
-																								)
-																							}
-																							title="Tăng điểm"
-																							className="flex h-9 w-9 items-center justify-center text-muted-foreground transition-colors hover:text-primary disabled:cursor-not-allowed disabled:opacity-50"
-																						>
-																							<Plus className="h-4 w-4" />
-																						</button>
-																					</div>
-																				</td>
-																			</tr>
-																			{item.IsAdd === true && (
-																				<tr key={`evidence-${item.BehaviorDetailID}`} className="border-b border-border/50 bg-muted/20">
-																					<td colSpan={3} className="py-2 px-3">
-																						<div className="space-y-2">
-																							{childEvidence.length > 0 && (
-																								<div className="space-y-1">
-																									<p className="text-xs font-medium text-muted-foreground">
-																										Minh chứng đã đính kèm ({childEvidence.length})
-																									</p>
-																									{childEvidence.map((child) => (
-																										<div
-																											key={child.BehaviorDetailID}
-																											className="flex items-center gap-2 rounded-md border border-border bg-background px-2 py-1 text-sm"
-																										>
-																											{evidenceImages[child.BehaviorDetailID] ? (
-																												<a
-																													href={evidenceImages[child.BehaviorDetailID]}
-																													target="_blank"
-																													rel="noopener noreferrer"
-																													title="Mở ảnh minh chứng"
-																													className="inline-flex shrink-0 items-center gap-1.5 text-primary hover:underline"
-																												>
-																													<img
-																														src={evidenceImages[child.BehaviorDetailID]}
-																														alt="Minh chứng"
-																														className="h-9 w-12 rounded border border-border object-cover"
-																													/>
-																												</a>
-																											) : (
-																												<Paperclip className="h-3.5 w-3.5 shrink-0 text-primary" />
-																											)}
-																											<span className="flex-1 truncate text-muted-foreground">
-																												{child.BehaviorDetailName.replace(/^\s*=>\s*/, "") || child.BehaviorDetailName}
-																											</span>
-																											{editable && (
-																												<button
-																													type="button"
-																													disabled={!!evidenceBusy[`del-${child.BehaviorDetailID}`]}
-																													onClick={() => handleRemoveEvidence(child.BehaviorDetailID)}
-																													title="Xóa minh chứng"
-																													className="p-1 text-muted-foreground transition-colors hover:text-destructive disabled:opacity-50"
-																												>
-																													<Trash2 className="h-3.5 w-3.5" />
-																												</button>
-																											)}
-																										</div>
-																									))}
-																								</div>
-																							)}
-																							{editable && (
-																								<div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-																									<div className="flex-1">
-																										<label className="mb-1.5 block text-xs font-medium text-muted-foreground">
-																											Nội dung minh chứng <span className="text-destructive">*</span>
-																										</label>
-																										<Input
-																											placeholder="Mô tả nội dung minh chứng..."
-																											value={evidenceNote[item.BehaviorDetailID] ?? ""}
-																											onChange={(e) =>
-																												setEvidenceNote((prev) => ({
-																													...prev,
-																													[item.BehaviorDetailID]: e.target.value,
-																												}))
-																											}
-																											className="h-9"
-																										/>
-																									</div>
-																									<label className="block">
-																										<span className="mb-1.5 block text-xs font-medium text-muted-foreground">
-																											Ảnh minh chứng <span className="text-destructive">*</span>
-																										</span>
-																										<span className="flex h-9 items-center gap-2 rounded-md border border-dashed border-border bg-background px-3 text-sm text-muted-foreground transition-colors hover:border-primary/50 hover:text-primary">
-																											<Upload className="h-4 w-4" />
-																											<span className="max-w-40 truncate">
-{pendingEvidence[item.BehaviorDetailID]
-																												? pendingEvidence[item.BehaviorDetailID]?.name
-																												: "Chọn ảnh..."}
-																											</span>
-																										</span>
-																										<input
-																											type="file"
-																											accept=".png,.jpg,.jpeg,image/png,image/jpeg"
-																											className="hidden"
-																											onChange={(e) => {
-																												const file = e.target.files?.[0] ?? null;
-																												if (file && !/image\/(png|jpe?g)/.test(file.type) && !/\.(png|jpe?g)$/i.test(file.name)) {
-																													showError("Chỉ được đính kèm ảnh định dạng PNG hoặc JPG.");
-																													e.target.value = "";
-																													return;
-																												}
-																												setPendingEvidence((prev) => ({
-																													...prev,
-																													[item.BehaviorDetailID]: file,
-																												}));
-																											}}
-																										/>
-																									</label>
-																									<Button
-																										type="button"
-																										disabled={!!evidenceBusy[item.BehaviorDetailID]}
-																										onClick={() => handleAttachEvidence(item.BehaviorDetailID)}
-																										className="h-9 gap-1.5"
-																									>
-																										{evidenceBusy[item.BehaviorDetailID] ? (
-																											<Loader2 className="h-4 w-4 animate-spin" />
-																										) : (
-																											<Paperclip className="h-4 w-4" />
+																					<td className="py-2 px-3 text-foreground">
+																						<div className="flex items-center justify-between gap-2">
+																							<span className="inline-flex min-w-0 items-center gap-1.5">
+																								{rowDisabled && (
+																									<Lock className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+																								)}
+																								<span
+																									className="min-w-0"
+																									dangerouslySetInnerHTML={renderHtml(
+																										item.BehaviorDetailName
+																									)}
+																								/>
+																							</span>
+																							<button
+																								type="button"
+																								onClick={() =>
+																									openDiscussion(
+																										item.BehaviorDetailID
+																									)
+																								}
+																								className="inline-flex shrink-0 items-center gap-1 rounded-full p-1.5 text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary"
+																								title="Xem thảo luận của điều kiện"
+																							>
+																								<MessageSquare className="h-4 w-4" />
+																								{item.TotalBehaviorDiscussion ? (
+																									<span className="text-xs font-semibold">
+																										{Number(
+																											item.TotalBehaviorDiscussion
 																										)}
-Đính kèm
-																									</Button>
-																								</div>
-																							)}
+																									</span>
+																								) : null}
+																							</button>
 																						</div>
 																					</td>
+																					<td className="py-2 px-3 text-center text-muted-foreground">
+																						{item.MaxScore}
+																					</td>
+																					<td className="py-2 px-3 text-center">
+																						<div
+																							className={cn(
+																								'inline-flex items-center rounded-lg border border-border bg-background',
+																								rowDisabled &&
+																									'opacity-60'
+																							)}
+																						>
+																							<button
+																								type="button"
+																								disabled={rowDisabled}
+																								onClick={() =>
+																									updateScore(
+																										item.BehaviorDetailID,
+																										String(
+																											Math.max(
+																												Math.min(
+																													item.MaxScore,
+																													0
+																												),
+																												Number(
+																													scores[
+																														item
+																															.BehaviorDetailID
+																													] ??
+																														0
+																												) - 1
+																											)
+																										)
+																									)
+																								}
+																								title="Giảm điểm"
+																								className="flex h-9 w-9 items-center justify-center text-muted-foreground transition-colors hover:text-primary disabled:cursor-not-allowed disabled:opacity-50"
+																							>
+																								<Minus className="h-4 w-4" />
+																							</button>
+																							<span className="min-w-10 px-1 text-center font-mono font-bold">
+																								{scores[
+																									item
+																										.BehaviorDetailID
+																								] ?? 0}
+																							</span>
+																							<button
+																								type="button"
+																								disabled={rowDisabled}
+																								onClick={() =>
+																									updateScore(
+																										item.BehaviorDetailID,
+																										String(
+																											Math.min(
+																												Math.max(
+																													item.MaxScore,
+																													0
+																												),
+																												Number(
+																													scores[
+																														item
+																															.BehaviorDetailID
+																													] ??
+																														0
+																												) + 1
+																											)
+																										)
+																									)
+																								}
+																								title="Tăng điểm"
+																								className="flex h-9 w-9 items-center justify-center text-muted-foreground transition-colors hover:text-primary disabled:cursor-not-allowed disabled:opacity-50"
+																							>
+																								<Plus className="h-4 w-4" />
+																							</button>
+																						</div>
+																					</td>
+																				</tr>
+																				{item.IsAdd === true && (
+																					<tr
+																						key={`evidence-${item.BehaviorDetailID}`}
+																						className="border-b border-border/50 bg-muted/20"
+																					>
+																						<td
+																							colSpan={3}
+																							className="py-2 px-3"
+																						>
+																							<div className="space-y-2">
+																								{childEvidence.length >
+																									0 && (
+																									<div className="space-y-1">
+																										<p className="text-xs font-medium text-muted-foreground">
+																											Minh chứng
+																											đã đính kèm
+																											(
+																											{
+																												childEvidence.length
+																											}
+																											)
+																										</p>
+																										{childEvidence.map(
+																											(child) => (
+																												<div
+																													key={
+																														child.BehaviorDetailID
+																													}
+																													className="flex items-center gap-2 rounded-md border border-border bg-background px-2 py-1 text-sm"
+																												>
+																													{evidenceImages[
+																														child
+																															.BehaviorDetailID
+																													] ? (
+																														<a
+																															href={
+																																evidenceImages[
+																																	child
+																																		.BehaviorDetailID
+																																]
+																															}
+																															target="_blank"
+																															rel="noopener noreferrer"
+																															title="Mở ảnh minh chứng"
+																															className="inline-flex shrink-0 items-center gap-1.5 text-primary hover:underline"
+																														>
+																															<img
+																																src={
+																																	evidenceImages[
+																																		child
+																																			.BehaviorDetailID
+																																	]
+																																}
+																																alt="Minh chứng"
+																																className="h-9 w-12 rounded border border-border object-cover"
+																															/>
+																														</a>
+																													) : (
+																														<Paperclip className="h-3.5 w-3.5 shrink-0 text-primary" />
+																													)}
+																													<span className="flex-1 truncate text-muted-foreground">
+																														{child.BehaviorDetailName.replace(
+																															/^\s*=>\s*/,
+																															''
+																														) ||
+																															child.BehaviorDetailName}
+																													</span>
+																													{editable && (
+																														<button
+																															type="button"
+																															disabled={
+																																!!evidenceBusy[
+																																	`del-${child.BehaviorDetailID}`
+																																]
+																															}
+																															onClick={() =>
+																																handleRemoveEvidence(
+																																	child.BehaviorDetailID
+																																)
+																															}
+																															title="Xóa minh chứng"
+																															className="p-1 text-muted-foreground transition-colors hover:text-destructive disabled:opacity-50"
+																														>
+																															<Trash2 className="h-3.5 w-3.5" />
+																														</button>
+																													)}
+																												</div>
+																											)
+																										)}
+																									</div>
+																								)}
+																								{editable && (
+																									<div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+																										<div className="flex-1">
+																											<label className="mb-1.5 block text-xs font-medium text-muted-foreground">
+																												Nội dung
+																												minh
+																												chứng{' '}
+																												<span className="text-destructive">
+																													*
+																												</span>
+																											</label>
+																											<Input
+																												placeholder="Mô tả nội dung minh chứng..."
+																												value={
+																													evidenceNote[
+																														item
+																															.BehaviorDetailID
+																													] ??
+																													''
+																												}
+																												onChange={(
+																													e
+																												) =>
+																													setEvidenceNote(
+																														(
+																															prev
+																														) => ({
+																															...prev,
+																															[item.BehaviorDetailID]:
+																																e
+																																	.target
+																																	.value
+																														})
+																													)
+																												}
+																												className="h-9"
+																											/>
+																										</div>
+																										<label className="block">
+																											<span className="mb-1.5 block text-xs font-medium text-muted-foreground">
+																												Ảnh minh
+																												chứng{' '}
+																												<span className="text-destructive">
+																													*
+																												</span>
+																											</span>
+																											<span className="flex h-9 items-center gap-2 rounded-md border border-dashed border-border bg-background px-3 text-sm text-muted-foreground transition-colors hover:border-primary/50 hover:text-primary">
+																												<Upload className="h-4 w-4" />
+																												<span className="max-w-40 truncate">
+																													{pendingEvidence[
+																														item
+																															.BehaviorDetailID
+																													]
+																														? pendingEvidence[
+																																item
+																																	.BehaviorDetailID
+																															]
+																																?.name
+																														: 'Chọn ảnh...'}
+																												</span>
+																											</span>
+																											<input
+																												type="file"
+																												accept=".png,.jpg,.jpeg,image/png,image/jpeg"
+																												className="hidden"
+																												onChange={(
+																													e
+																												) => {
+																													const file =
+																														e
+																															.target
+																															.files?.[0] ??
+																														null;
+																													if (
+																														file &&
+																														!/image\/(png|jpe?g)/.test(
+																															file.type
+																														) &&
+																														!/\.(png|jpe?g)$/i.test(
+																															file.name
+																														)
+																													) {
+																														showError(
+																															'Chỉ được đính kèm ảnh định dạng PNG hoặc JPG.'
+																														);
+																														e.target.value =
+																															'';
+																														return;
+																													}
+																													setPendingEvidence(
+																														(
+																															prev
+																														) => ({
+																															...prev,
+																															[item.BehaviorDetailID]:
+																																file
+																														})
+																													);
+																												}}
+																											/>
+																										</label>
+																										<Button
+																											type="button"
+																											disabled={
+																												!!evidenceBusy[
+																													item
+																														.BehaviorDetailID
+																												]
+																											}
+																											onClick={() =>
+																												handleAttachEvidence(
+																													item.BehaviorDetailID
+																												)
+																											}
+																											className="h-9 gap-1.5"
+																										>
+																											{evidenceBusy[
+																												item
+																													.BehaviorDetailID
+																											] ? (
+																												<Loader2 className="h-4 w-4 animate-spin" />
+																											) : (
+																												<Paperclip className="h-4 w-4" />
+																											)}
+																											Đính kèm
+																										</Button>
+																									</div>
+																								)}
+																							</div>
+																						</td>
 																					</tr>
 																				)}
-																		</Fragment>
-																);
-															})}
+																			</Fragment>
+																		);
+																	})}
 																	{checkItems.map((item, index) => {
-																		const rowDisabled = !editable || item.ReadOnly === "1";
+																		const rowDisabled =
+																			!editable || item.ReadOnly === '1';
 																		const cellBg =
-																			!editable || item.ReadOnly === "1"
-																				? "bg-blue-50 dark:bg-blue-950/30"
-																				: "bg-white dark:bg-transparent";
+																			!editable || item.ReadOnly === '1'
+																				? 'bg-blue-50 dark:bg-blue-950/30'
+																				: 'bg-white dark:bg-transparent';
 																		const checked =
-																			Number(scores[item.BehaviorDetailID] ?? 0) ===
-																			Number(item.MaxScore);
+																			Number(
+																				scores[item.BehaviorDetailID] ?? 0
+																			) === Number(item.MaxScore);
 																		return (
 																			<Fragment key={item.BehaviorDetailID}>
 																				<tr
 																					key={item.BehaviorDetailID}
 																					className={cn(
-																						"border-b border-border/50",
-																						index === checkItems.length - 1 && "border-b-0",
-																						"hover:bg-muted/30",
-																						cellBg,
+																						'border-b border-border/50',
+																						index ===
+																							checkItems.length - 1 &&
+																							'border-b-0',
+																						'hover:bg-muted/30',
+																						cellBg
 																					)}
 																				>
-																				<td className="py-2 px-3 text-foreground">
-																					<div className="flex items-center justify-between gap-2">
-																						<span className="inline-flex min-w-0 items-center gap-1.5">
-																							{rowDisabled && <Lock className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />}
-																							<span className="min-w-0" dangerouslySetInnerHTML={renderHtml(item.BehaviorDetailName)} />
-																						</span>
-																						<button
-																							type="button"
-																							onClick={() => openDiscussion(item.BehaviorDetailID)}
-																							className="inline-flex shrink-0 items-center gap-1 rounded-full p-1.5 text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary"
-																							title="Xem thảo luận của điều kiện"
-																						>
-																							<MessageSquare className="h-4 w-4" />
-																							{item.TotalBehaviorDiscussion ? (
-																								<span className="text-xs font-semibold">
-																									{Number(item.TotalBehaviorDiscussion)}
-																								</span>
-																							) : null}
-																						</button>
-																					</div>
-																				</td>
-																				<td className="py-2 px-3 text-center text-muted-foreground">
-																					{item.MaxScore}
-																				</td>
-<td className="py-2 px-3 text-center">
-																					<div className="flex items-center justify-center gap-2">
-																					<label
-																			className={cn(
-																				"inline-flex items-center gap-2 cursor-pointer",
-																				rowDisabled && "cursor-not-allowed",
-																			)}
-																		>
-<Checkbox
-																					checked={checked}
-																					disabled={rowDisabled}
-																					onCheckedChange={(val) =>
-																						updateCheckScore(
-																							item.BehaviorDetailID,
-																							val === true,
-																							item,
-																						)
-																					}
-																				/>
-																			</label>
-																					</div>
-																				</td>
-																			</tr>
-																		</Fragment>
-																	);
-																})}
+																					<td className="py-2 px-3 text-foreground">
+																						<div className="flex items-center justify-between gap-2">
+																							<span className="inline-flex min-w-0 items-center gap-1.5">
+																								{rowDisabled && (
+																									<Lock className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+																								)}
+																								<span
+																									className="min-w-0"
+																									dangerouslySetInnerHTML={renderHtml(
+																										item.BehaviorDetailName
+																									)}
+																								/>
+																							</span>
+																							<button
+																								type="button"
+																								onClick={() =>
+																									openDiscussion(
+																										item.BehaviorDetailID
+																									)
+																								}
+																								className="inline-flex shrink-0 items-center gap-1 rounded-full p-1.5 text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary"
+																								title="Xem thảo luận của điều kiện"
+																							>
+																								<MessageSquare className="h-4 w-4" />
+																								{item.TotalBehaviorDiscussion ? (
+																									<span className="text-xs font-semibold">
+																										{Number(
+																											item.TotalBehaviorDiscussion
+																										)}
+																									</span>
+																								) : null}
+																							</button>
+																						</div>
+																					</td>
+																					<td className="py-2 px-3 text-center text-muted-foreground">
+																						{item.MaxScore}
+																					</td>
+																					<td className="py-2 px-3 text-center">
+																						<div className="flex items-center justify-center gap-2">
+																							<label
+																								className={cn(
+																									'inline-flex items-center gap-2 cursor-pointer',
+																									rowDisabled &&
+																										'cursor-not-allowed'
+																								)}
+																							>
+																								<Checkbox
+																									checked={checked}
+																									disabled={
+																										rowDisabled
+																									}
+																									onCheckedChange={(
+																										val
+																									) =>
+																										updateCheckScore(
+																											item.BehaviorDetailID,
+																											val ===
+																												true,
+																											item
+																										)
+																									}
+																								/>
+																							</label>
+																						</div>
+																					</td>
+																				</tr>
+																			</Fragment>
+																		);
+																	})}
 																	{radioItems.length > 0 && (
 																		<tr className="border-b border-border/50">
 																			<td colSpan={3} className="p-2 px-3">
 																				<div className="space-y-1">
-{radioItems.map((item) => {
-																		const checked =
-																			radioSelected[item.GroupRadiobutton ?? ""] ===
-																			item.BehaviorDetailID;
+																					{radioItems.map((item) => {
+																						const checked =
+																							radioSelected[
+																								item.GroupRadiobutton ??
+																									''
+																							] === item.BehaviorDetailID;
 																						return (
-<label
-																								key={item.BehaviorDetailID}
+																							<label
+																								key={
+																									item.BehaviorDetailID
+																								}
 																								className={cn(
-																									"flex items-start gap-3 rounded-md px-2 py-1 cursor-pointer",
-																									checked && "bg-primary/10",
-																									!editable && "cursor-not-allowed",
+																									'flex items-start gap-3 rounded-md px-2 py-1 cursor-pointer',
+																									checked &&
+																										'bg-primary/10',
+																									!editable &&
+																										'cursor-not-allowed'
 																								)}
 																							>
 																								<Checkbox
@@ -1018,15 +1177,21 @@ function ConductAssessmentPage() {
 																									onCheckedChange={() =>
 																										updateRadioGroup(
 																											item.BehaviorDetailID,
-																											radioItems,
+																											radioItems
 																										)
 																									}
 																									className="size-5 rounded-full mt-0.5"
 																								/>
-<span className="flex-1 text-sm text-foreground">
+																								<span className="flex-1 text-sm text-foreground">
 																									<span className="inline-flex items-center gap-1.5">
-																										{!editable && <Lock className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />}
-																										<span dangerouslySetInnerHTML={renderHtml(item.BehaviorDetailName)} />
+																										{!editable && (
+																											<Lock className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+																										)}
+																										<span
+																											dangerouslySetInnerHTML={renderHtml(
+																												item.BehaviorDetailName
+																											)}
+																										/>
 																									</span>
 																								</span>
 																								<span className="text-sm text-muted-foreground">
@@ -1061,10 +1226,10 @@ function ConductAssessmentPage() {
 													<button
 														key={group.id}
 														onClick={() => scrollToSection(group.id)}
-														title={group.name.replace(/<[^>]*>/g, "")}
+														title={group.name.replace(/<[^>]*>/g, '')}
 														className={cn(
-															"shrink-0 w-8 h-8 rounded-lg text-sm font-semibold border transition-colors",
-															"hover:bg-primary hover:text-primary-foreground hover:border-primary",
+															'shrink-0 w-8 h-8 rounded-lg text-sm font-semibold border transition-colors',
+															'hover:bg-primary hover:text-primary-foreground hover:border-primary'
 														)}
 													>
 														{index + 1}
@@ -1079,12 +1244,12 @@ function ConductAssessmentPage() {
 												<span className="text-sm text-muted-foreground">Tổng điểm:</span>
 												<span
 													className={cn(
-														"text-2xl font-bold",
+														'text-2xl font-bold',
 														liveTotal > 0
-															? "text-green-600"
+															? 'text-green-600'
 															: liveTotal < 0
-																? "text-red-600"
-																: "text-foreground",
+																? 'text-red-600'
+																: 'text-foreground'
 													)}
 												>
 													{liveTotal}
@@ -1092,8 +1257,8 @@ function ConductAssessmentPage() {
 											</div>
 											<Badge
 												className={cn(
-													"hidden sm:inline-flex",
-													getRankColor(getConductRankFromScore(liveTotal)),
+													'hidden sm:inline-flex',
+													getRankColor(getConductRankFromScore(liveTotal))
 												)}
 											>
 												{getConductRankFromScore(liveTotal)}
@@ -1106,7 +1271,7 @@ function ConductAssessmentPage() {
 												) : (
 													<Save className="h-4 w-4" />
 												)}
-												{isSaving ? "Đang lưu..." : "Lưu đánh giá"}
+												{isSaving ? 'Đang lưu...' : 'Lưu đánh giá'}
 											</Button>
 										)}
 										{effectivelySaved && (
@@ -1133,8 +1298,8 @@ function ConductAssessmentPage() {
 						</DialogTitle>
 						<DialogDescription className="line-clamp-2">
 							{activeDiscussionItem
-								? activeDiscussionItem.BehaviorDetailName.replace(/<[^>]+>/g, "")
-								: ""}
+								? activeDiscussionItem.BehaviorDetailName.replace(/<[^>]+>/g, '')
+								: ''}
 						</DialogDescription>
 					</DialogHeader>
 
@@ -1157,26 +1322,28 @@ function ConductAssessmentPage() {
 								<div className="flex items-center justify-center gap-2 py-8 text-sm text-muted-foreground">
 									<Loader2 className="h-4 w-4 animate-spin" /> Đang tải...
 								</div>
-							) : (discussionsByItem[discussionItemId ?? ""] ?? []).length === 0 ? (
+							) : (discussionsByItem[discussionItemId ?? ''] ?? []).length === 0 ? (
 								<div className="py-8 text-center">
 									<MessageSquare className="mx-auto h-10 w-10 text-muted-foreground/30 mb-2" />
 									<p className="text-sm text-muted-foreground">Chưa có bình luận nào.</p>
 								</div>
 							) : (
-								(discussionsByItem[discussionItemId ?? ""] ?? []).map((d, i) => (
+								(discussionsByItem[discussionItemId ?? ''] ?? []).map((d, i) => (
 									<div key={i} className="rounded-lg border border-border bg-card px-3 py-2.5">
 										<div className="flex items-center justify-between gap-2">
 											<span className="flex items-center gap-2 text-xs font-semibold text-foreground">
 												<span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
-													{(d.SenderName || "?").charAt(0).toUpperCase()}
+													{(d.SenderName || '?').charAt(0).toUpperCase()}
 												</span>
 												{d.SenderName}
 											</span>
 											<span className="text-xs text-muted-foreground">
-												{new Date(d.UpdateDate).toLocaleString("vi-VN")}
+												{formatDate(d.UpdateDate, { includeTime: true })}
 											</span>
 										</div>
-										<p className="mt-1.5 whitespace-pre-wrap text-sm text-foreground">{d.Comment}</p>
+										<p className="mt-1.5 whitespace-pre-wrap text-sm text-foreground">
+											{d.Comment}
+										</p>
 									</div>
 								))
 							)}
@@ -1188,7 +1355,7 @@ function ConductAssessmentPage() {
 								value={discussionDraft}
 								onChange={(e) => setDiscussionDraft(e.target.value)}
 								onKeyDown={(e) => {
-									if (e.key === "Enter" && !e.shiftKey) {
+									if (e.key === 'Enter' && !e.shiftKey) {
 										e.preventDefault();
 										if (discussionItemId) handleSubmitDiscussion(discussionItemId);
 									}
