@@ -1,7 +1,9 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { PageLoader } from '@/components/common/PageLoader';
 import { PageError } from '@/components/common/PageError';
 import { useGlobalNotification } from '@/hooks/useGlobalNotification';
+import { RegistUnauthorizedEvent } from '@/lib/registrationApi';
+import RegistLoginForm from '@/components/common/RegistrationPage/RegistLoginForm';
 import {
 	getAllStudyPrograms,
 	getRegistSemesterQuota,
@@ -9,6 +11,7 @@ import {
 	getAllClassRegisted,
 	getAllClassAllowRegist,
 	removeScheduleStudyUnit,
+	computeRegistrationSummary,
 	type StudyProgram,
 	type RegistSemesterQuota,
 	type StudyType,
@@ -53,6 +56,7 @@ function RegistrationPage() {
 	const [cancelingClassId, setCancelingClassId] = useState<string | null>(null);
 
 	const [isInitializing, setIsInitializing] = useState(true);
+	const [needsRegistLogin, setNeedsRegistLogin] = useState(false);
 	const [isLoadingQuota, setIsLoadingQuota] = useState(false);
 	const [isLoadingClasses, setIsLoadingClasses] = useState(false);
 	const [academicResults, setAcademicResults] = useState<{
@@ -133,25 +137,37 @@ function RegistrationPage() {
 		});
 	}, [quota, studyTypes]);
 
-	useEffect(() => {
-		const initialize = async () => {
-			try {
-				await initializeRegistrationSession();
-				const [programs, types] = await Promise.all([getAllStudyPrograms(), getAllStudyTypes()]);
-				setStudyPrograms(programs);
-				setStudyTypes(types);
-				if (programs.length > 0) {
-					setSelectedProgramId(programs[0].StudyProgramID);
-				}
-			} catch (err) {
-				console.error('Error initializing:', err);
-				showError('Không thể kết nối đến hệ thống đăng ký');
-			} finally {
-				setIsInitializing(false);
+	const initialize = useCallback(async () => {
+		setIsInitializing(true);
+		try {
+			const session = await initializeRegistrationSession();
+			if (!session) {
+				setNeedsRegistLogin(true);
+				return;
 			}
-		};
-		initialize();
+			const [programs, types] = await Promise.all([getAllStudyPrograms(), getAllStudyTypes()]);
+			setStudyPrograms(programs);
+			setStudyTypes(types);
+			if (programs.length > 0) {
+				setSelectedProgramId(programs[0].StudyProgramID);
+			}
+		} catch (err) {
+			console.error('Error initializing:', err);
+			showError('Không thể kết nối đến hệ thống đăng ký');
+		} finally {
+			setIsInitializing(false);
+		}
 	}, [showError]);
+
+	useEffect(() => {
+		initialize();
+	}, [initialize]);
+
+	useEffect(() => {
+		const onUnauthorized = () => setNeedsRegistLogin(true);
+		window.addEventListener(RegistUnauthorizedEvent, onUnauthorized);
+		return () => window.removeEventListener(RegistUnauthorizedEvent, onUnauthorized);
+	}, []);
 
 	useEffect(() => {
 		if (!selectedProgramId) return;
@@ -226,16 +242,7 @@ function RegistrationPage() {
 		fetchClasses();
 	}, [selectedProgramId, selectedStudyType, quota?.YearStudy, quota?.TermID, quota?.IdDot, showError]);
 
-	const summary = useMemo(() => {
-		const totalRegistered = registeredClasses.length;
-		const totalCredits = registeredClasses.reduce((sum, c) => sum + (c.Credits || 0), 0);
-		const totalAvailable = allowedClasses.reduce(
-			(sum, group) =>
-				sum + (group.classStudyUnits?.reduce((s, plan) => s + (plan.Selections?.length || 0), 0) || 0),
-			0
-		);
-		return { totalRegistered, totalCredits, totalAvailable };
-	}, [registeredClasses, allowedClasses]);
+	const summary = computeRegistrationSummary(registeredClasses, allowedClasses);
 
 	const handleRefresh = async () => {
 		if (!selectedProgramId || !quota || typeof quota.IdDot === 'undefined') return;
@@ -272,6 +279,17 @@ function RegistrationPage() {
 			setCancelingClassId(null);
 		}
 	};
+
+	if (needsRegistLogin) {
+		return (
+			<RegistLoginForm
+				onSuccess={() => {
+					setNeedsRegistLogin(false);
+					initialize();
+				}}
+			/>
+		);
+	}
 
 	if (isInitializing) {
 		return <PageLoader label="Đang kết nối hệ thống đăng ký..." />;

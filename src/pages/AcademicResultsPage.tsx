@@ -40,7 +40,7 @@ import {
 	Users,
 	RefreshCw
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, convertScoreToGPA4 } from '@/lib/utils';
 import { getTermLabel } from '@/lib/exportOptions';
 import GradeStatistics from '@/components/common/GradeStatistics';
 
@@ -67,17 +67,6 @@ const isFailed = (course: CourseGrade): boolean => course.Ispass === 'False' || 
 
 const isGDTCSubject = (id: string, name: string): boolean =>
 	(id ?? '').toUpperCase().startsWith('GDTC') || (name ?? '').toLowerCase().includes('giáo dục thể chất');
-
-const convertToGPA4 = (score10: number): number => {
-	if (score10 >= 8.5) return 4;
-	if (score10 >= 8) return 3.5;
-	if (score10 >= 7) return 3;
-	if (score10 >= 6.5) return 2.5;
-	if (score10 >= 5.5) return 2;
-	if (score10 >= 5) return 1.5;
-	if (score10 >= 4) return 1;
-	return 0;
-};
 
 const dedupeMarkDetail = (items: MarkDetailItem[]): MarkDetailItem[] => {
 	const seen = new Set<string>();
@@ -220,9 +209,9 @@ const computeClassAvgInfo = (
 		const self10 = e.sumSelf / e.count;
 		totalCredits += e.credits;
 		classSum10 += class10 * e.credits;
-		classSum4 += convertToGPA4(class10) * e.credits;
+		classSum4 += convertScoreToGPA4(class10) * e.credits;
 		selfSum10 += self10 * e.credits;
-		selfSum4 += convertToGPA4(self10) * e.credits;
+		selfSum4 += convertScoreToGPA4(self10) * e.credits;
 	});
 	return {
 		value10: classSum10 / totalCredits,
@@ -551,12 +540,12 @@ function AcademicResultsPage() {
 		setReloadKey((key) => key + 1);
 	};
 
-	if (isLoading && studyPrograms.length === 0) {
-		return <PageLoader label="Đang tải kết quả học tập..." />;
-	}
-
 	if (error) {
 		return <PageError message={error} onRetry={handleRetry} />;
+	}
+
+	if (isLoading && studyPrograms.length === 0) {
+		return <PageLoader label="Đang tải kết quả học tập..." />;
 	}
 
 	return (

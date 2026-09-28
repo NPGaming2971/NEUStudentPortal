@@ -84,3 +84,11 @@ export const TermLabels: Record<string, string> = {
 };
 
 export const getTermLabel = (termId: string): string => TermLabels[termId] ?? termId;
+
+export const getTermLabelById = (termId: string | number | null | undefined): string => {
+	if (termId === null || termId === undefined || termId === '') return '';
+	const code = String(termId).trim();
+	if (/^HK\d/.test(code)) return getTermLabel(code);
+	if (/^\d{1,2}$/.test(code)) return getTermLabel(`HK${code.padStart(2, '0')}`);
+	return code;
+};

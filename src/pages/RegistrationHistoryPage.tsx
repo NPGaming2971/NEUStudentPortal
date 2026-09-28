@@ -12,12 +12,14 @@ import { PageError } from '@/components/common/PageError';
 import { InlineLoader } from '@/components/common/InlineLoader';
 import { EmptyState } from '@/components/common/EmptyState';
 import { initializeRegistrationSession } from '@/services/registrationAuthService';
+import { RegistUnauthorizedEvent } from '@/lib/registrationApi';
+import RegistLoginForm from '@/components/common/RegistrationPage/RegistLoginForm';
 import {
 	getAllYearStudyAndTerm,
 	getAllRegistrationHistory,
-	type YearStudyAndTerm,
 	type RegistrationHistory
 } from '@/services/registrationService';
+import type { YearAndTermData } from '@/services/scheduleService';
 import { useGlobalNotification } from '@/hooks/useGlobalNotification';
 
 function RegistrationHistoryPage() {
@@ -25,8 +27,9 @@ function RegistrationHistoryPage() {
 
 	// State
 	const [isInitializing, setIsInitializing] = useState(true);
+	const [needsRegistLogin, setNeedsRegistLogin] = useState(false);
 	const [isLoading, setIsLoading] = useState(false);
-	const [yearStudyAndTerm, setYearStudyAndTerm] = useState<YearStudyAndTerm | null>(null);
+	const [yearStudyAndTerm, setYearStudyAndTerm] = useState<YearAndTermData | null>(null);
 	const [selectedYearStudy, setSelectedYearStudy] = useState<string>('');
 	const [selectedTermId, setSelectedTermId] = useState<string>('');
 	const [historyData, setHistoryData] = useState<RegistrationHistory[]>([]);
@@ -35,11 +38,15 @@ function RegistrationHistoryPage() {
 	const initialize = useCallback(async () => {
 		setIsInitializing(true);
 		try {
-			await initializeRegistrationSession();
+			const session = await initializeRegistrationSession();
+			if (!session) {
+				setNeedsRegistLogin(true);
+				return;
+			}
 			const data = await getAllYearStudyAndTerm();
 			setYearStudyAndTerm(data);
-			setSelectedYearStudy(data.CurrentYearStudy);
-			setSelectedTermId(data.CurrentTermID);
+			setSelectedYearStudy(data.CurrentYear);
+			setSelectedTermId(data.CurrentTerm);
 		} catch (err) {
 			console.error('Error initializing:', err);
 			showError('Không thể kết nối đến hệ thống đăng ký');
@@ -51,6 +58,12 @@ function RegistrationHistoryPage() {
 	useEffect(() => {
 		initialize();
 	}, [initialize]);
+
+	useEffect(() => {
+		const onUnauthorized = () => setNeedsRegistLogin(true);
+		window.addEventListener(RegistUnauthorizedEvent, onUnauthorized);
+		return () => window.removeEventListener(RegistUnauthorizedEvent, onUnauthorized);
+	}, []);
 
 	useEffect(() => {
 		if (!selectedYearStudy || !selectedTermId) return;
@@ -94,6 +107,17 @@ function RegistrationHistoryPage() {
 		return { total, registered, canceled };
 	}, [historyData]);
 
+	if (needsRegistLogin) {
+		return (
+			<RegistLoginForm
+				onSuccess={() => {
+					setNeedsRegistLogin(false);
+					initialize();
+				}}
+			/>
+		);
+	}
+
 	if (isInitializing) {
 		return <PageLoader label="Đang kết nối hệ thống đăng ký..." />;
 	}
@@ -127,7 +151,7 @@ function RegistrationHistoryPage() {
 									<SelectValue placeholder="Chọn năm học" />
 								</SelectTrigger>
 								<SelectContent>
-									{yearStudyAndTerm.YearStudys.map((year) => (
+									{yearStudyAndTerm.YearStudy.map((year) => (
 										<SelectItem key={year} value={year}>
 											{year}
 										</SelectItem>
@@ -142,9 +166,9 @@ function RegistrationHistoryPage() {
 									<SelectValue placeholder="Chọn học kỳ" />
 								</SelectTrigger>
 								<SelectContent>
-									{yearStudyAndTerm.TermIDs.map((term) => (
-										<SelectItem key={term} value={term}>
-											{getTermLabel(term)}
+									{yearStudyAndTerm.Terms.map((term) => (
+										<SelectItem key={term.TermID} value={term.TermID}>
+											{term.TermName}
 										</SelectItem>
 									))}
 								</SelectContent>

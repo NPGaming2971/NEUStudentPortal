@@ -3,7 +3,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
 	getYearAndTermScore,
 	getBehaviorScore,
@@ -14,13 +13,15 @@ import {
 	showBehaviorDiscussion,
 	insertBehaviorDiscussion,
 	showEditBehaviorDetailForm,
-	type YearTermScoreData,
 	type BehaviorData,
 	type BehaviorDetailItem,
 	type BehaviorDiscussion
 } from '@/services/conductService';
 import { getStudentId } from '@/services/authService';
 import { useGlobalNotification } from '@/hooks/useGlobalNotification';
+import { useYearAndTerm } from '@/hooks/useYearAndTerm';
+import { getConductRankBadgeClass as getRankColor, getConductRankFromScore } from '@/lib/conductRank';
+import { validateImageFile } from '@/lib/imageValidation';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import {
@@ -42,8 +43,10 @@ import {
 } from 'lucide-react';
 import { cn, formatDate } from '@/lib/utils';
 import { PageLoader } from '@/components/common/PageLoader';
+import { PageError } from '@/components/common/PageError';
 import { InlineLoader } from '@/components/common/InlineLoader';
 import { EmptyState } from '@/components/common/EmptyState';
+import YearTermFilter from '@/components/common/YearTermFilter';
 
 interface GroupSection {
 	name: string;
@@ -84,44 +87,26 @@ const renderHtml = (content: string): { __html: string } => ({
 const isEmptyTermData = (items: BehaviorDetailItem[]): boolean =>
 	!items || items.length === 0 || items.every((item) => item.BehaviorGroupID === null);
 
-function getConductRankFromScore(score: number): string {
-	if (score >= 90) return 'Xuất sắc';
-	if (score >= 80) return 'Tốt';
-	if (score >= 65) return 'Khá';
-	if (score >= 50) return 'Trung bình';
-	if (score >= 35) return 'Kém';
-	return 'Yếu';
-}
-
 const clampScore = (value: number, max: number): number => Math.max(0, Math.min(value, Math.max(0, max)));
 
 function ConductAssessmentPage() {
-	const [yearTermData, setYearTermData] = useState<YearTermScoreData | null>(null);
 	const [behaviorData, setBehaviorData] = useState<BehaviorData | null>(null);
 	const [scores, setScores] = useState<Record<string, number>>({});
 	const [radioSelected, setRadioSelected] = useState<Record<string, string | null>>({});
 	const [isLoading, setIsLoading] = useState(true);
 	const [isSaving, setIsSaving] = useState(false);
-	const [selectedYear, setSelectedYear] = useState('');
-	const [selectedTerm, setSelectedTerm] = useState('');
 	const { showError, showSuccess } = useGlobalNotification();
 	const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({});
-
-	// Fetch year and term data
-	useEffect(() => {
-		const fetchYearTermData = async () => {
-			try {
-				const data = await getYearAndTermScore();
-				setYearTermData(data);
-				setSelectedYear(data.CurrentYear);
-				setSelectedTerm(data.CurrentTerm);
-			} catch (err) {
-				console.error('Error:', err);
-				showError('Không thể tải dữ liệu năm học');
-			}
-		};
-		fetchYearTermData();
-	}, [showError]);
+	const {
+		yearTermData,
+		selectedYear,
+		setSelectedYear,
+		selectedTerm,
+		setSelectedTerm,
+		termsForSelectedYear,
+		error,
+		retry
+	} = useYearAndTerm(getYearAndTermScore);
 
 	// Fetch behavior data when year/term changes
 	useEffect(() => {
@@ -207,25 +192,6 @@ function ConductAssessmentPage() {
 			behavior: 'smooth',
 			block: 'start'
 		});
-	};
-
-	const getRankColor = (rank: string) => {
-		switch (rank) {
-			case 'Xuất sắc':
-				return 'bg-gradient-to-r from-yellow-400 to-amber-500 text-white';
-			case 'Tốt':
-				return 'bg-gradient-to-r from-green-400 to-emerald-500 text-white';
-			case 'Khá':
-				return 'bg-gradient-to-r from-blue-400 to-cyan-500 text-white';
-			case 'Trung bình':
-				return 'bg-gradient-to-r from-gray-400 to-slate-500 text-white';
-			case 'Yếu':
-				return 'bg-gradient-to-r from-orange-400 to-red-500 text-white';
-			case 'Kém':
-				return 'bg-gradient-to-r from-orange-400 to-red-500 text-white';
-			default:
-				return 'bg-muted text-muted-foreground';
-		}
 	};
 
 	const updateScore = (id: string, raw: string) => {
@@ -356,9 +322,9 @@ function ConductAssessmentPage() {
 			showError('Vui lòng nhập nội dung minh chứng.');
 			return;
 		}
-		const allowedTypes = ['image/png', 'image/jpeg'];
-		if (!allowedTypes.includes(file.type) && !/\.(png|jpe?g)$/i.test(file.name)) {
-			showError('Chỉ được đính kèm ảnh định dạng PNG hoặc JPG.');
+		const validation = validateImageFile(file, { strictTypes: true });
+		if (!validation.ok) {
+			showError(validation.message ?? 'File không hợp lệ');
 			return;
 		}
 		setEvidenceBusy((prev) => ({ ...prev, [parentId]: true }));
@@ -446,6 +412,10 @@ function ConductAssessmentPage() {
 		? (groupedItems.find((i) => i.BehaviorDetailID === discussionItemId) ?? null)
 		: null;
 
+	if (error && !yearTermData) {
+		return <PageError message={error} onRetry={retry} />;
+	}
+
 	if (!yearTermData) {
 		return <PageLoader />;
 	}
@@ -460,36 +430,17 @@ function ConductAssessmentPage() {
 
 			{/* Filters */}
 			<div className="flex flex-wrap gap-4">
-				<div className="flex items-center gap-2">
-					<label className="text-sm font-medium text-muted-foreground whitespace-nowrap">Năm học</label>
-					<Select value={selectedYear} onValueChange={setSelectedYear}>
-						<SelectTrigger className="w-[180px]">
-							<SelectValue placeholder="Chọn năm học" />
-						</SelectTrigger>
-						<SelectContent>
-							{yearTermData.YearStudy.map((year) => (
-								<SelectItem key={year} value={year}>
-									Năm học {year}
-								</SelectItem>
-							))}
-						</SelectContent>
-					</Select>
-				</div>
-				<div className="flex items-center gap-2">
-					<label className="text-sm font-medium text-muted-foreground whitespace-nowrap">Học kỳ</label>
-					<Select value={selectedTerm} onValueChange={setSelectedTerm}>
-						<SelectTrigger className="w-[180px]">
-							<SelectValue placeholder="Chọn học kỳ" />
-						</SelectTrigger>
-						<SelectContent>
-							{yearTermData.Terms.map((term) => (
-								<SelectItem key={term.TermID} value={term.TermID}>
-									{term.TermName}
-								</SelectItem>
-							))}
-						</SelectContent>
-					</Select>
-				</div>
+				<YearTermFilter
+					selectedYear={selectedYear}
+					onYearChange={setSelectedYear}
+					selectedTerm={selectedTerm}
+					onTermChange={setSelectedTerm}
+					years={yearTermData.YearStudy}
+					terms={termsForSelectedYear}
+					showLabels
+					yearTriggerClassName="w-[180px]"
+					termTriggerClassName="w-[180px]"
+				/>
 				{behaviorData && (
 					<div className="flex items-center gap-2">
 						{effectivelySaved ? (

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -18,22 +18,22 @@ function CertificatesPage() {
 	const { showError } = useGlobalNotification();
 
 	// Fetch certificates
-	const fetchCertificates = async () => {
+	const fetchCertificates = useCallback(async () => {
 		setIsLoading(true);
 		try {
 			const data = await getStudentCertificates();
-			setCertificates(data?.resultChungChi || []);
+			setCertificates(data || []);
 		} catch (err) {
 			console.error('Error:', err);
 			showError('Không thể tải dữ liệu chứng chỉ');
 		} finally {
 			setIsLoading(false);
 		}
-	};
+	}, [showError]);
 
 	useEffect(() => {
 		fetchCertificates();
-	}, [showError]);
+	}, [fetchCertificates]);
 
 	// Handle back from submit form
 	const handleBackFromSubmit = () => {

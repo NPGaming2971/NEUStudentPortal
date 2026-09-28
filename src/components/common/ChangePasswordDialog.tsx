@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useGlobalNotification } from '@/hooks/useGlobalNotification';
 import { Loader2, Eye, EyeOff, Lock } from 'lucide-react';
-import api from '@/lib/api';
+import { changePassword } from '@/services/authService';
 
 interface ChangePasswordDialogProps {
 	open: boolean;
@@ -52,12 +52,9 @@ function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialogProps)
 
 		setLoading(true);
 		try {
-			const response = await api.post('/authenticate/ChangePassword', {
-				p1: oldPassword,
-				p2: newPassword
-			});
+			const response = await changePassword(oldPassword, newPassword);
 
-			const message = response.data?.Message || '';
+			const message = response.Message || '';
 
 			if (message.toLowerCase().includes('thành công')) {
 				showSuccess(message);

@@ -8,6 +8,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { cn } from '@/lib/utils';
 import { Loader2, Search, AlertCircle, BookOpen, User, Calendar, Clock, Users, GraduationCap } from 'lucide-react';
 import { initializeRegistrationSession } from '@/services/registrationAuthService';
+import { RegistUnauthorizedEvent } from '@/lib/registrationApi';
+import RegistLoginForm from '@/components/common/RegistrationPage/RegistLoginForm';
 import { searchScheduleStudyUnits, type ScheduleStudyUnitSearch } from '@/services/registrationService';
 import { useGlobalNotification } from '@/hooks/useGlobalNotification';
 import { PageLoader } from '@/components/common/PageLoader';
@@ -19,6 +21,7 @@ function RegistrationSearchPage() {
 
 	// State
 	const [isInitializing, setIsInitializing] = useState(true);
+	const [needsRegistLogin, setNeedsRegistLogin] = useState(false);
 	const [isSearching, setIsSearching] = useState(false);
 	const [searchQuery, setSearchQuery] = useState('');
 	const [searchType, setSearchType] = useState<'0' | '1'>('0');
@@ -29,7 +32,11 @@ function RegistrationSearchPage() {
 	useEffect(() => {
 		const initialize = async () => {
 			try {
-				await initializeRegistrationSession();
+				const session = await initializeRegistrationSession();
+				if (!session) {
+					setNeedsRegistLogin(true);
+					return;
+				}
 			} catch (err) {
 				console.error('Error initializing:', err);
 				showError('Không thể kết nối đến hệ thống đăng ký');
@@ -40,6 +47,12 @@ function RegistrationSearchPage() {
 
 		initialize();
 	}, [showError]);
+
+	useEffect(() => {
+		const onUnauthorized = () => setNeedsRegistLogin(true);
+		window.addEventListener(RegistUnauthorizedEvent, onUnauthorized);
+		return () => window.removeEventListener(RegistUnauthorizedEvent, onUnauthorized);
+	}, []);
 
 	// Handle search
 	const handleSearch = async () => {
@@ -87,6 +100,10 @@ function RegistrationSearchPage() {
 		}
 		return { current: 0, max: 0 };
 	};
+
+	if (needsRegistLogin) {
+		return <RegistLoginForm onSuccess={() => setNeedsRegistLogin(false)} />;
+	}
 
 	if (isInitializing) {
 		return <PageLoader label="Đang kết nối hệ thống đăng ký..." />;

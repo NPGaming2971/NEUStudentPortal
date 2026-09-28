@@ -12,6 +12,7 @@ import { getCertificateTypes, submitCertificate, type CertificateType } from '@/
 import { useGlobalNotification } from '@/hooks/useGlobalNotification';
 import { Loader2, Upload, X, ArrowLeft, FileText, CalendarIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { validateImageFile } from '@/lib/imageValidation';
 import { InlineLoader } from '@/components/common/InlineLoader';
 
 interface CertificateSubmitFormProps {
@@ -84,14 +85,13 @@ function CertificateSubmitForm({ onBack }: CertificateSubmitFormProps) {
 			setIsDragActive(false);
 
 			const droppedFile = e.dataTransfer.files[0];
-			if (droppedFile && droppedFile.type.startsWith('image/')) {
-				if (droppedFile.size <= 5 * 1024 * 1024) {
+			if (droppedFile) {
+				const result = validateImageFile(droppedFile);
+				if (result.ok) {
 					setFile(droppedFile);
 				} else {
-					showError('File quá lớn. Vui lòng chọn file nhỏ hơn 5MB');
+					showError(result.message ?? 'File không hợp lệ');
 				}
-			} else {
-				showError('Chỉ chấp nhận file hình ảnh (JPG, PNG)');
 			}
 		},
 		[showError]
@@ -100,12 +100,12 @@ function CertificateSubmitForm({ onBack }: CertificateSubmitFormProps) {
 	// Handle file input change
 	const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
 		const selectedFile = e.target.files?.[0];
-		if (selectedFile) {
-			if (selectedFile.size <= 5 * 1024 * 1024) {
-				setFile(selectedFile);
-			} else {
-				showError('File quá lớn. Vui lòng chọn file nhỏ hơn 5MB');
-			}
+		if (!selectedFile) return;
+		const result = validateImageFile(selectedFile);
+		if (result.ok) {
+			setFile(selectedFile);
+		} else {
+			showError(result.message ?? 'File không hợp lệ');
 		}
 	};
 

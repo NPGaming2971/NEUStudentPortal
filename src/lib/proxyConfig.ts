@@ -13,4 +13,6 @@ export const PortalApiKey =
 
 export const RegistApiKey = 'pscRBF0zT2Mqo6vMw69YMOH43IrB2RtXBS0EHit2kzv';
 
+export const RegistClientId = import.meta.env.VITE_REGIST_CLIENT_ID || 'dtl';
+
 export const PortalClientId = 'neucq';

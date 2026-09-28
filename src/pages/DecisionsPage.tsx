@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { getStudentDecisions, type DecisionItem } from '@/services/decisionService';
 import { FileText, Calendar, User, Hash, ScrollText } from 'lucide-react';
+import { getTermLabelById } from '@/lib/exportOptions';
 import { PageLoader } from '@/components/common/PageLoader';
 import { PageError } from '@/components/common/PageError';
 
@@ -60,7 +61,7 @@ function DecisionsPage() {
 								<div className="flex items-center justify-between flex-wrap gap-2">
 									<div className="flex items-center gap-2">
 										<Badge variant="outline">{decision.YearStudy}</Badge>
-										<Badge variant="outline">HK{decision.TermID}</Badge>
+										<Badge variant="outline">{getTermLabelById(decision.TermID)}</Badge>
 										<Badge variant="outline">{decision.StudentID}</Badge>
 									</div>
 									<Badge variant="secondary">{decision.DecisionName}</Badge>

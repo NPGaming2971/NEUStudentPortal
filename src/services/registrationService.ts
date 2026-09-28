@@ -1,4 +1,6 @@
 import registrationApi from '@/lib/registrationApi';
+import { Endpoints } from '@/lib/endpoints';
+import { normalizeYearAndTermData, type YearAndTermData } from './scheduleService';
 
 export interface StudyProgram {
 	StudyProgramID: string;
@@ -125,6 +127,33 @@ export interface ClassAllowRegistGroup {
 	classStudyUnits: ClassStudyUnitGroup[];
 }
 
+export interface RegistrationSummary {
+	totalRegistered: number;
+	totalCredits: number;
+	totalAvailable: number;
+}
+
+interface AllowedGroupInput {
+	classStudyUnits?: ClassStudyUnitGroup[];
+	ClassStudyUnitPlans?: ClassStudyUnitPlanGroup[];
+}
+
+// Shared registration summary used by both the Report and Plan registration
+// pages. The allowed-classes groups come in two shapes depending on the
+// endpoint, so this accepts either and counts only the enrollable selections.
+export const computeRegistrationSummary = <T extends { Credits?: number }>(
+	registeredClasses: T[],
+	allowedClasses: AllowedGroupInput[]
+): RegistrationSummary => {
+	const totalRegistered = registeredClasses.length;
+	const totalCredits = registeredClasses.reduce((sum, course) => sum + (course.Credits || 0), 0);
+	const totalAvailable = allowedClasses.reduce((sum, group) => {
+		const units = group.classStudyUnits ?? group.ClassStudyUnitPlans;
+		return sum + (units ? units.reduce((s, plan) => s + (plan.Selections?.length || 0), 0) : 0);
+	}, 0);
+	return { totalRegistered, totalCredits, totalAvailable };
+};
+
 export interface ScheduleStudyUnit {
 	CurriculumID: string;
 	ScheduleStudyUnitAlias: string;
@@ -157,10 +186,20 @@ export interface CheckConflictResponse {
 	Message: string | null;
 }
 
+const registrationResultMessage = (data: unknown, fallback: string): string => {
+	if (typeof data === 'string' && data.trim()) return data.trim();
+	if (data && typeof data === 'object') {
+		const record = data as Record<string, unknown>;
+		const text = record.message ?? record.Message;
+		if (typeof text === 'string' && text.trim()) return text.trim();
+	}
+	return fallback;
+};
+
 // Get all study programs for registration
 export const getAllStudyPrograms = async (): Promise<StudyProgram[]> => {
 	try {
-		const response = await registrationApi.get('/Authen/GetAllStudyProgramRegist');
+		const response = await registrationApi.get(Endpoints.Regist.GetAllStudyProgram);
 		return Array.isArray(response.data) ? response.data : [];
 	} catch (error) {
 		console.error('Error fetching study programs:', error);
@@ -171,7 +210,7 @@ export const getAllStudyPrograms = async (): Promise<StudyProgram[]> => {
 // Get registration semester quota
 export const getRegistSemesterQuota = async (studyProgramId: string): Promise<RegistSemesterQuota | null> => {
 	try {
-		const response = await registrationApi.get('/Regist/GetRegistSemesterCreditQuota', {
+		const response = await registrationApi.get(Endpoints.Regist.GetRegistSemesterCreditQuota, {
 			params: {
 				StudyProgramID: studyProgramId
 			}
@@ -191,7 +230,7 @@ export const getAllClassRegisted = async (
 	turnId: number
 ): Promise<{ Rows: RegisteredClass[]; Reval: unknown }> => {
 	try {
-		const response = await registrationApi.post('/Regist/GetAllClassRegisted', {
+		const response = await registrationApi.post(Endpoints.Regist.GetAllClassRegisted, {
 			ReqParam1: status,
 			ReqParam2: turnId.toString()
 		});
@@ -210,7 +249,7 @@ export const getAllClassAllowRegist = async (
 	termId: string
 ): Promise<ClassAllowRegistGroup[]> => {
 	try {
-		const response = await registrationApi.post('/Regist/GetAllClassAllowRegist', {
+		const response = await registrationApi.post(Endpoints.Regist.GetAllClassAllowRegist, {
 			ReqParam1: studyProgramId,
 			ReqParam2: studyType,
 			ReqParam3: yearStudy,
@@ -231,7 +270,7 @@ export const getAllScheduleUnitAllowRegist = async (
 	studyUnitId: string
 ): Promise<ScheduleStudyUnit[]> => {
 	try {
-		const response = await registrationApi.post('/Regist/GetAllScheduleUnitAllowRegist', {
+		const response = await registrationApi.post(Endpoints.Regist.GetAllScheduleUnitAllowRegist, {
 			ReqParam1: studyProgramId,
 			ReqParam2: studyType,
 			ReqParam3: studyUnitId
@@ -249,7 +288,7 @@ export const checkExitsRegist = async (
 	schedules: ScheduleStudyUnit[]
 ): Promise<CheckConflictResponse> => {
 	try {
-		const response = await registrationApi.post('/Regist/CheckExitsRegist', schedules, {
+		const response = await registrationApi.post(Endpoints.Regist.CheckExitsRegist, schedules, {
 			params: {
 				StudyProgramID: studyProgramId
 			}
@@ -268,14 +307,14 @@ export const registScheduleStudyUnit = async (
 	schedules: ScheduleStudyUnit[]
 ): Promise<string> => {
 	try {
-		const response = await registrationApi.post('/Regist/RegistScheduleStudyUnit', schedules, {
+		const response = await registrationApi.post(Endpoints.Regist.RegistScheduleStudyUnit, schedules, {
 			params: {
 				TurnID: turnId,
 				Action: 'REGIST',
 				StudyProgramID: studyProgramId
 			}
 		});
-		return response.data;
+		return registrationResultMessage(response.data, 'Đăng ký thành công');
 	} catch (error) {
 		console.error('Error submitting registration:', error);
 		throw error;
@@ -289,13 +328,13 @@ export const removeScheduleStudyUnit = async (
 	registeredClass: RegisteredClass
 ): Promise<string> => {
 	try {
-		const response = await registrationApi.post('/Regist/RemoveScheduleStudyUnit', registeredClass, {
+		const response = await registrationApi.post(Endpoints.Regist.RemoveScheduleStudyUnit, registeredClass, {
 			params: {
 				TurnID: turnId,
 				StudyProgramID: studyProgramId
 			}
 		});
-		return response.data;
+		return registrationResultMessage(response.data, 'Hủy đăng ký thành công');
 	} catch (error) {
 		console.error('Error removing registration:', error);
 		throw error;
@@ -307,7 +346,7 @@ export const removeScheduleStudyUnit = async (
 // Get all study programs for plan registration
 export const getAllStudyProgramsForPlan = async (): Promise<StudyProgram[]> => {
 	try {
-		const response = await registrationApi.get('/Authen/GetAllStudyProgramRegistPlan');
+		const response = await registrationApi.get(Endpoints.Regist.GetAllStudyProgramPlan);
 		return Array.isArray(response.data) ? response.data : [];
 	} catch (error) {
 		console.error('Error fetching study programs for plan:', error);
@@ -318,7 +357,7 @@ export const getAllStudyProgramsForPlan = async (): Promise<StudyProgram[]> => {
 // Get plan registration semester quota
 export const getPlanRegistSemesterQuota = async (studyProgramId: string): Promise<RegistSemesterQuota | null> => {
 	try {
-		const response = await registrationApi.get('/RegistPlan/GetRegistSemesterCreditQuota', {
+		const response = await registrationApi.get(Endpoints.Regist.GetRegistSemesterCreditQuotaPlan, {
 			params: {
 				studyProgramID: studyProgramId
 			}
@@ -333,7 +372,7 @@ export const getPlanRegistSemesterQuota = async (studyProgramId: string): Promis
 // Get all study types
 export const getAllStudyTypes = async (): Promise<StudyType[]> => {
 	try {
-		const response = await registrationApi.get('/Authen/GetAllStudyType');
+		const response = await registrationApi.get(Endpoints.Regist.GetAllStudyType);
 		return Array.isArray(response.data) ? response.data : [];
 	} catch (error) {
 		console.error('Error fetching study types:', error);
@@ -344,7 +383,7 @@ export const getAllStudyTypes = async (): Promise<StudyType[]> => {
 // Get all classes registered for plan
 export const getAllClassesRegisteredPlan = async (yearStudy: string, termId: string): Promise<RegisteredClass[]> => {
 	try {
-		const response = await registrationApi.post('/RegistPlan/GetAllClassRegistedPlan', {
+		const response = await registrationApi.post(Endpoints.Regist.GetAllClassRegistedPlan, {
 			ReqParam1: yearStudy,
 			ReqParam2: termId
 		});
@@ -363,7 +402,7 @@ export const getAllClassesAllowedPlan = async (
 	termId: string
 ): Promise<CurriculumTypeGroup[]> => {
 	try {
-		const response = await registrationApi.post('/RegistPlan/GetAllClassAllowRegistPlan', {
+		const response = await registrationApi.post(Endpoints.Regist.GetAllClassAllowRegistPlan, {
 			ReqParam1: studyProgramId,
 			ReqParam2: studyType,
 			ReqParam3: yearStudy,
@@ -386,7 +425,7 @@ export const insertScheduleStudyUnitPlan = async (
 ): Promise<string> => {
 	try {
 		const response = await registrationApi.post(
-			'/RegistPlan/InsertScheduleStudyUnitPlan',
+			Endpoints.Regist.InsertScheduleStudyUnitPlan,
 			courses.map((course) => ({
 				...course,
 				IsRegisted: true
@@ -400,7 +439,7 @@ export const insertScheduleStudyUnitPlan = async (
 				}
 			}
 		);
-		return response.data || 'Đăng ký thành công';
+		return registrationResultMessage(response.data, 'Đăng ký thành công');
 	} catch (error) {
 		console.error('Error registering course plan:', error);
 		throw error;
@@ -429,7 +468,7 @@ export const searchScheduleStudyUnits = async (
 	searchType: '0' | '1' = '0'
 ): Promise<ScheduleStudyUnitSearch[]> => {
 	try {
-		const response = await registrationApi.post('/Schedule/GetAllScheduleStudyUnit', {
+		const response = await registrationApi.post(Endpoints.Regist.GetAllScheduleStudyUnit, {
 			ReqParam1: searchQuery,
 			ReqParam2: searchType
 		});
@@ -442,18 +481,11 @@ export const searchScheduleStudyUnits = async (
 
 // ==================== YEAR STUDY AND TERM ====================
 
-export interface YearStudyAndTerm {
-	YearStudys: string[];
-	TermIDs: string[];
-	CurrentTermID: string;
-	CurrentYearStudy: string;
-}
-
-// Get all year studies and terms
-export const getAllYearStudyAndTerm = async (): Promise<YearStudyAndTerm> => {
+// Get all year studies and terms (normalized to the shared YearAndTermData shape)
+export const getAllYearStudyAndTerm = async (): Promise<YearAndTermData> => {
 	try {
-		const response = await registrationApi.get('/Schedule/GetAllYearStudyAndTerm');
-		return response.data;
+		const response = await registrationApi.get(Endpoints.Regist.GetAllYearStudyAndTerm);
+		return normalizeYearAndTermData(response.data);
 	} catch (error) {
 		console.error('Error fetching year study and term:', error);
 		throw error;
@@ -476,7 +508,7 @@ export interface RegistrationHistory {
 // Get all registration history
 export const getAllRegistrationHistory = async (yearStudy: string, termId: string): Promise<RegistrationHistory[]> => {
 	try {
-		const response = await registrationApi.post('/Regist/GetAllHistory', {
+		const response = await registrationApi.post(Endpoints.Regist.GetAllHistory, {
 			ReqParam1: yearStudy,
 			ReqParam2: termId
 		});
@@ -505,7 +537,7 @@ export const removeScheduleStudyUnitPlan = async (
 ): Promise<string> => {
 	try {
 		const response = await registrationApi.post(
-			'/RegistPlan/RemoveScheduleStudyUnitPlan',
+			Endpoints.Regist.RemoveScheduleStudyUnitPlan,
 			courses.map((course) => ({
 				CurriculumID: course.CurriculumID,
 				CurriculumName: course.CurriculumName,
@@ -522,7 +554,7 @@ export const removeScheduleStudyUnitPlan = async (
 				}
 			}
 		);
-		return response.data || 'Hủy đăng ký thành công';
+		return registrationResultMessage(response.data, 'Hủy đăng ký thành công');
 	} catch (error) {
 		console.error('Error removing course plan:', error);
 		throw error;

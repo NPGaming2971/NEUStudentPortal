@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/dialog';
 import { Loader2, BookOpen, CalendarClock, BookMarked, Check, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { isTheoryCourseType } from '@/lib/courseType';
 import { useGlobalNotification } from '@/hooks/useGlobalNotification';
 import { InlineLoader } from '@/components/common/InlineLoader';
 import { EmptyState } from '@/components/common/EmptyState';
@@ -57,7 +58,7 @@ export default function ScheduleSelectionDialog({
 				try {
 					const data = await getAllScheduleUnitAllowRegist(studyProgramId, studyType, course.StudyUnitID);
 					setSchedules(data);
-				} catch (err) {
+				} catch {
 					showError('Không thể tải danh sách lớp học');
 					onClose();
 				} finally {
@@ -66,10 +67,10 @@ export default function ScheduleSelectionDialog({
 			};
 			fetchSchedules();
 		}
-	}, [isOpen, course, studyProgramId, studyType]);
+	}, [isOpen, course, studyProgramId, studyType, onClose, showError]);
 
 	// Derived states
-	const theoryClasses = schedules.filter((s) => s.StudyUnitTypeID === 1 || !s.ParentID);
+	const theoryClasses = schedules.filter((s) => isTheoryCourseType(s.StudyUnitTypeID) || !s.ParentID);
 	const selectedTheory = schedules.find((s) => s.CurriculumID === selectedTheoryId);
 	const requiresPractice = selectedTheory && selectedTheory.NumberOfChilds > 0;
 	const practiceClasses = selectedTheoryId ? schedules.filter((s) => s.ParentID === selectedTheoryId) : [];

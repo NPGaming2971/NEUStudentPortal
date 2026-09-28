@@ -1,4 +1,5 @@
 import api from '../lib/api';
+import { Endpoints } from '../lib/endpoints';
 
 export interface NewsGroup {
 	MaNhomTin: number;
@@ -25,7 +26,7 @@ export interface NewsItem {
 
 export const getNewsGroups = async (): Promise<NewsGroup[]> => {
 	try {
-		const response = await api.get('/guest/GetNhomTin', {
+		const response = await api.get(Endpoints.Guest.GetNhomTin, {
 			params: { maNhomTin: -1 }
 		});
 		return response.data;
@@ -41,10 +42,10 @@ export const getNewsItems = async (
 	currPage: number = 1
 ): Promise<NewsItem[]> => {
 	try {
-		const response = await api.get('/guest/GetTinTucHienThi', {
+		const response = await api.get(Endpoints.Guest.GetTinTucHienThi, {
 			params: { maNhomTin, nhomTin, currPage }
 		});
-		return response.data.tbTinTuc || [];
+		return response.data?.tbTinTuc || [];
 	} catch (error) {
 		console.error('Error fetching news items:', error);
 		throw error;
@@ -53,7 +54,7 @@ export const getNewsItems = async (
 
 export const getNewsById = async (newsId: number): Promise<NewsItem> => {
 	try {
-		const response = await api.get('/guest/GetTinTucTheoMaTin', {
+		const response = await api.get(Endpoints.Guest.GetTinTucTheoMaTin, {
 			params: { maTin: newsId }
 		});
 		return response.data;

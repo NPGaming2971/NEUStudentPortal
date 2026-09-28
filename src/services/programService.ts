@@ -1,5 +1,6 @@
 // Program Service - Educational programs and study programs
 import api from '@/lib/api';
+import { Endpoints } from '@/lib/endpoints';
 
 export interface StudyProgram {
 	StudyProgramID: string;
@@ -49,7 +50,7 @@ export interface StudyProgramDetail {
 
 export const getStudyPrograms = async (): Promise<StudyProgram[]> => {
 	try {
-		const response = await api.get('/student/getstudyprogram');
+		const response = await api.get(Endpoints.Student.GetStudyProgram);
 		return response.data;
 	} catch (error) {
 		console.error('Error fetching study programs:', error);
@@ -59,7 +60,7 @@ export const getStudyPrograms = async (): Promise<StudyProgram[]> => {
 
 export const getStudyProgramDetail = async (studyProgramId: string): Promise<StudyProgramDetail> => {
 	try {
-		const response = await api.get('/student/studyProgram', {
+		const response = await api.get(Endpoints.Student.StudyProgramDetail, {
 			params: { StudyProgramID: studyProgramId, tiendo: 1 }
 		});
 		return response.data;

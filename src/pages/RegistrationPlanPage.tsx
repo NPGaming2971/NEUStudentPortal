@@ -1,30 +1,19 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { cn } from '@/lib/utils';
-import {
-	Loader2,
-	AlertCircle,
-	BookOpen,
-	Calendar,
-	GraduationCap,
-	ClipboardCheck,
-	BookMarked,
-	Check,
-	RefreshCw,
-	Info,
-	Clock,
-	ListChecks
-} from 'lucide-react';
+import { cn, splitDateTime } from '@/lib/utils';
+import { Loader2, AlertCircle, BookOpen, Calendar, BookMarked, Check, RefreshCw, Info, Clock } from 'lucide-react';
 import { InlineLoader } from '@/components/common/InlineLoader';
 import { EmptyState } from '@/components/common/EmptyState';
 import { PageLoader } from '@/components/common/PageLoader';
 import { PageError } from '@/components/common/PageError';
 import { initializeRegistrationSession } from '@/services/registrationAuthService';
+import { RegistUnauthorizedEvent } from '@/lib/registrationApi';
+import RegistLoginForm from '@/components/common/RegistrationPage/RegistLoginForm';
 import {
 	getAllStudyProgramsForPlan,
 	getPlanRegistSemesterQuota,
@@ -33,6 +22,7 @@ import {
 	getAllClassesAllowedPlan,
 	insertScheduleStudyUnitPlan,
 	removeScheduleStudyUnitPlan,
+	computeRegistrationSummary,
 	type StudyProgram,
 	type RegistSemesterQuota,
 	type StudyType,
@@ -41,6 +31,7 @@ import {
 	type ClassStudyUnitPlan
 } from '@/services/registrationService';
 import { useGlobalNotification } from '@/hooks/useGlobalNotification';
+import RegistrationSummaryCards from '@/components/common/RegistrationPage/RegistrationSummaryCards';
 
 function RegistrationPlanPage() {
 	const { showError, showInfo, showSuccess } = useGlobalNotification();
@@ -58,6 +49,7 @@ function RegistrationPlanPage() {
 
 	// Loading states
 	const [isInitializing, setIsInitializing] = useState(true);
+	const [needsRegistLogin, setNeedsRegistLogin] = useState(false);
 	const [isLoadingQuota, setIsLoadingQuota] = useState(false);
 	const [isLoadingClasses, setIsLoadingClasses] = useState(false);
 
@@ -75,30 +67,40 @@ function RegistrationPlanPage() {
 		});
 	}, [quota, studyTypes]);
 
-	// Initialize session and fetch programs
-	useEffect(() => {
-		const initialize = async () => {
-			try {
-				await initializeRegistrationSession();
-
-				const [programs, types] = await Promise.all([getAllStudyProgramsForPlan(), getAllStudyTypes()]);
-
-				setStudyPrograms(programs);
-				setStudyTypes(types);
-
-				if (programs.length > 0) {
-					setSelectedProgramId(programs[0].StudyProgramID);
-				}
-			} catch (err) {
-				console.error('Error initializing:', err);
-				showError('Không thể kết nối đến hệ thống đăng ký');
-			} finally {
-				setIsInitializing(false);
+	const initialize = useCallback(async () => {
+		setIsInitializing(true);
+		try {
+			const session = await initializeRegistrationSession();
+			if (!session) {
+				setNeedsRegistLogin(true);
+				return;
 			}
-		};
 
-		initialize();
+			const [programs, types] = await Promise.all([getAllStudyProgramsForPlan(), getAllStudyTypes()]);
+
+			setStudyPrograms(programs);
+			setStudyTypes(types);
+
+			if (programs.length > 0) {
+				setSelectedProgramId(programs[0].StudyProgramID);
+			}
+		} catch (err) {
+			console.error('Error initializing:', err);
+			showError('Không thể kết nối đến hệ thống đăng ký');
+		} finally {
+			setIsInitializing(false);
+		}
 	}, [showError]);
+
+	useEffect(() => {
+		initialize();
+	}, [initialize]);
+
+	useEffect(() => {
+		const onUnauthorized = () => setNeedsRegistLogin(true);
+		window.addEventListener(RegistUnauthorizedEvent, onUnauthorized);
+		return () => window.removeEventListener(RegistUnauthorizedEvent, onUnauthorized);
+	}, []);
 
 	// Fetch quota when program changes
 	useEffect(() => {
@@ -158,16 +160,7 @@ function RegistrationPlanPage() {
 	}, [selectedProgramId, selectedStudyType, quota?.YearStudy, quota?.TermID, showError]);
 
 	// Calculate summary
-	const summary = useMemo(() => {
-		const totalRegistered = registeredClasses.length;
-		const totalCredits = registeredClasses.reduce((sum, c) => sum + (c.Credits || 0), 0);
-		const totalAvailable = allowedClasses.reduce(
-			(sum, group) => sum + group.ClassStudyUnitPlans.reduce((s, plan) => s + plan.Selections.length, 0),
-			0
-		);
-
-		return { totalRegistered, totalCredits, totalAvailable };
-	}, [registeredClasses, allowedClasses]);
+	const summary = computeRegistrationSummary(registeredClasses, allowedClasses);
 
 	const handleRefresh = async () => {
 		if (!selectedProgramId || !quota) return;
@@ -261,6 +254,17 @@ function RegistrationPlanPage() {
 		}
 	};
 
+	if (needsRegistLogin) {
+		return (
+			<RegistLoginForm
+				onSuccess={() => {
+					setNeedsRegistLogin(false);
+					initialize();
+				}}
+			/>
+		);
+	}
+
 	if (isInitializing) {
 		return <PageLoader label="Đang kết nối hệ thống đăng ký..." />;
 	}
@@ -350,14 +354,14 @@ function RegistrationPlanPage() {
 								<Clock className="w-4 h-4 text-primary" />
 								<div>
 									<p className="text-xs text-muted-foreground">Bắt đầu</p>
-									<p className="font-semibold text-sm">{quota.BeginDate?.split(' ')[0]}</p>
+									<p className="font-semibold text-sm">{splitDateTime(quota.BeginDate).date}</p>
 								</div>
 							</div>
 							<div className="flex items-center gap-2">
 								<Clock className="w-4 h-4 text-primary" />
 								<div>
 									<p className="text-xs text-muted-foreground">Kết thúc</p>
-									<p className="font-semibold text-sm">{quota.EndDate?.split(' ')[0]}</p>
+									<p className="font-semibold text-sm">{splitDateTime(quota.EndDate).date}</p>
 								</div>
 							</div>
 						</div>
@@ -382,49 +386,7 @@ function RegistrationPlanPage() {
 			)}
 
 			{/* Summary Cards */}
-			<div className="grid grid-cols-3 gap-4">
-				<Card className="border-0 shadow-lg bg-gradient-to-br from-primary to-primary/80 text-primary-foreground">
-					<CardContent className="p-4">
-						<div className="flex items-center gap-3">
-							<div className="p-2 rounded-lg bg-white/20">
-								<ClipboardCheck className="w-5 h-5" />
-							</div>
-							<div>
-								<p className="text-primary-foreground/70 text-xs">Đã đăng ký</p>
-								<p className="text-2xl font-bold">{summary.totalRegistered}</p>
-							</div>
-						</div>
-					</CardContent>
-				</Card>
-
-				<Card className="border shadow-lg bg-amber-500/10 border-amber-500/30">
-					<CardContent className="p-4">
-						<div className="flex items-center gap-3">
-							<div className="p-2 rounded-lg bg-amber-500/20">
-								<GraduationCap className="w-5 h-5 text-amber-600" />
-							</div>
-							<div>
-								<p className="text-muted-foreground text-xs">Tổng tín chỉ</p>
-								<p className="text-2xl font-bold text-amber-600">{summary.totalCredits}</p>
-							</div>
-						</div>
-					</CardContent>
-				</Card>
-
-				<Card className="border shadow-lg bg-green-500/10 border-green-500/30">
-					<CardContent className="p-4">
-						<div className="flex items-center gap-3">
-							<div className="p-2 rounded-lg bg-green-500/20">
-								<ListChecks className="w-5 h-5 text-green-600" />
-							</div>
-							<div>
-								<p className="text-muted-foreground text-xs">Có thể đăng ký</p>
-								<p className="text-2xl font-bold text-green-600">{summary.totalAvailable}</p>
-							</div>
-						</div>
-					</CardContent>
-				</Card>
-			</div>
+			<RegistrationSummaryCards summary={summary} />
 
 			{/* Available Classes */}
 			<Card className="border-0 shadow-lg">

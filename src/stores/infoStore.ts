@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { getStudentAvatar, getStudentInfo, type StudentInfo } from '@/services/studentInfoService';
+import { getInitials as getStudentInitials } from '@/lib/utils';
 
 interface InfoState {
 	studentInfo: StudentInfo | null;
@@ -79,12 +80,7 @@ export const useInfoStore = create<InfoState>()(
 			getInitials: () => {
 				const { studentInfo } = get();
 				if (!studentInfo?.HoTen) return 'SV';
-
-				const names = studentInfo.HoTen.trim().split(' ');
-				if (names.length >= 2) {
-					return (names[0][0] + names[names.length - 1][0]).toUpperCase();
-				}
-				return names[0].substring(0, 2).toUpperCase();
+				return getStudentInitials(studentInfo.HoTen);
 			}
 		}),
 		{

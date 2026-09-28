@@ -1,10 +1,7 @@
 import api from '@/lib/api';
-
-export interface LoginResponse {
-	success: boolean;
-	data?: AuthData;
-	message?: string;
-}
+import { Endpoints } from '@/lib/endpoints';
+import { httpErrorMessage, httpErrorStatus, responseMessage } from '@/lib/httpError';
+import { clearAuthStorage, getStoredToken, setStoredAuthorizationData } from '@/lib/storage';
 
 export interface AuthData {
 	Id: string;
@@ -27,33 +24,52 @@ export interface User {
 	dvDaoTao?: string;
 }
 
-export const login = async (username: string, password: string): Promise<LoginResponse> => {
+export const login = async (username: string, password: string): Promise<AuthData> => {
 	try {
-		const response = await api.post('/authenticate/authpsc', {
+		const response = await api.post(Endpoints.Auth.Login, {
 			username,
 			password
 		});
-
-		if (response.data && response.data.Token) {
-			return {
-				success: true,
-				data: response.data
-			};
+		if (response.data?.Token) {
+			return response.data;
 		}
-		return { success: false, message: 'Đăng nhập thất bại' };
+		throw new Error(responseMessage(response.data) ?? 'Đăng nhập thất bại');
 	} catch (error) {
-		console.error('Login error:', error);
-		return {
-			success: false,
-			message: 'Tên đăng nhập hoặc mật khẩu không đúng'
-		};
+		const status = httpErrorStatus(error);
+		if (status === 401 || status === 403) {
+			throw new Error('Tên đăng nhập hoặc mật khẩu không đúng');
+		}
+		throw new Error(httpErrorMessage(error));
+	}
+};
+
+export const changePassword = async (oldPassword: string, newPassword: string): Promise<{ Message: string }> => {
+	try {
+		const response = await api.post(Endpoints.Auth.ChangePassword, {
+			p1: oldPassword,
+			p2: newPassword
+		});
+		return response.data;
+	} catch (error) {
+		console.error('Error changing password:', error);
+		throw error;
+	}
+};
+
+export const requestPasswordReset = async (username: string, email: string): Promise<string> => {
+	try {
+		const response = await api.post(Endpoints.Auth.ResetPassword, {
+			p1: username,
+			p2: email
+		});
+		return responseMessage(response.data) ?? 'Vui lòng kiểm tra email để đặt lại mật khẩu';
+	} catch (error) {
+		throw new Error(httpErrorMessage(error));
 	}
 };
 
 export const clearSession = (): void => {
-	localStorage.removeItem('authorizationData');
-	localStorage.removeItem('registToken');
-	localStorage.removeItem('registTokenAuthSource');
+	clearAuthStorage();
 	document.cookie = 'YIF+pxrGp0isUkYUsAWxn3rQH6pBrNY_=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
 };
 
@@ -94,15 +110,7 @@ export const isTokenExpired = (token: string | null, marginMs = 0): boolean => {
 	return payload.exp * 1000 <= Date.now() + marginMs;
 };
 
-export const getToken = (): string | null => {
-	const raw = localStorage.getItem('authorizationData');
-	if (!raw) return null;
-	try {
-		return JSON.parse(raw).Token ?? null;
-	} catch {
-		return null;
-	}
-};
+export const getToken = (): string | null => getStoredToken();
 
 export const getTokenPayload = (): JwtPayload | null => {
 	const token = getToken();
@@ -117,7 +125,7 @@ export const getStudentId = (): string => {
 };
 
 export const setToken = (token: string, authData?: AuthData): void => {
-	localStorage.setItem('authorizationData', JSON.stringify({ ...authData, Token: token }));
+	setStoredAuthorizationData({ ...authData, Token: token });
 };
 
 export const isTokenValid = (): boolean => {

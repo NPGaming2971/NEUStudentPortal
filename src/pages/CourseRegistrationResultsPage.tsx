@@ -2,64 +2,39 @@ import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
-import { getYearAndTerm, type YearAndTermData } from '@/services/scheduleService';
+import { getYearAndTerm } from '@/services/scheduleService';
 import { getCourseRegistrationResults, type RegistrationResult } from '@/services/academicService';
 import { AlertCircle, BookOpen, Calendar, User, Hash, GraduationCap, ClipboardCheck, BookMarked } from 'lucide-react';
 import { PageLoader } from '@/components/common/PageLoader';
 import { PageError } from '@/components/common/PageError';
 import { InlineLoader } from '@/components/common/InlineLoader';
 import { EmptyState } from '@/components/common/EmptyState';
+import { useYearAndTerm } from '@/hooks/useYearAndTerm';
+import YearTermFilter from '@/components/common/YearTermFilter';
 
 function CourseRegistrationResultsPage() {
-	const [yearTermData, setYearTermData] = useState<YearAndTermData | null>(null);
 	const [registrationResults, setRegistrationResults] = useState<RegistrationResult[]>([]);
-	const [selectedYear, setSelectedYear] = useState<string>('');
-	const [selectedTerm, setSelectedTerm] = useState<string>('');
-	const [isLoading, setIsLoading] = useState(true);
 	const [isLoadingResults, setIsLoadingResults] = useState(false);
-	const [error, setError] = useState<string | null>(null);
 	const [resultsError, setResultsError] = useState<string | null>(null);
-
-	const fetchYearAndTerm = useCallback(async () => {
-		setIsLoading(true);
-		setError(null);
-		try {
-			const data = await getYearAndTerm();
-			setYearTermData(data);
-			setSelectedYear(data.CurrentYear);
-			setSelectedTerm(data.CurrentTerm);
-		} catch (err) {
-			console.error('Error:', err);
-			setError('Không thể tải dữ liệu năm học và học kỳ');
-		} finally {
-			setIsLoading(false);
-		}
-	}, []);
-
-	useEffect(() => {
-		fetchYearAndTerm();
-	}, [fetchYearAndTerm]);
-
-	// Reload term list + reset selected term when the year changes
-	useEffect(() => {
-		if (!selectedYear || !yearTermData) return;
-		const item = yearTermData.items.find((i) => i.YearStudy === selectedYear);
-		if (!item) return;
-		setSelectedTerm((prev) => {
-			if (item.Terms.some((t) => t.TermID === prev)) return prev;
-			return item.Terms.find((t) => t.CurrentTerm)?.TermID ?? item.Terms[0]?.TermID ?? '';
-		});
-	}, [selectedYear, yearTermData]);
+	const {
+		yearTermData,
+		selectedYear,
+		setSelectedYear,
+		selectedTerm,
+		setSelectedTerm,
+		termsForSelectedYear,
+		isLoading,
+		error,
+		retry
+	} = useYearAndTerm(getYearAndTerm);
 
 	const fetchResults = useCallback(async () => {
 		if (!selectedYear || !selectedTerm) return;
 		setIsLoadingResults(true);
 		setResultsError(null);
 		try {
-			const data = await getCourseRegistrationResults(selectedYear, selectedTerm);
-			const results = Array.isArray(data) ? data : data?.data || [];
+			const results = await getCourseRegistrationResults(selectedYear, selectedTerm);
 			setRegistrationResults(results);
 		} catch (err) {
 			console.error('Error:', err);
@@ -84,7 +59,7 @@ function CourseRegistrationResultsPage() {
 	}
 
 	if (error) {
-		return <PageError message={error} onRetry={() => fetchYearAndTerm()} />;
+		return <PageError message={error} onRetry={retry} />;
 	}
 
 	return (
@@ -96,37 +71,17 @@ function CourseRegistrationResultsPage() {
 			</div>
 
 			{/* Filters */}
-			<div className="flex flex-col sm:flex-row gap-4">
-				<Select value={selectedYear} onValueChange={setSelectedYear}>
-					<SelectTrigger className="w-full sm:w-[180px]">
-						<SelectValue placeholder="Chọn năm học" />
-					</SelectTrigger>
-					<SelectContent>
-						{yearTermData?.YearStudy.map((year) => (
-							<SelectItem key={year} value={year}>
-								Năm học {year}
-							</SelectItem>
-						))}
-					</SelectContent>
-				</Select>
-
-				<Select value={selectedTerm} onValueChange={setSelectedTerm}>
-					<SelectTrigger className="w-full sm:w-[150px]">
-						<SelectValue placeholder="Chọn học kỳ" />
-					</SelectTrigger>
-					<SelectContent>
-						{(
-							yearTermData?.items.find((i) => i.YearStudy === selectedYear)?.Terms ??
-							yearTermData?.Terms ??
-							[]
-						).map((term) => (
-							<SelectItem key={term.TermID} value={term.TermID}>
-								{term.TermName}
-							</SelectItem>
-						))}
-					</SelectContent>
-				</Select>
-			</div>
+			<YearTermFilter
+				selectedYear={selectedYear}
+				onYearChange={setSelectedYear}
+				selectedTerm={selectedTerm}
+				onTermChange={setSelectedTerm}
+				years={yearTermData?.YearStudy ?? []}
+				terms={termsForSelectedYear}
+				className="flex flex-col sm:flex-row gap-4"
+				yearTriggerClassName="w-full sm:w-[180px]"
+				termTriggerClassName="w-full sm:w-[150px]"
+			/>
 
 			{/* Summary Cards */}
 			<div className="grid grid-cols-2 gap-4">

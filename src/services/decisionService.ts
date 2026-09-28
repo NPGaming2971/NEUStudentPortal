@@ -1,5 +1,6 @@
 // Decision Service - Student decisions/resolutions
 import api from '@/lib/api';
+import { Endpoints } from '@/lib/endpoints';
 
 export interface DecisionItem {
 	StudentID: string;
@@ -14,7 +15,7 @@ export interface DecisionItem {
 
 export const getStudentDecisions = async (): Promise<DecisionItem[]> => {
 	try {
-		const response = await api.get('/student/decision');
+		const response = await api.get(Endpoints.Student.Decision);
 		return response.data;
 	} catch (error) {
 		console.error('Error fetching student decisions:', error);

@@ -1,5 +1,6 @@
 // Discussion Service - Comments and discussions for courses
 import api from '@/lib/api';
+import { Endpoints } from '@/lib/endpoints';
 
 export interface CourseForComment {
 	ScheduleStudyUnitID: string;
@@ -27,7 +28,7 @@ export interface InsertCommentResponse {
 
 export const getComments = async (yearStudy: string, termId: string): Promise<CourseForComment[]> => {
 	try {
-		const response = await api.get('/student/Comment', {
+		const response = await api.get(Endpoints.Student.Comment, {
 			params: {
 				namhoc: yearStudy,
 				hocky: termId
@@ -42,7 +43,7 @@ export const getComments = async (yearStudy: string, termId: string): Promise<Co
 
 export const getDiscussions = async (scheduleStudyUnitID: string): Promise<Discussion[]> => {
 	try {
-		const response = await api.get('/student/GetDiscussions_Sel', {
+		const response = await api.get(Endpoints.Student.GetDiscussionsSel, {
 			params: { ScheduleStudyUnitID: scheduleStudyUnitID }
 		});
 		return Array.isArray(response.data) ? response.data : [];
@@ -54,7 +55,7 @@ export const getDiscussions = async (scheduleStudyUnitID: string): Promise<Discu
 
 export const insertComment = async (scheduleID: string, content: string): Promise<InsertCommentResponse> => {
 	try {
-		const response = await api.post('/student/InsertComment', {
+		const response = await api.post(Endpoints.Student.InsertComment, {
 			ScheduleID: scheduleID,
 			NoiDung: content,
 			NguoiGui: null

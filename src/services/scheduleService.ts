@@ -1,5 +1,7 @@
 // Schedule Service - Class schedules and year/term data
 import api from '@/lib/api';
+import { Endpoints } from '@/lib/endpoints';
+import { getTermLabel } from '@/lib/exportOptions';
 
 export interface Term {
 	TermID: string;
@@ -11,10 +13,6 @@ export interface YearAndTermItem {
 	YearStudy: string;
 	CurrentYear: string;
 	Terms: Term[];
-}
-
-export interface YearAndTermV2Data {
-	items: YearAndTermItem[];
 }
 
 export interface YearAndTermData {
@@ -66,21 +64,48 @@ export interface ScheduleData {
 	ResultDataSchedule: ScheduleItem[];
 }
 
+// Normalizes the three year/term APIs (YearAndTermV2, YearAndTermScore,
+// GetAllYearStudyAndTerm) — which return slightly different shapes — into a
+// single YearAndTermData used by every year/term filter in the app.
+export const normalizeYearAndTermData = (source: {
+	items?: YearAndTermItem[];
+	YearStudy?: string[];
+	Terms?: Term[];
+	YearStudys?: string[];
+	TermIDs?: string[];
+	CurrentYear?: string;
+	CurrentTerm?: string;
+	CurrentYearStudy?: string;
+	CurrentTermID?: string;
+}): YearAndTermData => {
+	const items = Array.isArray(source?.items) ? source.items : [];
+	const rawTerms = source?.Terms ?? items[0]?.Terms ?? [];
+	const terms: Term[] =
+		rawTerms.length > 0 && typeof rawTerms[0] === 'string'
+			? (rawTerms as unknown as string[]).map((id) => ({ TermID: id, TermName: getTermLabel(id) }))
+			: (rawTerms as Term[]);
+	const yearList =
+		items.length > 0 ? items.map((item) => item.YearStudy) : (source?.YearStudy ?? source?.YearStudys ?? []);
+	const currentYearItem = items.find((item) => item.CurrentYear) ?? items[0];
+	return {
+		CurrentYear: currentYearItem?.YearStudy ?? source?.CurrentYear ?? source?.CurrentYearStudy ?? yearList[0] ?? '',
+		CurrentTerm:
+			currentYearItem?.Terms.find((term) => term.CurrentTerm)?.TermID ??
+			currentYearItem?.Terms[0]?.TermID ??
+			source?.CurrentTerm ??
+			source?.CurrentTermID ??
+			terms[0]?.TermID ??
+			'',
+		YearStudy: yearList,
+		Terms: terms,
+		items
+	};
+};
+
 export const getYearAndTerm = async (): Promise<YearAndTermData> => {
 	try {
-		const response = await api.get('/student/YearAndTermV2');
-		const data = response.data as YearAndTermV2Data;
-		const items = data?.items ?? [];
-		const current = items.find((item) => item.CurrentYear) ?? items[0];
-		const terms = current?.Terms ?? [];
-		const currentTerm = terms.find((term) => term.CurrentTerm) ?? terms[0];
-		return {
-			CurrentYear: current?.YearStudy ?? '',
-			CurrentTerm: currentTerm?.TermID ?? '',
-			YearStudy: items.map((item) => item.YearStudy),
-			Terms: terms,
-			items: items
-		};
+		const response = await api.get(Endpoints.Student.YearAndTermV2);
+		return normalizeYearAndTermData(response.data);
 	} catch (error) {
 		console.error('Error fetching year and term:', error);
 		throw error;
@@ -90,7 +115,7 @@ export const getYearAndTerm = async (): Promise<YearAndTermData> => {
 export const getWeekSchedule = async (yearStudy: string): Promise<Week[]> => {
 	try {
 		const year = yearStudy.split('-')[0] ?? yearStudy;
-		const response = await api.get('/student/getAllWeekHanhChinh', {
+		const response = await api.get(Endpoints.Student.GetAllWeekHanhChinh, {
 			params: { Year: year }
 		});
 		return response.data;
@@ -103,7 +128,7 @@ export const getWeekSchedule = async (yearStudy: string): Promise<Week[]> => {
 export const getDrawingSchedules = async (yearStudy: string, termId: string, week: number): Promise<ScheduleData> => {
 	try {
 		const year = yearStudy.split('-')[0] ?? yearStudy;
-		const response = await api.get('/student/DrawingSchedules', {
+		const response = await api.get(Endpoints.Student.DrawingSchedules, {
 			params: { namhoc: year, hocky: termId, tuan: week }
 		});
 		return response.data;
@@ -146,7 +171,7 @@ export interface PeriorScheduleData {
 
 export const getPeriorSchedules = async (yearStudy: string, termId: string): Promise<PeriorScheduleData> => {
 	try {
-		const response = await api.get('/student/DrawingStudentSchedule_Perior', {
+		const response = await api.get(Endpoints.Student.DrawingStudentSchedulePerior, {
 			params: { namhoc: yearStudy, hocky: termId }
 		});
 		return response.data;
@@ -163,7 +188,7 @@ export interface ClassStudentOption {
 
 export const getClassStudentForSchedules = async (yearStudy: string, termId: string): Promise<ClassStudentOption[]> => {
 	try {
-		const response = await api.get('/student/GetClassStudentForSChedules', {
+		const response = await api.get(Endpoints.Student.GetClassStudentForSChedules, {
 			params: { namhoc: yearStudy, hocky: termId }
 		});
 		return response.data;
@@ -211,7 +236,7 @@ export const getDrawingClassSchedule = async (
 	week: number
 ): Promise<ClassScheduleItem[]> => {
 	try {
-		const response = await api.get('/student/DrawingClassSchedule', {
+		const response = await api.get(Endpoints.Student.DrawingClassSchedule, {
 			params: {
 				ClassStudentID: classStudentId,
 				namhoc: yearStudy,

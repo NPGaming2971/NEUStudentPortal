@@ -1,8 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { getStudentConductScore, type ConductScore } from '@/services/conductService';
-import { AlertCircle, Award, Trophy, Star, TrendingUp } from 'lucide-react';
+import { Award, TrendingUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { getTermLabelById } from '@/lib/exportOptions';
+import { getConductRankConfig as getRankConfig } from '@/lib/conductRank';
 import { PageLoader } from '@/components/common/PageLoader';
 import { PageError } from '@/components/common/PageError';
 import { EmptyState } from '@/components/common/EmptyState';
@@ -29,60 +31,6 @@ function ConductScorePage() {
 	useEffect(() => {
 		fetchConductScores();
 	}, [fetchConductScores]);
-
-	const getRankConfig = (rank: string | null | undefined) => {
-		switch (rank?.toLowerCase()) {
-			case 'xuất sắc':
-				return {
-					color: 'bg-gradient-to-r from-yellow-500 to-amber-500 text-white',
-					bgColor: 'bg-yellow-500/10 border-yellow-500/30',
-					icon: Trophy,
-					textColor: 'text-yellow-600 dark:text-yellow-400'
-				};
-			case 'tốt':
-				return {
-					color: 'bg-gradient-to-r from-green-500 to-emerald-500 text-white',
-					bgColor: 'bg-green-500/10 border-green-500/30',
-					icon: Star,
-					textColor: 'text-green-600 dark:text-green-400'
-				};
-			case 'khá':
-				return {
-					color: 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white',
-					bgColor: 'bg-blue-500/10 border-blue-500/30',
-					icon: TrendingUp,
-					textColor: 'text-blue-600 dark:text-blue-400'
-				};
-			case 'trung bình':
-				return {
-					color: 'bg-gradient-to-r from-orange-500 to-amber-500 text-white',
-					bgColor: 'bg-orange-500/10 border-orange-500/30',
-					icon: Award,
-					textColor: 'text-orange-600 dark:text-orange-400'
-				};
-			case 'yếu':
-				return {
-					color: 'bg-gradient-to-r from-red-500 to-rose-500 text-white',
-					bgColor: 'bg-red-500/10 border-red-500/30',
-					icon: AlertCircle,
-					textColor: 'text-red-600 dark:text-red-400'
-				};
-			case 'kém':
-				return {
-					color: 'bg-gradient-to-r from-red-500 to-rose-500 text-white',
-					bgColor: 'bg-red-500/10 border-red-500/30',
-					icon: AlertCircle,
-					textColor: 'text-red-600 dark:text-red-400'
-				};
-			default:
-				return {
-					color: 'bg-gradient-to-r from-gray-500 to-slate-500 text-white',
-					bgColor: 'bg-gray-500/10 border-gray-500/30',
-					icon: Award,
-					textColor: 'text-gray-600 dark:text-gray-400'
-				};
-		}
-	};
 
 	if (isLoading) {
 		return <PageLoader label="Đang tải điểm rèn luyện..." />;
@@ -118,7 +66,7 @@ function ConductScorePage() {
 									<p className="text-primary-foreground/70 text-sm">Điểm gần nhất</p>
 									<p className="text-4xl font-bold mt-1">{latestScore?.TongDiem || '—'}</p>
 									<p className="text-primary-foreground/80 text-sm mt-1">
-										{latestScore?.YearStudy} - HK{latestScore?.TermID}
+										{latestScore?.YearStudy} - {getTermLabelById(latestScore?.TermID)}
 									</p>
 								</div>
 								<div className="p-4 bg-white/20 rounded-full">
@@ -221,7 +169,7 @@ function ConductScorePage() {
 													{score.YearStudy}
 												</td>
 												<td className="py-4 px-4 text-sm text-foreground">
-													Học kỳ {score.TermID}
+													{getTermLabelById(score.TermID)}
 												</td>
 												<td className="py-4 px-4 text-sm text-muted-foreground">
 													{score.ClassStudentName}
@@ -274,7 +222,9 @@ function ConductScorePage() {
 										<div className="flex items-start justify-between mb-3">
 											<div>
 												<p className="font-semibold text-foreground">{score.YearStudy}</p>
-												<p className="text-sm text-muted-foreground">Học kỳ {score.TermID}</p>
+												<p className="text-sm text-muted-foreground">
+													{getTermLabelById(score.TermID)}
+												</p>
 											</div>
 											<div className="text-right">
 												<p className="text-2xl font-bold text-foreground">

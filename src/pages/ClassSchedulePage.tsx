@@ -1,9 +1,9 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { cn } from '@/lib/utils';
+import { cn, parseDate as parseDateUtil } from '@/lib/utils';
 import {
 	getYearAndTerm,
 	getWeekSchedule,
@@ -11,9 +11,7 @@ import {
 	getPeriorSchedules,
 	getClassStudentForSchedules,
 	getDrawingClassSchedule,
-	type YearAndTermData,
 	type YearAndTermItem,
-	type Term,
 	type Week,
 	type ScheduleData,
 	type PeriodScheduleItem,
@@ -22,6 +20,7 @@ import {
 } from '@/services/scheduleService';
 import { getStudentInfo } from '@/services/studentInfoService';
 import { InlineLoader } from '@/components/common/InlineLoader';
+import { EmptyState } from '@/components/common/EmptyState';
 import {
 	Calendar,
 	ChevronLeft,
@@ -42,6 +41,8 @@ import { PageLoader } from '@/components/common/PageLoader';
 import { PageError } from '@/components/common/PageError';
 import ScheduleExportDialog from '@/components/common/ScheduleExportDialog';
 import { useGlobalNotification } from '@/hooks/useGlobalNotification';
+import { useYearAndTerm } from '@/hooks/useYearAndTerm';
+import YearTermFilter from '@/components/common/YearTermFilter';
 
 type ViewMode = 'week' | 'period' | 'class';
 
@@ -113,13 +114,8 @@ const findStudentClass = (options: ClassStudentOption[], lopSinhVien: string): C
 };
 
 function ClassSchedulePage() {
-	const [yearTermData, setYearTermData] = useState<YearAndTermData | null>(null);
-	const [yearItems, setYearItems] = useState<YearAndTermItem[]>([]);
-	const [terms, setTerms] = useState<Term[]>([]);
 	const [weeks, setWeeks] = useState<Week[]>([]);
 	const [schedule, setSchedule] = useState<ScheduleData | null>(null);
-	const [selectedYear, setSelectedYear] = useState<string>('');
-	const [selectedTerm, setSelectedTerm] = useState<string>('');
 	const [selectedWeek, setSelectedWeek] = useState<number | null>(null);
 	const [currentWeekNum, setCurrentWeekNum] = useState<number | null>(null);
 	const [viewMode, setViewMode] = useState<ViewMode>('week');
@@ -134,17 +130,38 @@ function ClassSchedulePage() {
 	const [isLoadingClassSchedule, setIsLoadingClassSchedule] = useState(false);
 	const [classError, setClassError] = useState<string | null>(null);
 
-	const [isLoading, setIsLoading] = useState(true);
 	const [isLoadingSchedule, setIsLoadingSchedule] = useState(false);
 	const [scheduleError, setScheduleError] = useState<string | null>(null);
 	const [exportOpen, setExportOpen] = useState(false);
-	const [error, setError] = useState<string | null>(null);
+	const {
+		yearTermData,
+		selectedYear,
+		setSelectedYear,
+		selectedTerm,
+		setSelectedTerm,
+		termsForSelectedYear,
+		isLoading,
+		error,
+		retry
+	} = useYearAndTerm(getYearAndTerm);
 	const { showError } = useGlobalNotification();
 
-	const parseDate = (dateStr: string): Date => {
-		const [day, month, year] = dateStr.split('/').map(Number);
-		return new Date(year, month - 1, day);
-	};
+	const yearItems = useMemo<YearAndTermItem[]>(
+		() =>
+			yearTermData?.items ??
+			(yearTermData
+				? [
+						{
+							YearStudy: yearTermData.CurrentYear,
+							CurrentYear: yearTermData.CurrentYear,
+							Terms: yearTermData.Terms
+						}
+					]
+				: []),
+		[yearTermData]
+	);
+
+	const parseDate = (dateStr: string): Date => parseDateUtil(dateStr) ?? new Date(NaN);
 
 	const findCurrentWeek = useCallback((weeksList: Week[]): Week | null => {
 		const marked = weeksList.find((week) => week.Week === week.CurrentWeek);
@@ -178,46 +195,6 @@ function ClassSchedulePage() {
 
 		return null;
 	}, []);
-
-	const fetchYearAndTerm = useCallback(async () => {
-		setIsLoading(true);
-		setError(null);
-		try {
-			const data = await getYearAndTerm();
-			setYearTermData(data);
-			setYearItems(
-				data.items ?? [
-					{
-						YearStudy: data.CurrentYear,
-						CurrentYear: data.CurrentYear,
-						Terms: data.Terms
-					}
-				]
-			);
-			setTerms(data.Terms ?? []);
-			setSelectedYear(data.CurrentYear);
-			setSelectedTerm(data.CurrentTerm);
-		} catch (err) {
-			console.error('Error:', err);
-			setError('Không thể tải dữ liệu năm học và học kỳ');
-		} finally {
-			setIsLoading(false);
-		}
-	}, []);
-
-	useEffect(() => {
-		fetchYearAndTerm();
-	}, [fetchYearAndTerm]);
-
-	// Reload term list + reset selected term when the year changes
-	useEffect(() => {
-		if (!selectedYear) return;
-		const item = yearItems.find((i) => i.YearStudy === selectedYear);
-		if (!item) return;
-		setTerms(item.Terms ?? []);
-		const fallbackTerm = item.Terms.find((t) => t.CurrentTerm)?.TermID ?? item.Terms[0]?.TermID ?? '';
-		setSelectedTerm((prev) => (item.Terms.some((t) => t.TermID === prev) ? prev : fallbackTerm));
-	}, [selectedYear, yearItems]);
 
 	useEffect(() => {
 		if (!selectedYear || !selectedTerm) return;
@@ -562,11 +539,11 @@ function ClassSchedulePage() {
 
 		if (periodSchedule.length === 0) {
 			return (
-				<Card>
-					<CardContent className="py-12 text-center text-sm text-muted-foreground">
-						Không có lịch học trong học kỳ này
-					</CardContent>
-				</Card>
+				<EmptyState
+					icon={Calendar}
+					title="Không có lịch học"
+					description="Không có lịch học trong học kỳ này"
+				/>
 			);
 		}
 
@@ -810,7 +787,7 @@ function ClassSchedulePage() {
 	}
 
 	if (error) {
-		return <PageError message={error} onRetry={() => fetchYearAndTerm()} />;
+		return <PageError message={error} onRetry={retry} />;
 	}
 
 	const currentWeekData = weeks.find((w) => w.Week === selectedWeek);
@@ -838,33 +815,17 @@ function ClassSchedulePage() {
 			{/* Filters */}
 			<div className="flex flex-col md:flex-row gap-4">
 				{/* Year and Term Selectors */}
-				<div className="flex flex-col sm:flex-row gap-3 shrink-0">
-					<Select value={selectedYear} onValueChange={setSelectedYear}>
-						<SelectTrigger className="w-full sm:w-[180px]">
-							<SelectValue placeholder="Chọn năm học" />
-						</SelectTrigger>
-						<SelectContent>
-							{yearTermData?.YearStudy.map((year) => (
-								<SelectItem key={year} value={year}>
-									Năm học {year}
-								</SelectItem>
-							))}
-						</SelectContent>
-					</Select>
-
-					<Select value={selectedTerm} onValueChange={setSelectedTerm}>
-						<SelectTrigger className="w-full sm:w-[150px]">
-							<SelectValue placeholder="Chọn học kỳ" />
-						</SelectTrigger>
-						<SelectContent>
-							{terms.map((term) => (
-								<SelectItem key={term.TermID} value={term.TermID}>
-									{term.TermName}
-								</SelectItem>
-							))}
-						</SelectContent>
-					</Select>
-				</div>
+				<YearTermFilter
+					selectedYear={selectedYear}
+					onYearChange={setSelectedYear}
+					selectedTerm={selectedTerm}
+					onTermChange={setSelectedTerm}
+					years={yearTermData?.YearStudy ?? []}
+					terms={termsForSelectedYear}
+					className="flex-col sm:flex-row gap-3 shrink-0"
+					yearTriggerClassName="w-full sm:w-[180px]"
+					termTriggerClassName="w-full sm:w-[150px]"
+				/>
 
 				{/* View Mode Switcher */}
 				<div className="flex items-center rounded-lg border border-border bg-muted/40 p-0.5 w-full sm:w-auto sm:ml-auto">

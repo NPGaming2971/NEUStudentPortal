@@ -1,6 +1,6 @@
 import { Badge } from '@/components/ui/badge';
 import { Calendar, Clock, ClipboardCheck, GraduationCap, ListChecks } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, splitDateTime } from '@/lib/utils';
 import type { RegistSemesterQuota } from '@/services/registrationService';
 
 interface RegistrationHeaderProps {
@@ -13,6 +13,9 @@ interface RegistrationHeaderProps {
 }
 
 export default function RegistrationHeader({ summary, quota }: RegistrationHeaderProps) {
+	const begin = splitDateTime(quota?.BeginDate);
+	const end = splitDateTime(quota?.EndDate);
+
 	return (
 		<div className="flex flex-col lg:flex-row lg:items-center justify-between gap-8">
 			<div className="space-y-1.5">
@@ -86,8 +89,7 @@ export default function RegistrationHeader({ summary, quota }: RegistrationHeade
 								<span>
 									Bắt đầu:{' '}
 									<span className="text-foreground font-semibold">
-										{quota.BeginDate?.split(' ')?.[1]?.slice(0, 5)}{' '}
-										{quota.BeginDate?.split(' ')?.[0]}
+										{begin.time} {begin.date}
 									</span>
 								</span>
 							</div>
@@ -97,7 +99,7 @@ export default function RegistrationHeader({ summary, quota }: RegistrationHeade
 								<span>
 									Kết thúc:{' '}
 									<span className="text-foreground font-semibold">
-										{quota.EndDate?.split(' ')?.[1]?.slice(0, 5)} {quota.EndDate?.split(' ')?.[0]}
+										{end.time} {end.date}
 									</span>
 								</span>
 							</div>

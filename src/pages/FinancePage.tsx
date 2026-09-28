@@ -3,6 +3,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn, formatCurrency } from '@/lib/utils';
+import { getTermLabelById } from '@/lib/exportOptions';
 import { PageLoader } from '@/components/common/PageLoader';
 import { PageError } from '@/components/common/PageError';
 import { EmptyState } from '@/components/common/EmptyState';
@@ -632,7 +633,7 @@ function FinancePage() {
 														{item.YearStudy}
 													</td>
 													<td className="py-4 px-4 text-sm text-foreground">
-														Học kỳ {item.TermID}
+														{getTermLabelById(item.TermID)}
 													</td>
 													<td className="py-4 px-4 text-sm text-foreground">
 														<div className="flex items-center gap-2">
@@ -668,7 +669,7 @@ function FinancePage() {
 												<div>
 													<p className="font-semibold text-foreground">{item.YearStudy}</p>
 													<p className="text-sm text-muted-foreground">
-														Học kỳ {item.TermID}
+														{getTermLabelById(item.TermID)}
 													</p>
 												</div>
 												<Badge className="bg-amber-500/10 text-amber-600 border-amber-500/30">

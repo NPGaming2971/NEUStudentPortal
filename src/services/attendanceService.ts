@@ -1,5 +1,6 @@
 // Attendance Service - Student attendance records
 import api from '@/lib/api';
+import { Endpoints } from '@/lib/endpoints';
 
 export interface AttendanceItem {
 	MaLHP: string;
@@ -18,7 +19,7 @@ export interface AttendanceItem {
 
 export const getStudentAttendance = async (yearStudy: string, termId: string): Promise<AttendanceItem[]> => {
 	try {
-		const response = await api.get('/student/GetDiemDanhSinhVien', {
+		const response = await api.get(Endpoints.Student.GetDiemDanhSinhVien, {
 			params: { namhoc: yearStudy, hocky: termId }
 		});
 		return response.data;

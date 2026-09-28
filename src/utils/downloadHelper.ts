@@ -2,6 +2,7 @@ import axios, { type AxiosResponse } from 'axios';
 import { getToken } from '@/services/authService';
 import { PortalProxyUrl, PortalApiKey, PortalClientId } from '@/lib/proxyConfig';
 import { getExamDurationMinutes, getTermLabel } from '@/lib/exportOptions';
+import { parseDate, timeToMinutes, minutesToTime } from '@/lib/utils';
 
 const getFileNameFromResponse = (response: AxiosResponse): string | null => {
 	const contentDisposition = response.headers['content-disposition'];
@@ -381,28 +382,6 @@ export interface ExamExportOptions {
 	includeStatus?: boolean;
 }
 
-const parseExamDate = (dateStr: string): Date | null => {
-	const value = (dateStr || '').trim();
-	if (!value) return null;
-
-	let match = /^(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{4})/.exec(value);
-	if (match) {
-		const [, d, m, y] = match;
-		const date = new Date(parseInt(y, 10), parseInt(m, 10) - 1, parseInt(d, 10));
-		return isNaN(date.getTime()) ? null : date;
-	}
-
-	match = /^(\d{4})-(\d{1,2})-(\d{1,2})/.exec(value);
-	if (match) {
-		const [, y, m, d] = match;
-		const date = new Date(parseInt(y, 10), parseInt(m, 10) - 1, parseInt(d, 10));
-		return isNaN(date.getTime()) ? null : date;
-	}
-
-	const date = new Date(value);
-	return isNaN(date.getTime()) ? null : date;
-};
-
 const parseExamTimes = (timeStr: string): { start: string; end?: string } | null => {
 	const value = (timeStr || '').trim();
 	if (!value) return null;
@@ -417,16 +396,6 @@ const parseExamTimes = (timeStr: string): { start: string; end?: string } | null
 
 	if (found.length === 0) return null;
 	return { start: found[0], end: found[1] };
-};
-
-const timeToMinutes = (time: string): number => {
-	const [hh, mm] = time.split(':').map(Number);
-	return hh * 60 + mm;
-};
-
-const minutesToTime = (minutes: number): string => {
-	const normalized = ((minutes % 1440) + 1440) % 1440;
-	return `${String(Math.floor(normalized / 60)).padStart(2, '0')}:${String(normalized % 60).padStart(2, '0')}`;
 };
 
 const formatIcsDate = (dateObj: Date): string =>
@@ -445,7 +414,7 @@ export const downloadExamSchedule = async (
 		let eventCount = 0;
 
 		exams.forEach((exam) => {
-			const examDate = parseExamDate(exam.NgayThi);
+			const examDate = parseDate(exam.NgayThi);
 			if (!examDate) return;
 
 			const times = parseExamTimes(exam.GioThi);

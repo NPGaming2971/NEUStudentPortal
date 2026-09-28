@@ -1,5 +1,6 @@
 // Finance Service - Tuition and scholarship related
 import api from '@/lib/api';
+import { Endpoints } from '@/lib/endpoints';
 
 export interface FinanceItem {
 	HoTen: string;
@@ -35,7 +36,7 @@ export interface ScholarshipItem {
 
 export const getStudentFinance = async (): Promise<FinanceItem[]> => {
 	try {
-		const response = await api.get('/student/AccountFeeHocPhan');
+		const response = await api.get(Endpoints.Student.AccountFeeHocPhan);
 		return response.data;
 	} catch (error) {
 		console.error('Error fetching student finance:', error);
@@ -45,7 +46,7 @@ export const getStudentFinance = async (): Promise<FinanceItem[]> => {
 
 export const getStudentScholarshipPolicy = async (): Promise<ScholarshipItem[]> => {
 	try {
-		const response = await api.get('/student/miengiam');
+		const response = await api.get(Endpoints.Student.MienGiam);
 		return response.data;
 	} catch (error) {
 		console.error('Error fetching scholarship policy:', error);

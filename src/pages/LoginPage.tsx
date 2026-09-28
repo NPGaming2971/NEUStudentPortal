@@ -6,18 +6,22 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
-import { login as loginService } from '@/services/authService';
+import { login as loginService, requestPasswordReset } from '@/services/authService';
+import { loginRegist } from '@/services/registrationAuthService';
 import { useAuth } from '@/hooks/useAuth';
 import { useGlobalNotification } from '@/hooks/useGlobalNotification';
 
 function LoginPage() {
 	const navigate = useNavigate();
 	const { isAuthenticated, login } = useAuth();
-	const { showError } = useGlobalNotification();
+	const { showError, showSuccess } = useGlobalNotification();
+	const [mode, setMode] = useState<'login' | 'forgot'>('login');
 	const [isLoading, setIsLoading] = useState(false);
 	const [showPassword, setShowPassword] = useState(false);
 	const [username, setUsername] = useState('');
 	const [password, setPassword] = useState('');
+	const [resetUsername, setResetUsername] = useState('');
+	const [resetEmail, setResetEmail] = useState('');
 
 	useEffect(() => {
 		if (isAuthenticated) {
@@ -30,16 +34,31 @@ function LoginPage() {
 		setIsLoading(true);
 
 		try {
-			const response = await loginService(username, password);
-
-			if (response.success && response.data?.Token) {
-				login(response.data.Token, response.data);
-				navigate('/student/info');
-			} else {
-				showError(response.message || 'Đăng nhập thất bại');
+			const authData = await loginService(username, password);
+			try {
+				await loginRegist(username.trim(), password);
+			} catch {
+				console.warn('Không thể lấy phiên đăng ký học phần, sẽ đăng nhập lại khi cần');
 			}
-		} catch {
-			showError('Có lỗi xảy ra, vui lòng thử lại');
+			login(authData.Token, authData);
+			navigate('/student/info');
+		} catch (error) {
+			showError(error instanceof Error ? error.message : 'Có lỗi xảy ra, vui lòng thử lại');
+		} finally {
+			setIsLoading(false);
+		}
+	};
+
+	const handleResetPassword = async (e: React.FormEvent) => {
+		e.preventDefault();
+		setIsLoading(true);
+
+		try {
+			const message = await requestPasswordReset(resetUsername.trim(), resetEmail.trim());
+			showSuccess(message);
+			setMode('login');
+		} catch (error) {
+			showError(error instanceof Error ? error.message : 'Không thể gửi yêu cầu đặt lại mật khẩu');
 		} finally {
 			setIsLoading(false);
 		}
@@ -65,71 +84,126 @@ function LoginPage() {
 						</div>
 					</div>
 					<CardTitle className="text-3xl font-bold tracking-tight text-white drop-shadow-sm">
-						Đăng Nhập
+						{mode === 'forgot' ? 'Quên mật khẩu' : 'Đăng Nhập'}
 					</CardTitle>
-					<CardDescription className="text-white/70 text-base">Cổng thông tin đào tạo</CardDescription>
+					<CardDescription className="text-white/70 text-base">
+						{mode === 'forgot'
+							? 'Nhập mã số sinh viên và email để đặt lại mật khẩu'
+							: 'Cổng thông tin đào tạo'}
+					</CardDescription>
 				</CardHeader>
 
 				<CardContent>
-					<form onSubmit={handleLogin} className="space-y-4">
-						<div className="space-y-2">
-							<Label htmlFor="username" className="text-white/90 font-medium">
-								Mã số sinh viên
-							</Label>
-							<Input
-								id="username"
-								value={username}
-								onChange={(e) => setUsername(e.target.value)}
-								placeholder="Nhập mã số sinh viên"
-								className="bg-white/5 border-white/10 text-white placeholder:text-white/40 focus-visible:ring-white/30 focus-visible:border-white/50 transition-all h-11"
-								required
-							/>
-						</div>
-						<div className="space-y-2">
-							<Label htmlFor="password" className="text-white/90 font-medium">
-								Mật khẩu
-							</Label>
-							<div className="relative">
+					{mode === 'forgot' ? (
+						<form onSubmit={handleResetPassword} className="space-y-4">
+							<div className="space-y-2">
+								<Label htmlFor="reset-username" className="text-white/90 font-medium">
+									Mã số sinh viên
+								</Label>
 								<Input
-									id="password"
-									type={showPassword ? 'text' : 'password'}
-									value={password}
-									onChange={(e) => setPassword(e.target.value)}
-									placeholder="Nhập mật khẩu"
-									className="bg-white/5 border-white/10 text-white placeholder:text-white/40 focus-visible:ring-white/30 focus-visible:border-white/50 transition-all pr-10 h-11"
+									id="reset-username"
+									value={resetUsername}
+									onChange={(e) => setResetUsername(e.target.value)}
+									placeholder="Nhập mã số sinh viên"
+									className="bg-white/5 border-white/10 text-white placeholder:text-white/40 focus-visible:ring-white/30 focus-visible:border-white/50 transition-all h-11"
 									required
 								/>
-								<button
-									type="button"
-									onClick={() => setShowPassword(!showPassword)}
-									className="absolute right-3 top-1/2 -translate-y-1/2 text-white/50 hover:text-white transition-colors"
-								>
-									{showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-								</button>
 							</div>
-						</div>
+							<div className="space-y-2">
+								<Label htmlFor="reset-email" className="text-white/90 font-medium">
+									Email
+								</Label>
+								<Input
+									id="reset-email"
+									type="email"
+									value={resetEmail}
+									onChange={(e) => setResetEmail(e.target.value)}
+									placeholder="Nhập email đã đăng ký"
+									className="bg-white/5 border-white/10 text-white placeholder:text-white/40 focus-visible:ring-white/30 focus-visible:border-white/50 transition-all h-11"
+									required
+								/>
+							</div>
 
-						<Button
-							type="submit"
-							className="w-full bg-white hover:bg-white/90 text-primary dark:text-black font-bold h-11 text-base shadow-lg hover:shadow-xl hover:scale-[1.01] transition-all duration-300 mt-4"
-							disabled={isLoading}
-						>
-							{isLoading ? (
-								<>
-									<Loader2 className="mr-2 h-4 w-4 animate-spin" />
-									Đang xử lý...
-								</>
-							) : (
-								'Đăng nhập'
-							)}
-						</Button>
-					</form>
+							<Button
+								type="submit"
+								className="w-full bg-white hover:bg-white/90 text-primary dark:text-black font-bold h-11 text-base shadow-lg hover:shadow-xl hover:scale-[1.01] transition-all duration-300 mt-4"
+								disabled={isLoading}
+							>
+								{isLoading ? (
+									<>
+										<Loader2 className="mr-2 h-4 w-4 animate-spin" />
+										Đang xử lý...
+									</>
+								) : (
+									'Gửi yêu cầu đặt lại mật khẩu'
+								)}
+							</Button>
+						</form>
+					) : (
+						<form onSubmit={handleLogin} className="space-y-4">
+							<div className="space-y-2">
+								<Label htmlFor="username" className="text-white/90 font-medium">
+									Mã số sinh viên
+								</Label>
+								<Input
+									id="username"
+									value={username}
+									onChange={(e) => setUsername(e.target.value)}
+									placeholder="Nhập mã số sinh viên"
+									className="bg-white/5 border-white/10 text-white placeholder:text-white/40 focus-visible:ring-white/30 focus-visible:border-white/50 transition-all h-11"
+									required
+								/>
+							</div>
+							<div className="space-y-2">
+								<Label htmlFor="password" className="text-white/90 font-medium">
+									Mật khẩu
+								</Label>
+								<div className="relative">
+									<Input
+										id="password"
+										type={showPassword ? 'text' : 'password'}
+										value={password}
+										onChange={(e) => setPassword(e.target.value)}
+										placeholder="Nhập mật khẩu"
+										className="bg-white/5 border-white/10 text-white placeholder:text-white/40 focus-visible:ring-white/30 focus-visible:border-white/50 transition-all pr-10 h-11"
+										required
+									/>
+									<button
+										type="button"
+										onClick={() => setShowPassword(!showPassword)}
+										className="absolute right-3 top-1/2 -translate-y-1/2 text-white/50 hover:text-white transition-colors"
+									>
+										{showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+									</button>
+								</div>
+							</div>
+
+							<Button
+								type="submit"
+								className="w-full bg-white hover:bg-white/90 text-primary dark:text-black font-bold h-11 text-base shadow-lg hover:shadow-xl hover:scale-[1.01] transition-all duration-300 mt-4"
+								disabled={isLoading}
+							>
+								{isLoading ? (
+									<>
+										<Loader2 className="mr-2 h-4 w-4 animate-spin" />
+										Đang xử lý...
+									</>
+								) : (
+									'Đăng nhập'
+								)}
+							</Button>
+						</form>
+					)}
 				</CardContent>
 
 				<CardFooter className="flex flex-col gap-4 items-center justify-center pt-2 pb-6">
-					<div className="text-xs text-white/50 text-center px-4">
-						Bằng việc đăng nhập, bạn đồng ý với các quy định và điều khoản sử dụng của nhà trường.
-					</div>
+					<button
+						type="button"
+						onClick={() => setMode(mode === 'login' ? 'forgot' : 'login')}
+						className="text-white/70 hover:text-white text-sm underline-offset-4 hover:underline transition-colors"
+					>
+						{mode === 'login' ? 'Quên mật khẩu?' : 'Quay lại đăng nhập'}
+					</button>
 				</CardFooter>
 			</Card>
 

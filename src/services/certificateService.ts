@@ -1,5 +1,6 @@
 // Certificate Service - Student certificates management
 import api from '@/lib/api';
+import { Endpoints } from '@/lib/endpoints';
 
 export interface Certificate {
 	CertificateType: string;
@@ -24,10 +25,10 @@ export interface CertificateType {
 }
 
 // Get student certificates
-export const getStudentCertificates = async (): Promise<CertificateData> => {
+export const getStudentCertificates = async (): Promise<Certificate[]> => {
 	try {
-		const response = await api.get('/student/ChungChiNgoaiNgu');
-		return response.data;
+		const response = await api.get(Endpoints.Student.ChungChiNgoaiNgu);
+		return response.data?.resultChungChi || [];
 	} catch (error) {
 		console.error('Error fetching student certificates:', error);
 		throw error;
@@ -37,7 +38,7 @@ export const getStudentCertificates = async (): Promise<CertificateData> => {
 // Get certificate types for submission
 export const getCertificateTypes = async (): Promise<CertificateType[]> => {
 	try {
-		const response = await api.get('/student/GetLoaiChungChi');
+		const response = await api.get(Endpoints.Student.GetLoaiChungChi);
 		return response.data;
 	} catch (error) {
 		console.error('Error fetching certificate types:', error);
@@ -48,7 +49,7 @@ export const getCertificateTypes = async (): Promise<CertificateType[]> => {
 // Submit a new certificate
 export const submitCertificate = async (formData: FormData): Promise<{ Message: string }> => {
 	try {
-		const response = await api.post('/student/ChungChi_Submit', formData, {
+		const response = await api.post(Endpoints.Student.ChungChiSubmit, formData, {
 			headers: {
 				'Content-Type': 'multipart/form-data'
 			}

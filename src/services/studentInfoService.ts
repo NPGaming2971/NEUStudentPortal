@@ -1,5 +1,6 @@
 // Student Info Service - Profile and personal information
 import api from '@/lib/api';
+import { Endpoints } from '@/lib/endpoints';
 
 export interface StudentInfo {
 	MaSinhVien: string;
@@ -57,7 +58,7 @@ const normalizeAvatarDataUrl = (dataUrl: string): string => {
 
 export const getStudentAvatar = async (): Promise<StudentAvatarResponse> => {
 	try {
-		const response = await api.get('/student/GetAvatar');
+		const response = await api.get(Endpoints.Student.Avatar);
 		return {
 			data: normalizeAvatarDataUrl(response.data?.data ?? '')
 		};
@@ -69,7 +70,7 @@ export const getStudentAvatar = async (): Promise<StudentAvatarResponse> => {
 
 export const getStudentInfo = async (): Promise<StudentInfoResponse> => {
 	try {
-		const response = await api.get('/student/info');
+		const response = await api.get(Endpoints.Student.Info);
 		return response.data;
 	} catch (error) {
 		console.error('Error fetching student info:', error);
@@ -79,7 +80,7 @@ export const getStudentInfo = async (): Promise<StudentInfoResponse> => {
 
 export const getStudentUpdateInfo = async () => {
 	try {
-		const response = await api.get('/student/StudentInfoUpdate');
+		const response = await api.get(Endpoints.Student.StudentInfoUpdate);
 		return response.data;
 	} catch (error) {
 		console.error('Error fetching student update info:', error);
@@ -89,7 +90,7 @@ export const getStudentUpdateInfo = async () => {
 
 export const updateStudent = async (studentData: Partial<StudentInfo>) => {
 	try {
-		const response = await api.post('/student/UpdateStudent', studentData);
+		const response = await api.post(Endpoints.Student.UpdateStudent, studentData);
 		return response.data;
 	} catch (error) {
 		console.error('Error updating student info:', error);
@@ -100,7 +101,7 @@ export const updateStudent = async (studentData: Partial<StudentInfo>) => {
 // Province, District, Reference data
 export const getProvinces = async () => {
 	try {
-		const response = await api.get('/student/Provinces_Sel');
+		const response = await api.get(Endpoints.Student.ProvincesSel);
 		return response.data;
 	} catch (error) {
 		console.error('Error fetching provinces:', error);
@@ -110,7 +111,7 @@ export const getProvinces = async () => {
 
 export const getDistricts = async (provinceId: number) => {
 	try {
-		const response = await api.get('/student/Districts_Sel_ProvinceID', {
+		const response = await api.get(Endpoints.Student.DistrictsSelProvinceID, {
 			params: { ProvinceID: provinceId }
 		});
 		return response.data;
@@ -122,7 +123,7 @@ export const getDistricts = async (provinceId: number) => {
 
 export const getCountries = async () => {
 	try {
-		const response = await api.get('/student/Countries');
+		const response = await api.get(Endpoints.Student.Countries);
 		return response.data;
 	} catch (error) {
 		console.error('Error fetching countries:', error);
@@ -132,7 +133,7 @@ export const getCountries = async () => {
 
 export const getReligions = async () => {
 	try {
-		const response = await api.get('/student/Religions');
+		const response = await api.get(Endpoints.Student.Religions);
 		return response.data;
 	} catch (error) {
 		console.error('Error fetching religions:', error);
@@ -142,7 +143,7 @@ export const getReligions = async () => {
 
 export const getEthnicGroups = async () => {
 	try {
-		const response = await api.get('/student/Ethnics');
+		const response = await api.get(Endpoints.Student.Ethnics);
 		return response.data;
 	} catch (error) {
 		console.error('Error fetching ethnic groups:', error);

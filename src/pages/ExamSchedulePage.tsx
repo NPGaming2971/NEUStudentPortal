@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { getYearAndTerm, type YearAndTermData } from '@/services/scheduleService';
+import { getYearAndTerm } from '@/services/scheduleService';
 import { getStudentExams, getStudentFullExams, type ExamItem } from '@/services/examService';
 import { ClipboardList, Calendar, Clock, MapPin, Search, FileText, Download } from 'lucide-react';
 import ExamExportDialog from '@/components/common/ExamExportDialog';
@@ -12,60 +12,36 @@ import { PageLoader } from '@/components/common/PageLoader';
 import { PageError } from '@/components/common/PageError';
 import { InlineLoader } from '@/components/common/InlineLoader';
 import { EmptyState } from '@/components/common/EmptyState';
+import { useYearAndTerm } from '@/hooks/useYearAndTerm';
+import YearTermFilter from '@/components/common/YearTermFilter';
 
 function ExamSchedulePage() {
-	const [yearTermData, setYearTermData] = useState<YearAndTermData | null>(null);
-	const [selectedYear, setSelectedYear] = useState<string>('');
-	const [selectedTerm, setSelectedTerm] = useState<string>('');
 	const [currentExams, setCurrentExams] = useState<ExamItem[]>([]);
 	const [allExams, setAllExams] = useState<ExamItem[]>([]);
-	const [isLoading, setIsLoading] = useState(true);
 	const [isLoadingCurrent, setIsLoadingCurrent] = useState(false);
 	const [isLoadingAll, setIsLoadingAll] = useState(false);
-	const [error, setError] = useState<string | null>(null);
 	const [currentError, setCurrentError] = useState<string | null>(null);
 	const [allExamsError, setAllExamsError] = useState<string | null>(null);
 	const [searchTerm, setSearchTerm] = useState('');
 	const [activeTab, setActiveTab] = useState('current');
 	const [exportOpen, setExportOpen] = useState(false);
+	const {
+		yearTermData,
+		selectedYear,
+		setSelectedYear,
+		selectedTerm,
+		setSelectedTerm,
+		termsForSelectedYear,
+		isLoading,
+		error,
+		retry
+	} = useYearAndTerm(getYearAndTerm);
 	const [filters, setFilters] = useState({
 		credits: 'all',
 		status: 'all',
 		examType: 'all',
 		examAttempt: 'all'
 	});
-
-	// Fetch year and term data
-	const fetchYearAndTerm = useCallback(async () => {
-		setIsLoading(true);
-		setError(null);
-		try {
-			const data = await getYearAndTerm();
-			setYearTermData(data);
-			setSelectedYear(data.CurrentYear);
-			setSelectedTerm(data.CurrentTerm);
-		} catch (err) {
-			console.error('Error:', err);
-			setError('Không thể tải dữ liệu năm học và học kỳ');
-		} finally {
-			setIsLoading(false);
-		}
-	}, []);
-
-	useEffect(() => {
-		fetchYearAndTerm();
-	}, [fetchYearAndTerm]);
-
-	// Reload term list + reset selected term when the year changes
-	useEffect(() => {
-		if (!selectedYear || !yearTermData) return;
-		const item = yearTermData.items.find((i) => i.YearStudy === selectedYear);
-		if (!item) return;
-		setSelectedTerm((prev) => {
-			if (item.Terms.some((t) => t.TermID === prev)) return prev;
-			return item.Terms.find((t) => t.CurrentTerm)?.TermID ?? item.Terms[0]?.TermID ?? '';
-		});
-	}, [selectedYear, yearTermData]);
 
 	// Fetch current exams when year/term changes
 	const fetchCurrentExams = useCallback(async () => {
@@ -243,7 +219,7 @@ function ExamSchedulePage() {
 	}
 
 	if (error) {
-		return <PageError message={error} onRetry={() => fetchYearAndTerm()} />;
+		return <PageError message={error} onRetry={retry} />;
 	}
 
 	return (
@@ -280,35 +256,16 @@ function ExamSchedulePage() {
 							Lịch thi học kỳ
 						</h2>
 						<div className="flex flex-col sm:flex-row gap-3">
-							<Select value={selectedYear} onValueChange={setSelectedYear}>
-								<SelectTrigger className="w-full sm:w-[180px]">
-									<SelectValue placeholder="Năm học" />
-								</SelectTrigger>
-								<SelectContent>
-									{yearTermData?.YearStudy.map((year) => (
-										<SelectItem key={year} value={year}>
-											Năm học {year}
-										</SelectItem>
-									))}
-								</SelectContent>
-							</Select>
-
-							<Select value={selectedTerm} onValueChange={setSelectedTerm}>
-								<SelectTrigger className="w-full sm:w-[150px]">
-									<SelectValue placeholder="Học kỳ" />
-								</SelectTrigger>
-								<SelectContent>
-									{(
-										yearTermData?.items.find((i) => i.YearStudy === selectedYear)?.Terms ??
-										yearTermData?.Terms ??
-										[]
-									).map((term) => (
-										<SelectItem key={term.TermID} value={term.TermID}>
-											{term.TermName}
-										</SelectItem>
-									))}
-								</SelectContent>
-							</Select>
+							<YearTermFilter
+								selectedYear={selectedYear}
+								onYearChange={setSelectedYear}
+								selectedTerm={selectedTerm}
+								onTermChange={setSelectedTerm}
+								years={yearTermData?.YearStudy ?? []}
+								terms={termsForSelectedYear}
+								yearTriggerClassName="w-full sm:w-[180px]"
+								termTriggerClassName="w-full sm:w-[150px]"
+							/>
 						</div>
 					</div>
 					{isLoadingCurrent ? (

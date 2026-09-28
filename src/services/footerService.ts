@@ -1,4 +1,5 @@
 import api from '../lib/api';
+import { Endpoints } from '../lib/endpoints';
 
 export interface FooterInfoItem {
 	SettingName: string;
@@ -21,7 +22,7 @@ export interface FooterInfo {
 
 export const getFooterInfo = async (): Promise<FooterInfo> => {
 	try {
-		const response = await api.get<FooterInfoItem[]>('/guest/footerinfor');
+		const response = await api.get<FooterInfoItem[]>(Endpoints.Guest.FooterInfo);
 		const settings = response.data || [];
 
 		const get = (name: string): string => settings.find((s) => s.SettingName === name)?.SettingStringData || '';

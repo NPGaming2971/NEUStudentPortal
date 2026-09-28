@@ -1,81 +1,36 @@
-import { getToken, isTokenExpired } from './authService';
-import { PortalProxyUrl, RegistProxyUrl, PortalClientId, PortalApiKey } from '../lib/proxyConfig';
+import { Endpoints } from '@/lib/endpoints';
+import registrationApi, { type RegistrationRequestConfig } from '@/lib/registrationApi';
+import { httpErrorMessage, httpErrorStatus, responseMessage } from '@/lib/httpError';
+import { getRegistToken, setRegistToken } from '@/lib/storage';
+import { isTokenExpired } from './authService';
 
 /**
- * Bước 1: Lấy Refresh Token từ Portal API
+ * Đăng nhập trực tiếp vào hệ thống đăng ký học phần (tinchi) bằng mã sinh viên
+ * và mật khẩu — không còn phụ thuộc vào GetRefreshToken của cổng thông tin.
  */
-export const getRefreshToken = async (portalToken: string): Promise<string> => {
-	const response = await fetch(`${PortalProxyUrl}/Authenticate/GetRefreshToken`, {
-		method: 'GET',
-		headers: {
-			accept: 'application/json, text/plain, */*',
-			apikey: PortalApiKey,
-			authorization: `Bearer ${portalToken}`,
-			clientid: PortalClientId
-		}
-	});
-
-	if (!response.ok) {
-		throw new Error(`GetRefreshToken failed: ${response.status}`);
-	}
-
-	const refreshToken = await response.text();
-	return refreshToken.replace(/"/g, '');
-};
-
-export const authenticatePortal = async (refreshToken: string) => {
-	const response = await fetch(`${RegistProxyUrl}/Authen/AuthenticatePortal`, {
-		method: 'POST',
-		headers: {
-			accept: 'application/json, text/plain, */*',
-			'content-type': 'application/json',
-			apikey: PortalApiKey,
-			clientid: PortalClientId
-		},
-		body: JSON.stringify({ Token: refreshToken })
-	});
-
-	if (!response.ok) {
-		throw new Error(`AuthenticatePortal failed: ${response.status}`);
-	}
-
-	const authData = await response.json();
-	return authData;
-};
-
-export const initializeRegistrationSession = async () => {
+export const loginRegist = async (username: string, password: string): Promise<void> => {
 	try {
-		const portalToken = getToken();
-		if (!portalToken) {
-			throw new Error('Không tìm thấy token portal');
-		}
-
-		const existingRegistToken = localStorage.getItem('registToken');
-		const lastAuthToken = localStorage.getItem('registTokenAuthSource');
-
-		if (existingRegistToken && lastAuthToken === portalToken && !isTokenExpired(existingRegistToken, 30000)) {
-			// Token còn hạn ít nhất 30 giây
-			return existingRegistToken;
-		}
-
-		// Bước 1: Lấy Refresh Token
-		const refreshToken = await getRefreshToken(portalToken);
-
-		// Bước 2: Authenticate với Regist API
-		const authData = await authenticatePortal(refreshToken);
-
+		const response = await registrationApi.post(Endpoints.Regist.Authenticate, { username, password }, {
+			skipAuth: true
+		} as RegistrationRequestConfig);
+		const authData = response.data as { Token?: string } | null;
 		if (authData?.Token) {
-			// Lưu token đăng ký vào localStorage
-			localStorage.setItem('registToken', authData.Token);
-			// Lưu token portal gốc để theo dõi thay đổi
-			localStorage.setItem('registTokenAuthSource', portalToken);
-			return authData.Token;
+			setRegistToken(authData.Token);
+			return;
 		}
-
-		throw new Error('Không nhận được token từ hệ thống đăng ký');
+		throw new Error(responseMessage(response.data) ?? 'Đăng nhập thất bại');
 	} catch (error) {
-		const message = error instanceof Error ? error.message : 'Unknown error';
-		console.error('❌ Lỗi flow đăng ký:', message);
-		throw error;
+		const status = httpErrorStatus(error);
+		if (status === 401 || status === 403) {
+			throw new Error('Sai mã sinh viên hoặc mật khẩu');
+		}
+		throw new Error(httpErrorMessage(error));
 	}
 };
+
+export const getRegistSession = (): string | null => {
+	const token = getRegistToken();
+	return token && !isTokenExpired(token, 30000) ? token : null;
+};
+
+export const initializeRegistrationSession = async (): Promise<string | null> => getRegistSession();

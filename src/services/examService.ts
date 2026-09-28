@@ -1,5 +1,6 @@
 // Exam Service - Exam schedules
 import api from '@/lib/api';
+import { Endpoints } from '@/lib/endpoints';
 
 export interface ExamItem {
 	CurriculumID: string;
@@ -15,7 +16,7 @@ export interface ExamItem {
 
 export const getStudentExams = async (yearStudy: string, termId: string): Promise<ExamItem[]> => {
 	try {
-		const response = await api.get('/student/exam', {
+		const response = await api.get(Endpoints.Student.Exam, {
 			params: { namhoc: yearStudy, hocky: termId }
 		});
 		return response.data;
@@ -27,7 +28,7 @@ export const getStudentExams = async (yearStudy: string, termId: string): Promis
 
 export const getStudentFullExams = async (): Promise<ExamItem[]> => {
 	try {
-		const response = await api.get('/student/showexambytime');
+		const response = await api.get(Endpoints.Student.ShowExamByTime);
 		return response.data;
 	} catch (error) {
 		console.error('Error fetching full exam schedule:', error);

@@ -1,5 +1,6 @@
 // Academic Service - Study programs, grades, conduct score, course registration, graduation
 import api from '@/lib/api';
+import { Endpoints } from '@/lib/endpoints';
 import { getStudyPrograms, type StudyProgram } from './programService';
 
 export { getStudyPrograms, type StudyProgram };
@@ -18,7 +19,6 @@ export interface CourseGrade {
 	MarkLetter?: string | null;
 	DiemTK_Chu: string | null;
 	Ispass?: string; // "True" | "False" | ""
-	IsPass?: string | number | boolean; // raw pass flag: "1" | "" | true | 0 ...
 	ViewTongHocKy?: string;
 	IsInUsed?: boolean;
 	TermID?: string;
@@ -112,7 +112,7 @@ export const getDashboardKetQuaHocTap = async (
 	termId: string
 ): Promise<DashboardKetQuaHocTap> => {
 	try {
-		const response = await api.post('/student/DashboardKetQuaHocTap', {
+		const response = await api.post(Endpoints.Student.DashboardKetQuaHocTap, {
 			p1: studyProgramId,
 			p2: yearStudy,
 			p3: termId
@@ -247,10 +247,10 @@ const normalizeMarksResponse = (data: unknown): StudyProgramResults => {
 	};
 };
 
-export const getStudyProgramResults = async (studyProgramId: string): Promise<StudyProgramResults> => {
+const getStudyProgramMarks = async (studyProgramId: string, loai: 'SV' | 'CTDT'): Promise<StudyProgramResults> => {
 	try {
-		const response = await api.get('/student/marks', {
-			params: { ctdt: studyProgramId, loai: 'SV' }
+		const response = await api.get(Endpoints.Student.Marks, {
+			params: { ctdt: studyProgramId, loai }
 		});
 		return normalizeMarksResponse(response.data);
 	} catch (error) {
@@ -259,17 +259,11 @@ export const getStudyProgramResults = async (studyProgramId: string): Promise<St
 	}
 };
 
-export const getStudyProgramResultsByCurriculum = async (studyProgramId: string): Promise<StudyProgramResults> => {
-	try {
-		const response = await api.get('/student/marks', {
-			params: { ctdt: studyProgramId, loai: 'CTDT' }
-		});
-		return normalizeMarksResponse(response.data);
-	} catch (error) {
-		console.error('Error fetching study program results by curriculum:', error);
-		throw error;
-	}
-};
+export const getStudyProgramResults = (studyProgramId: string): Promise<StudyProgramResults> =>
+	getStudyProgramMarks(studyProgramId, 'SV');
+
+export const getStudyProgramResultsByCurriculum = (studyProgramId: string): Promise<StudyProgramResults> =>
+	getStudyProgramMarks(studyProgramId, 'CTDT');
 
 export interface MarkDetailItem {
 	OrderNumber?: number;
@@ -283,7 +277,7 @@ export interface MarkDetailItem {
 
 export const getMarkDetail = async (curriculumId: string): Promise<MarkDetailItem[]> => {
 	try {
-		const response = await api.get('/student/showmarkdetail', {
+		const response = await api.get(Endpoints.Student.ShowMarkDetail, {
 			params: { id: curriculumId }
 		});
 		return response.data;
@@ -293,12 +287,16 @@ export const getMarkDetail = async (curriculumId: string): Promise<MarkDetailIte
 	}
 };
 
-export const getCourseRegistrationResults = async (yearStudy: string, termId: string) => {
+export const getCourseRegistrationResults = async (
+	yearStudy: string,
+	termId: string
+): Promise<RegistrationResult[]> => {
 	try {
-		const response = await api.get('/student/XemKetQuaDangKyHP', {
+		const response = await api.get(Endpoints.Student.XemKetQuaDangKyHP, {
 			params: { namhoc: yearStudy, hocky: termId }
 		});
-		return response.data;
+		const data = response.data;
+		return Array.isArray(data) ? data : Array.isArray(data?.data) ? data.data : [];
 	} catch (error) {
 		console.error('Error fetching course registration results:', error);
 		throw error;
@@ -336,7 +334,7 @@ export interface GraduationCoursesData {
 
 export const getGraduationCourses = async (studyProgramId: string): Promise<GraduationCoursesData> => {
 	try {
-		const response = await api.get('/student/LoadGraduationCourses', {
+		const response = await api.get(Endpoints.Student.LoadGraduationCourses, {
 			params: { StudyProgramID: studyProgramId }
 		});
 		return response.data;
@@ -356,7 +354,7 @@ export const saveGraduationCourses = async (
 	note: string = ''
 ): Promise<SaveGraduationResponse> => {
 	try {
-		const response = await api.post('/student/SaveGraduationCourses', {
+		const response = await api.post(Endpoints.Student.SaveGraduationCourses, {
 			p1: graduationCourseId,
 			p2: studyProgramId,
 			p3: note
@@ -373,7 +371,7 @@ export const deleteGraduationCourses = async (
 	studyProgramId: string
 ): Promise<SaveGraduationResponse> => {
 	try {
-		const response = await api.post('/student/DeleteGraduationCourses', {
+		const response = await api.post(Endpoints.Student.DeleteGraduationCourses, {
 			p1: graduationCourseId,
 			p2: studyProgramId
 		});

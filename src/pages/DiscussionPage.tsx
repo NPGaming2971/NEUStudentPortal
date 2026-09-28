@@ -3,8 +3,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { getYearAndTerm, type YearAndTermData, type Term } from '@/services/scheduleService';
+import { getYearAndTerm } from '@/services/scheduleService';
 import {
 	getComments,
 	getDiscussions,
@@ -13,45 +12,30 @@ import {
 	type Discussion
 } from '@/services/discussionService';
 import { useGlobalNotification } from '@/hooks/useGlobalNotification';
+import { useYearAndTerm } from '@/hooks/useYearAndTerm';
+import { getCourseTypeInfo } from '@/lib/courseType';
 import { Loader2, MessageSquare, ChevronDown, ChevronUp, Send, BookOpen, Calendar } from 'lucide-react';
-import { cn, formatDate } from '@/lib/utils';
+import { cn, formatDate, getInitials } from '@/lib/utils';
 import { PageLoader } from '@/components/common/PageLoader';
+import { PageError } from '@/components/common/PageError';
 import { InlineLoader } from '@/components/common/InlineLoader';
 import { EmptyState } from '@/components/common/EmptyState';
+import YearTermFilter from '@/components/common/YearTermFilter';
 
 function DiscussionPage() {
-	const [yearAndTerm, setYearAndTerm] = useState<YearAndTermData | null>(null);
 	const [courses, setCourses] = useState<CourseForComment[]>([]);
 	const [isLoading, setIsLoading] = useState(true);
-	const [selectedYear, setSelectedYear] = useState('');
-	const [selectedTerm, setSelectedTerm] = useState('');
+	const {
+		yearTermData: yearAndTerm,
+		selectedYear,
+		setSelectedYear,
+		selectedTerm,
+		setSelectedTerm,
+		termsForSelectedYear,
+		error,
+		retry
+	} = useYearAndTerm(getYearAndTerm);
 	const { showSuccess, showError } = useGlobalNotification();
-
-	useEffect(() => {
-		const fetchYearAndTerm = async () => {
-			try {
-				const data = await getYearAndTerm();
-				setYearAndTerm(data);
-				setSelectedYear(data.CurrentYear);
-				setSelectedTerm(data.CurrentTerm);
-			} catch (err) {
-				console.error('Error:', err);
-				showError('Không thể tải dữ liệu năm học');
-			}
-		};
-		fetchYearAndTerm();
-	}, [showError]);
-
-	// Reload term list + reset selected term when the year changes
-	useEffect(() => {
-		if (!selectedYear || !yearAndTerm) return;
-		const item = yearAndTerm.items.find((i) => i.YearStudy === selectedYear);
-		if (!item) return;
-		setSelectedTerm((prev) => {
-			if (item.Terms.some((t) => t.TermID === prev)) return prev;
-			return item.Terms.find((t) => t.CurrentTerm)?.TermID ?? item.Terms[0]?.TermID ?? '';
-		});
-	}, [selectedYear, yearAndTerm]);
 
 	useEffect(() => {
 		const fetchCourses = async () => {
@@ -97,6 +81,10 @@ function DiscussionPage() {
 		fetchCourses();
 	}, [selectedYear, selectedTerm, showError]);
 
+	if (error && !yearAndTerm) {
+		return <PageError message={error} onRetry={retry} />;
+	}
+
 	if (!yearAndTerm) {
 		return <PageLoader />;
 	}
@@ -110,40 +98,17 @@ function DiscussionPage() {
 			</div>
 
 			{/* Filters */}
-			<div className="flex flex-wrap gap-4">
-				<div className="flex items-center gap-2">
-					<label className="text-sm font-medium text-muted-foreground whitespace-nowrap">Năm học</label>
-					<Select value={selectedYear} onValueChange={setSelectedYear}>
-						<SelectTrigger className="w-[180px]">
-							<SelectValue placeholder="Chọn năm học" />
-						</SelectTrigger>
-						<SelectContent>
-							{yearAndTerm.YearStudy.map((year) => (
-								<SelectItem key={year} value={year}>
-									Năm học {year}
-								</SelectItem>
-							))}
-						</SelectContent>
-					</Select>
-				</div>
-				<div className="flex items-center gap-2">
-					<label className="text-sm font-medium text-muted-foreground whitespace-nowrap">Học kỳ</label>
-					<Select value={selectedTerm} onValueChange={setSelectedTerm}>
-						<SelectTrigger className="w-[180px]">
-							<SelectValue placeholder="Chọn học kỳ" />
-						</SelectTrigger>
-						<SelectContent>
-							{(
-								yearAndTerm.items.find((i) => i.YearStudy === selectedYear)?.Terms ?? yearAndTerm.Terms
-							).map((term: Term) => (
-								<SelectItem key={term.TermID} value={term.TermID}>
-									{term.TermName}
-								</SelectItem>
-							))}
-						</SelectContent>
-					</Select>
-				</div>
-			</div>
+			<YearTermFilter
+				selectedYear={selectedYear}
+				onYearChange={setSelectedYear}
+				selectedTerm={selectedTerm}
+				onTermChange={setSelectedTerm}
+				years={yearAndTerm.YearStudy}
+				terms={termsForSelectedYear}
+				showLabels
+				yearTriggerClassName="w-[180px]"
+				termTriggerClassName="w-[180px]"
+			/>
 
 			{/* Courses List */}
 			<div className="space-y-4">
@@ -227,41 +192,7 @@ function CourseDiscussionItem({
 		}
 	};
 
-	const getInitials = (name: string) => {
-		return name
-			.split(' ')
-			.map((word) => word[0])
-			.join('')
-			.slice(-2)
-			.toUpperCase();
-	};
-
-	const getTypeLabel = () => {
-		switch (course.StudyUnitTypeID) {
-			case 1:
-				return {
-					label: 'Lý thuyết',
-					className: 'bg-blue-500/20 text-blue-600 border-blue-500/30'
-				};
-			case 2:
-				return {
-					label: 'Thực hành',
-					className: 'bg-green-500/20 text-green-600 border-green-500/30'
-				};
-			case 3:
-				return {
-					label: 'LT & TH',
-					className: 'bg-purple-500/20 text-purple-600 border-purple-500/30'
-				};
-			default:
-				return {
-					label: 'Khác',
-					className: 'bg-gray-500/20 text-gray-600 border-gray-500/30'
-				};
-		}
-	};
-
-	const typeInfo = getTypeLabel();
+	const typeInfo = getCourseTypeInfo(course.StudyUnitTypeID);
 
 	return (
 		<Card className="border-0 shadow-lg overflow-hidden">

@@ -1,5 +1,7 @@
 // Conduct Score Service - Student behavior/conduct scores
 import api from '@/lib/api';
+import { Endpoints } from '@/lib/endpoints';
+import { normalizeYearAndTermData, type YearAndTermData } from './scheduleService';
 
 export interface ConductScore {
 	YearStudy: string;
@@ -11,7 +13,7 @@ export interface ConductScore {
 
 export const getStudentConductScore = async (): Promise<ConductScore[]> => {
 	try {
-		const response = await api.get('/student/behaviorscoretotal');
+		const response = await api.get(Endpoints.Student.BehaviorScoreTotal);
 		return response.data;
 	} catch (error) {
 		console.error('Error fetching student conduct score:', error);
@@ -19,13 +21,15 @@ export const getStudentConductScore = async (): Promise<ConductScore[]> => {
 	}
 };
 
-export interface YearTermScoreData {
-	CurrentYear: string;
-	CurrentTerm: string;
-	YearStudy: string[];
-	Terms: { TermID: string; TermName: string }[];
-}
-
+export const getYearAndTermScore = async (): Promise<YearAndTermData> => {
+	try {
+		const response = await api.get(Endpoints.Student.YearAndTermScore);
+		return normalizeYearAndTermData(response.data);
+	} catch (error) {
+		console.error('Error fetching year and term score:', error);
+		throw error;
+	}
+};
 export interface BehaviorDetailItem {
 	BehaviorGroupID: string;
 	BehaviorGroupName: string;
@@ -76,19 +80,9 @@ export interface BehaviorData {
 	YearStudy?: string;
 }
 
-export const getYearAndTermScore = async (): Promise<YearTermScoreData> => {
-	try {
-		const response = await api.get('/student/YearAndTermScore');
-		return response.data;
-	} catch (error) {
-		console.error('Error fetching year and term score:', error);
-		throw error;
-	}
-};
-
 export const getBehaviorScore = async (yearStudy: string, termId: string): Promise<BehaviorData> => {
 	try {
-		const response = await api.get('/student/BehaviorByStudent', {
+		const response = await api.get(Endpoints.Student.BehaviorByStudent, {
 			params: {
 				namhoc: yearStudy,
 				hocky: termId
@@ -108,7 +102,7 @@ export const saveBehaviorScore = async (
 ): Promise<void> => {
 	try {
 		await api.post(
-			'/student/SaveBehavior',
+			Endpoints.Student.SaveBehavior,
 			{
 				YearStudy: yearStudy,
 				TermID: termId,
@@ -128,10 +122,13 @@ export const resourceUpload = async (file: File): Promise<string> => {
 		formData.append('FormFile', file);
 		formData.append('FileName', file.name);
 		formData.append('Type', 'DiemRenLuyen');
-		const response = await api.post('/student/ResourceUpload', formData, {
+		const response = await api.post(Endpoints.Student.ResourceUpload, formData, {
 			headers: { 'Content-Type': 'multipart/form-data' }
 		});
 		const fileName: string = response.data?.FileName ?? '';
+		if (!fileName.trim()) {
+			throw new Error('Không thể tải ảnh lên, vui lòng thử lại');
+		}
 		return `https://${fileName}`;
 	} catch (error) {
 		console.error('Error uploading resource:', error);
@@ -147,7 +144,7 @@ export const insertBehaviorDetail = async (
 	termId: string
 ): Promise<void> => {
 	try {
-		await api.post('/student/InsertBehaviorDetail', {
+		await api.post(Endpoints.Student.InsertBehaviorDetail, {
 			p1: parentDetailId,
 			p2: note,
 			p3: imageUrl,
@@ -179,7 +176,7 @@ export const showEditBehaviorDetailForm = async (
 	termId: string
 ): Promise<BehaviorDetailEvidence | null> => {
 	try {
-		const response = await api.post('/student/ShowEditBehaviorDetailForm', {
+		const response = await api.post(Endpoints.Student.ShowEditBehaviorDetailForm, {
 			p1: childDetailId,
 			p2: yearStudy,
 			p3: termId
@@ -209,7 +206,7 @@ export const showBehaviorDiscussion = async (
 	termId: string
 ): Promise<BehaviorDiscussion[]> => {
 	try {
-		const response = await api.post('/student/ShowBehaviorDiscussion', {
+		const response = await api.post(Endpoints.Student.ShowBehaviorDiscussion, {
 			p1: behaviorDetailId,
 			p2: yearStudy,
 			p3: termId,
@@ -231,7 +228,7 @@ export const insertBehaviorDiscussion = async (
 	studentId: string
 ): Promise<void> => {
 	try {
-		await api.post('/student/InsertBehaviorDiscussion', {
+		await api.post(Endpoints.Student.InsertBehaviorDiscussion, {
 			p1: behaviorDetailId,
 			p2: comment,
 			p3: yearStudy,
@@ -246,7 +243,7 @@ export const insertBehaviorDiscussion = async (
 
 export const deleteBehaviorDetail = async (childDetailId: string, yearStudy: string, termId: string): Promise<void> => {
 	try {
-		await api.post('/student/DeleteBehaviorDetail', {
+		await api.post(Endpoints.Student.DeleteBehaviorDetail, {
 			p1: childDetailId,
 			p2: yearStudy,
 			p3: termId,

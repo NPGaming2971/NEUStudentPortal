@@ -1,4 +1,5 @@
 import api from '@/lib/api';
+import { Endpoints } from '@/lib/endpoints';
 
 export interface SidebarMenuItem {
 	Id: number;
@@ -11,7 +12,7 @@ export interface SidebarMenuItem {
 
 export const getMenu = async (language = 'vi'): Promise<SidebarMenuItem[]> => {
 	try {
-		const response = await api.get('/authenticate/getmenu', {
+		const response = await api.get(Endpoints.Auth.GetMenu, {
 			params: { language }
 		});
 		const data = response.data;

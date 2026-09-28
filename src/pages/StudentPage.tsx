@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useInfoStore } from '@/stores/infoStore';
 import { Mail, MapPin, GraduationCap, CreditCard, Users, UserCheck } from 'lucide-react';
+import { getInitials } from '@/lib/utils';
 import { PageLoader } from '@/components/common/PageLoader';
 import { PageError } from '@/components/common/PageError';
 
@@ -42,7 +43,7 @@ function StudentPage() {
 									className="w-full h-full object-cover"
 								/>
 							) : (
-								studentData?.HoTen?.split(' ').pop()?.charAt(0) || 'S'
+								getInitials(studentData?.HoTen ?? '') || 'S'
 							)}
 						</div>
 						<div className="text-center">
